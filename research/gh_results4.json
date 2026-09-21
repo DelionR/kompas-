@@ -1,0 +1,1561 @@
+{
+ "circuit breaker step": {
+  "query": "circuit breaker step",
+  "total": 28,
+  "items": [
+   {
+    "full_name": "aws-samples/serverless-circuit-breaker-stepfunctions",
+    "stars": 9,
+    "lang": "TypeScript",
+    "desc": "",
+    "license": "MIT-0",
+    "updated": "2025-04-15",
+    "topics": [
+     "alarm",
+     "circuit-breaker",
+     "circuit-breaker-pattern",
+     "event-driven",
+     "lambda",
+     "serverless",
+     "sqs",
+     "step-functions"
+    ]
+   },
+   {
+    "full_name": "ruhollahjafari1994/AspnetMicroservices",
+    "stars": 8,
+    "lang": "C#",
+    "desc": "Microservices on .Net platforms which used Asp.Net Web API, Docker, RabbitMQ, MassTransit, Grpc, Ocelot API Gateway, MongoDB, Redis, PostgreSQL, SqlServer, Dapper, Entity Framework Core, CQRS and Clea",
+    "license": "MIT",
+    "updated": "2026-08-20",
+    "topics": []
+   },
+   {
+    "full_name": "amabito/veronica-core",
+    "stars": 5,
+    "lang": "Python",
+    "desc": "Runtime containment kernel for LLM agents. Enforces budget, step, retry, and circuit-breaker limits before the model call.",
+    "license": "Apache-2.0",
+    "updated": "2026-04-02",
+    "topics": [
+     "agentic-ai",
+     "agents",
+     "ai-safety",
+     "anthropic",
+     "autogen",
+     "budget-enforcement",
+     "circuit-breaker",
+     "containment"
+    ]
+   },
+   {
+    "full_name": "abeermeer/goethe-booking-bot",
+    "stars": 4,
+    "lang": "Python",
+    "desc": "Fully automated bot for booking Goethe-Institut Pakistan exams (A1, A2, B1). 26 modules, 69 tests, 5-step wizard, Telegram Commander, web dashboard, circuit breaker, proxy rotation, AI assistant.",
+    "license": "MIT",
+    "updated": "2026-06-24",
+    "topics": [
+     "automation",
+     "booking-automation",
+     "booking-bot",
+     "exam-booking",
+     "flask",
+     "german-language",
+     "goethe",
+     "goethe-bot"
+    ]
+   },
+   {
+    "full_name": "devtonin/aws-step-functions-circuit-breaker-sample",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "🚦 A circuit breaker PoC built-in AWS Step Functions and AWS Lambdas using Python.",
+    "license": null,
+    "updated": "2024-07-02",
+    "topics": [
+     "dynamodb",
+     "lambda-functions",
+     "python",
+     "python-lambda",
+     "step-functions"
+    ]
+   },
+   {
+    "full_name": "JacobLinCool/Breaker",
+    "stars": 1,
+    "lang": "Rust",
+    "desc": "A social circuit breaker for human-agent loops. Breaker is for developers, students, solo builders, and anyone else who finds an intense Codex or Claude Code session hard to step away from, or who wan",
+    "license": "MIT",
+    "updated": "2026-08-21",
+    "topics": [
+     "codex"
+    ]
+   },
+   {
+    "full_name": "waseemnasir2k26/n8n-circuit-breaker-pack",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "Stop an automation before it costs you money. Drop-in n8n patterns for spend caps, step caps, wall-clock timeouts and a manual kill switch — the guardrails every unattended workflow should have had on",
+    "license": "MIT",
+    "updated": "2026-09-16",
+    "topics": [
+     "ai-agents",
+     "automation",
+     "budget",
+     "circuit-breaker",
+     "cost-control",
+     "failsafe",
+     "guardrails",
+     "kill-switch"
+    ]
+   },
+   {
+    "full_name": "EternallLight/miniflow",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "MiniFlow — a self-healing local workflow runner: retry + exponential backoff, per-step circuit breaker, and an immutable append-only JSONL audit log. Dependency-free Python (stdlib only).",
+    "license": null,
+    "updated": "2026-06-25",
+    "topics": []
+   },
+   {
+    "full_name": "paulsvh/NatLangQuery",
+    "stars": 1,
+    "lang": "C#",
+    "desc": "Natural language to SQL query engine with custom two-step LLM orchestration. Classifies intent, extracts parameters, executes parameterized SQL. Features Claude/OpenAI fallback with circuit breaker, p",
+    "license": "MIT",
+    "updated": "2026-03-25",
+    "topics": []
+   },
+   {
+    "full_name": "erikmaceo/CircuitBreakerNode",
+    "stars": 0,
+    "lang": "JavaScript",
+    "desc": "SAM Step Functions Node",
+    "license": null,
+    "updated": "2023-05-09",
+    "topics": []
+   },
+   {
+    "full_name": "kanbber/step-func-circuit-breaker",
+    "stars": 0,
+    "lang": "TypeScript",
+    "desc": "Learning circuit breaker, AppSync Subs, StepFunction, CDK Stuff",
+    "license": "Apache-2.0",
+    "updated": "2022-09-09",
+    "topics": []
+   },
+   {
+    "full_name": "madnukem/circuit-breaker",
+    "stars": 0,
+    "lang": "JavaScript",
+    "desc": "Circuit breaker hooks for LLM agents — detects failure loops and suspicious success patterns, forces step-back and recovery",
+    "license": "MIT",
+    "updated": "2026-06-15",
+    "topics": []
+   },
+   {
+    "full_name": "muhammadnsererko/agentops-circuit-breaker",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "A circuit breaker that stops infinite LLM agent loops in real time. Built on LangGraph + Groq. Enforces step limits, loop detection, cost ceilings, and error thresholds — with structured incident repo",
+    "license": "MIT",
+    "updated": "2026-09-07",
+    "topics": [
+     "agentops",
+     "ai-safety-groq",
+     "circuit-breaker",
+     "fastapi",
+     "langgraph",
+     "llm-agents",
+     "observability",
+     "prompt-injection"
+    ]
+   },
+   {
+    "full_name": "juliofreitas77/FrstStepsSpriingBoot",
+    "stars": 0,
+    "lang": "Java",
+    "desc": "Microservices com Feign Spring Cloud Netflix Eureka API Gateway Circuit Breaker Resilience4j Config Server LoadBalancer",
+    "license": null,
+    "updated": "2024-09-13",
+    "topics": []
+   },
+   {
+    "full_name": "samuel-adedigba/ai-inference-stepper",
+    "stars": 0,
+    "lang": "TypeScript",
+    "desc": "Production-grade AI inference orchestrator with multi-provider fallback, Redis-backed caching, and resilient circuit breakers.",
+    "license": "NOASSERTION",
+    "updated": "2026-09-17",
+    "topics": [
+     "ai",
+     "api-resilience",
+     "backend",
+     "bullmq",
+     "circuit-breaker",
+     "inference",
+     "microservice",
+     "nodejs"
+    ]
+   }
+  ]
+ },
+ "circuit breaker 3d model": {
+  "query": "circuit breaker 3d model",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "VB6Hobbyst7/ControlPanelAutomation",
+    "stars": 0,
+    "lang": null,
+    "desc": "Takes 3D models of control panels for circuit breakers and builds them using Universal Robots.",
+    "license": null,
+    "updated": "2023-01-02",
+    "topics": []
+   }
+  ]
+ },
+ "din rail 3d model": {
+  "query": "din rail 3d model",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "NikodemSzwed/Mounting-rack-for-2.5-inch-disk-for-din-rail-3D-model",
+    "stars": 1,
+    "lang": null,
+    "desc": "3D model for din rail which can hold your's 2,5\" drives",
+    "license": "GPL-3.0",
+    "updated": "2020-03-02",
+    "topics": [
+     "3d-models",
+     "3d-printing"
+    ]
+   }
+  ]
+ },
+ "din rail step file": {
+  "query": "din rail step file",
+  "total": 0,
+  "items": []
+ },
+ "terminal block 3d model": {
+  "query": "terminal block 3d model",
+  "total": 2,
+  "items": [
+   {
+    "full_name": "antonteplov/3DPrintedTerminalBlock6x16x5",
+    "stars": 0,
+    "lang": null,
+    "desc": "3D model for printing the terminal block box for 5 wires up to 6 AWG.  ",
+    "license": null,
+    "updated": "2021-07-13",
+    "topics": []
+   },
+   {
+    "full_name": "mattpolicastro/behold",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "Spin a 3D model in your terminal. One file, no dependencies. OBJ/STL/FBX to kitty graphics, half-blocks, or ASCII.",
+    "license": "MIT",
+    "updated": "2026-07-28",
+    "topics": []
+   }
+  ]
+ },
+ "contactor 3d model": {
+  "query": "contactor 3d model",
+  "total": 174,
+  "items": [
+   {
+    "full_name": "snuvclab/coma",
+    "stars": 83,
+    "lang": "Python",
+    "desc": "Official Repository for ECCV 2024 paper Beyond the Contact: Discovering Comprehensive Affordance for 3D Objects from Pre-trained 2D Diffusion Models",
+    "license": "NOASSERTION",
+    "updated": "2025-03-19",
+    "topics": [
+     "affordance-learning",
+     "diffusion-models",
+     "human-object-interaction"
+    ]
+   },
+   {
+    "full_name": "Hannstcott/SunshineTr",
+    "stars": 71,
+    "lang": "HTML",
+    "desc": "#EXTM3U url-tvg=\"http://onetv.click/schedule/epg.xml\"   #EXTINF:-1 tvg-id=\"kcinehd\" group-title=\"🍭| K+\" tvg-logo=\"https://img.kplus.vn/media/channels/sg/channelicons/KCINE.png\", K+CINE HD #KODIPROP:in",
+    "license": null,
+    "updated": "2024-10-04",
+    "topics": []
+   },
+   {
+    "full_name": "Aveiro-Lin/GraphiContact",
+    "stars": 52,
+    "lang": "Python",
+    "desc": "GraphiContact is a robust method for 3D human reconstruction and contact point prediction from monocular RGB images, utilizing pose-aware features and SIMU modeling to improve accuracy and model robus",
+    "license": "MIT",
+    "updated": "2026-03-24",
+    "topics": []
+   },
+   {
+    "full_name": "sanweiliti/PLACE",
+    "stars": 51,
+    "lang": "Python",
+    "desc": "Official Pytorch implementation for 2020 3DV paper \"PLACE: Proximity Learning of Articulation and Contact in 3D Environments\" and trained models",
+    "license": "MIT",
+    "updated": "2022-03-17",
+    "topics": [
+     "3d-human-mesh",
+     "3d-scenes",
+     "human-scene-interaction",
+     "pytorch"
+    ]
+   },
+   {
+    "full_name": "syedahmedullah14/My-Portfolio",
+    "stars": 39,
+    "lang": "JavaScript",
+    "desc": "A modern 3D portfolio built with React.js, Three.js, and Tailwind CSS, showcasing my skills through customizable 3D sections, engaging animations with Framer Motion, and a responsive design. Features ",
+    "license": "MIT",
+    "updated": "2024-05-23",
+    "topics": [
+     "emailjs",
+     "react-three-drei",
+     "react-three-fiber",
+     "reactjs",
+     "tailwindcss",
+     "threejs",
+     "vite"
+    ]
+   },
+   {
+    "full_name": "Jayant-1/3D-Portfolio",
+    "stars": 38,
+    "lang": "JavaScript",
+    "desc": "This project is a modern, interactive 3D portfolio website built with React, Three.js,Tailwind CSS. It features animated 3D models, an elastic cursor, smooth GSAP/Framer Motion transitions, and respon",
+    "license": "MIT",
+    "updated": "2026-08-09",
+    "topics": [
+     "3d-portfolio-website",
+     "developer-portfolio",
+     "interactive-ui",
+     "personal-portfolio",
+     "portfolio",
+     "portfolio-website",
+     "project",
+     "spline"
+    ]
+   },
+   {
+    "full_name": "imac-wm/iMaC",
+    "stars": 34,
+    "lang": "Python",
+    "desc": "iMac: Translating Actions into Motion and Contact Images for Embodied World Models",
+    "license": null,
+    "updated": "2026-06-21",
+    "topics": [
+     "3d",
+     "3d-reconstruction",
+     "3d-scene-understanding",
+     "robotic-manipulation",
+     "robotics",
+     "world-model",
+     "world-models"
+    ]
+   },
+   {
+    "full_name": "sokrypton/GREMLIN",
+    "stars": 26,
+    "lang": "Matlab",
+    "desc": "GREMLIN is a method to learn a statistical model of a protein family that captures both conservation and co-evolution patterns in the family. The strength of measured co-evolution is strongly predicti",
+    "license": "NOASSERTION",
+    "updated": "2016-07-03",
+    "topics": []
+   },
+   {
+    "full_name": "QuantuMope/imc-der",
+    "stars": 23,
+    "lang": "C++",
+    "desc": "Contact model for 3D elastic rod simulations. Framework for knot tying.",
+    "license": "MIT",
+    "updated": "2024-07-24",
+    "topics": [
+     "computational-mechanics",
+     "computer-graphics",
+     "knot-theory",
+     "knots",
+     "mechanics",
+     "physics-simulation",
+     "simulation"
+    ]
+   },
+   {
+    "full_name": "chzh9311/force-aware-grasp",
+    "stars": 17,
+    "lang": "Python",
+    "desc": "Official implementation for AAAI-26 paper: \"Force-Aware 3D Contact Modeling for Stable Grasp Generation\"",
+    "license": "NOASSERTION",
+    "updated": "2026-03-13",
+    "topics": []
+   },
+   {
+    "full_name": "StructuresComp/rod-contact-sim",
+    "stars": 15,
+    "lang": "C++",
+    "desc": "Contact model for 3D elastic rod simulations. Framework for flagella bundling.",
+    "license": "GPL-3.0",
+    "updated": "2024-03-29",
+    "topics": [
+     "computational-mechanics",
+     "computer-graphics",
+     "knot-theory",
+     "knots",
+     "mechanics",
+     "physics-simulation",
+     "simulation"
+    ]
+   },
+   {
+    "full_name": "NanaYngvarrdottir/Software-Testing",
+    "stars": 14,
+    "lang": "C#",
+    "desc": "Virtual Reality is an experimental and innovative framework containing advanced tools and options for creating virtual world applications. Virtual Reality is not a virtual world, nor a stand-alone app",
+    "license": "NOASSERTION",
+    "updated": "2012-09-15",
+    "topics": []
+   },
+   {
+    "full_name": "Demon-Kervin/3D-reconstruction",
+    "stars": 12,
+    "lang": "MATLAB",
+    "desc": "This is the toolbox to reconstuct the 3D models based on 2D CT inmages. The reference papare \"An integrated method for 3D reconstruction model of porous geomaterials through 2D CT images\" is published",
+    "license": "BSD-2-Clause",
+    "updated": "2020-08-05",
+    "topics": []
+   },
+   {
+    "full_name": "LucasHartman/MayaScript_HouseGenerator",
+    "stars": 12,
+    "lang": "Python",
+    "desc": "‘Generative House Algorithm’ was constructed for one simple reason, being one click away from creating a range of uniquely designed model houses. At the beginning of 2020, the start of the covid-19 pa",
+    "license": null,
+    "updated": "2021-05-03",
+    "topics": []
+   },
+   {
+    "full_name": "AimTheSun/portofolio-website-3d",
+    "stars": 9,
+    "lang": "JavaScript",
+    "desc": "A portfolio website built with React.js, Three.js, and React Three Fiber, featuring a 3D hero section, interactive animations with Framer Motion, and a 3D skills showcase. Includes animated project an",
+    "license": null,
+    "updated": "2025-07-23",
+    "topics": []
+   }
+  ]
+ },
+ "electrical cabinet 3d": {
+  "query": "electrical cabinet 3d",
+  "total": 2,
+  "items": [
+   {
+    "full_name": "Bossixd/dirac-assembly-simulation",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "Tool to simulate the installation and removal of a flexible wire in a 3D electrical cabinet model , ensuring the wire’s motion accounts for real-world constraints like collisions and bending behavior ",
+    "license": null,
+    "updated": "2024-12-13",
+    "topics": []
+   },
+   {
+    "full_name": "noreenhashmi07-lgtm/Electrical-cabinet-pro",
+    "stars": 0,
+    "lang": null,
+    "desc": "It's a 3d website for electrical engineer to create their projects and finding things related their work as architect",
+    "license": null,
+    "updated": "2026-06-11",
+    "topics": []
+   }
+  ]
+ },
+ "switchgear 3d model": {
+  "query": "switchgear 3d model",
+  "total": 0,
+  "items": []
+ },
+ "electrical enclosure step": {
+  "query": "electrical enclosure step",
+  "total": 0,
+  "items": []
+ },
+ "distribution board 3d": {
+  "query": "distribution board 3d",
+  "total": 7,
+  "items": [
+   {
+    "full_name": "FYSETC/Tool-Distribution-Board",
+    "stars": 4,
+    "lang": null,
+    "desc": "The Tool Distribution Board enables 6 - way power and CANBUS distribution. Ideal for multi - head 3D printers, it facilitates debugging and operation.",
+    "license": "AGPL-3.0",
+    "updated": "2025-03-21",
+    "topics": []
+   },
+   {
+    "full_name": "msegoferre/galton_board",
+    "stars": 1,
+    "lang": null,
+    "desc": "This repository hosts the .dae (Collada) file of a Galton machine, also known as a Galton board or bean machine. The Galton machine is a fascinating device that demonstrates the principles of randomne",
+    "license": "MIT",
+    "updated": "2023-09-20",
+    "topics": []
+   },
+   {
+    "full_name": "abhi2k16/ROM_CTD_MWD_LST_MOSFET_v1",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "Builds a full-field transient Reduced Order Model (ROM) for predicting time-evolving 3D nodal temperature distributions on the CTD MWD-LTS MOSFET board using Proper Orthogonal Decomposition (POD) and ",
+    "license": null,
+    "updated": "2026-04-11",
+    "topics": [
+     "azure-devops",
+     "drilling-services",
+     "git",
+     "python",
+     "reduced-order-modeling",
+     "surrogate-models",
+     "version-control"
+    ]
+   },
+   {
+    "full_name": "IoT-App-Development-Company/DroneControllerUsing-STM32",
+    "stars": 1,
+    "lang": "C",
+    "desc": "A complete open-source FPV drone platform featuring a custom STM32F411 flight controller, STM32F405 ESC & power distribution board, KiCad PCB designs, embedded firmware, and 3D-printable airframe. Inc",
+    "license": null,
+    "updated": "2026-07-22",
+    "topics": []
+   },
+   {
+    "full_name": "siddolo/3d-printer-power-distribution-board",
+    "stars": 0,
+    "lang": null,
+    "desc": "This simple PCB is useful to distribute power to tools and accessories of 3D printer",
+    "license": null,
+    "updated": "2020-12-10",
+    "topics": []
+   },
+   {
+    "full_name": "Yatuin/One_Cable",
+    "stars": 0,
+    "lang": null,
+    "desc": "3d printer hot end distribution board",
+    "license": "GPL-3.0",
+    "updated": "2019-10-16",
+    "topics": []
+   },
+   {
+    "full_name": "xateesix/M1-SOC-Armbian-Build-broken",
+    "stars": 0,
+    "lang": "Shell",
+    "desc": "The official build framework for the Armbian Linux distribution. This repository contains the complete toolchain and scripts required to compile custom OS images from source, including kernel configur",
+    "license": null,
+    "updated": "2026-08-20",
+    "topics": []
+   }
+  ]
+ },
+ "electrical cad library 3d": {
+  "query": "electrical cad library 3d",
+  "total": 0,
+  "items": []
+ },
+ "electrical components 3d library": {
+  "query": "electrical components 3d library",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "CHANCUCO/PROTEUS-LIBRARY-ESP32-DEVKIT",
+    "stars": 39,
+    "lang": null,
+    "desc": "This repository contains a library of the ESP32 DEVKIT for Proteus. It includes: Package for PCB: Detailed components for designing printed circuit boards. Schematic diagram: Elements for creating cle",
+    "license": null,
+    "updated": "2024-05-15",
+    "topics": []
+   }
+  ]
+ },
+ "panel components 3d library": {
+  "query": "panel components 3d library",
+  "total": 0,
+  "items": []
+ },
+ "cabinet hardware 3d library": {
+  "query": "cabinet hardware 3d library",
+  "total": 0,
+  "items": []
+ },
+ "enclosure 3d library": {
+  "query": "enclosure 3d library",
+  "total": 6,
+  "items": [
+   {
+    "full_name": "SlyWombat/casemaker-library",
+    "stars": 0,
+    "lang": "JavaScript",
+    "desc": "Community board profiles for Case Maker — parametric 3D-printable enclosures",
+    "license": "NOASSERTION",
+    "updated": "2026-07-19",
+    "topics": []
+   },
+   {
+    "full_name": "rafaelmartins/pcb-enclosure",
+    "stars": 0,
+    "lang": "OpenSCAD",
+    "desc": "A very simple OpenSCAD library to create PCB enclosures, to be 3D printed.",
+    "license": "BSD-3-Clause",
+    "updated": "2020-08-21",
+    "topics": []
+   },
+   {
+    "full_name": "NASA-HUNCH-DSLM-Assets/Digital-Asset-Library",
+    "stars": 0,
+    "lang": null,
+    "desc": "Central digital asset repository for NASA HUNCH DSLM (Deep Space Logistics Module) 3D models, including CTBs, stowage enclosures, payload banks, freezer models, and multi-school submissions.",
+    "license": null,
+    "updated": "2026-02-08",
+    "topics": []
+   },
+   {
+    "full_name": "naranyala/awesome-electronics-3d-modeling",
+    "stars": 0,
+    "lang": null,
+    "desc": "A list of resources, tools, software, and utilities for 3D modeling in electronics design — PCB 3D visualization, component model libraries, enclosure design, ECAD/MCAD workflows, and related manufact",
+    "license": null,
+    "updated": "2026-04-06",
+    "topics": [
+     "electronics",
+     "pcb",
+     "pcb-design"
+    ]
+   },
+   {
+    "full_name": "frsaba/mcguitarpedal",
+    "stars": 0,
+    "lang": "C",
+    "desc": "Teensy 4.1 custom built guitar effects pedal. Uses the Teensy Audio Library and LVGL. Custom PCB design and 3D printed enclosure",
+    "license": null,
+    "updated": "2025-03-27",
+    "topics": []
+   },
+   {
+    "full_name": "silviugrumazescu/DYI-Launchpad",
+    "stars": 0,
+    "lang": "C++",
+    "desc": "DIY MIDI Launchpad built with Adafruit 32u4 and MPR121 module. Features 12 capacitive touch pads, 6 potentiometers, and direct USB MIDI output using the MIDIUSB library. Designed for plug-and-play use",
+    "license": null,
+    "updated": "2021-07-05",
+    "topics": []
+   }
+  ]
+ },
+ "schneider electric 3d model": {
+  "query": "schneider electric 3d model",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "Mahmoud-Elsayed22/Mahmoud-Elsayed22",
+    "stars": 0,
+    "lang": null,
+    "desc": "Mechatronics Engineer bridging mechanical design & industrial automation. Skilled in CAD/CAE (2D Drafting, 3D Modeling, Assembly, Technical Drawing & Ansys FEA using SolidWorks) & Automation (PLC Prog",
+    "license": null,
+    "updated": "2026-09-05",
+    "topics": []
+   }
+  ]
+ },
+ "abb circuit breaker 3d": {
+  "query": "abb circuit breaker 3d",
+  "total": 0,
+  "items": []
+ },
+ "eaton 3d model": {
+  "query": "eaton 3d model",
+  "total": 0,
+  "items": []
+ },
+ "phoenix contact 3d": {
+  "query": "phoenix contact 3d",
+  "total": 0,
+  "items": []
+ },
+ "siemens 3d model step": {
+  "query": "siemens 3d model step",
+  "total": 3,
+  "items": [
+   {
+    "full_name": "CHETHAN-2002/SIEMENS-NX",
+    "stars": 0,
+    "lang": null,
+    "desc": "Explore my Siemens NX learning repository! It's packed with my journey into this awesome design software. From basic shapes to intricate models, each file marks a step forward in my skills. Whether cr",
+    "license": null,
+    "updated": "2024-04-08",
+    "topics": []
+   },
+   {
+    "full_name": "Zuzaylikedy/CAD-Design-and-Motion-Analysis-of-the-Geneva-Mechanism-in-Siemens-NX",
+    "stars": 0,
+    "lang": null,
+    "desc": "This project covers the 3D solid modeling and kinematic analysis of a classic Geneva Drive (Cross of Malta) mechanism built using Siemens NX. The Geneva mechanism converts continuous rotational motion",
+    "license": null,
+    "updated": "2026-08-21",
+    "topics": []
+   },
+   {
+    "full_name": "navin-vijay/Avionic-System-Component-Design",
+    "stars": 0,
+    "lang": null,
+    "desc": "Conceptual design of an Avionic System Component using Siemens NX 12—a lightweight bracket for aerospace applications featuring triangular cutouts for weight reduction (up to 40%), mounting holes, and",
+    "license": "MIT",
+    "updated": "2025-09-07",
+    "topics": []
+   }
+  ]
+ },
+ "topic:step-files": {
+  "query": "topic:step-files",
+  "total": 19,
+  "items": [
+   {
+    "full_name": "mathLab/PyGeM",
+    "stars": 418,
+    "lang": "Python",
+    "desc": "Python Geometrical Morphing",
+    "license": "NOASSERTION",
+    "updated": "2026-06-26",
+    "topics": [
+     "elmer",
+     "free-form-deformation",
+     "hacktoberfest",
+     "iges",
+     "inverse-distance-weighting",
+     "keyword-files",
+     "radial-basis-function",
+     "step-files"
+    ]
+   },
+   {
+    "full_name": "papakonnekt/nozzlenest",
+    "stars": 26,
+    "lang": "JavaScript",
+    "desc": "NozzleNest is a premium, next-generation 3D print organizer desktop application built with Electron, React, Vite, and SQLite for Windows.",
+    "license": "NOASSERTION",
+    "updated": "2026-05-29",
+    "topics": [
+     "3d-printing",
+     "3mf-files",
+     "organization",
+     "step-files",
+     "stl-files"
+    ]
+   },
+   {
+    "full_name": "sunnyday-technologies/CADCLAW",
+    "stars": 19,
+    "lang": "Python",
+    "desc": "The testing framework CAD never had — automated validation, interference detection, and structural analysis for STEP assemblies. Like pytest for mechanical design.",
+    "license": "MIT",
+    "updated": "2026-09-10",
+    "topics": [
+     "3d-printing",
+     "cad",
+     "cadquery",
+     "interference-detection",
+     "mcp-server",
+     "mechanical-engineering",
+     "open-source",
+     "python"
+    ]
+   },
+   {
+    "full_name": "Chen-Si-An/OCC-MFC",
+    "stars": 15,
+    "lang": "C++",
+    "desc": "Use OpenCASCADE library to implement data visualization under MFC framework",
+    "license": null,
+    "updated": "2023-05-14",
+    "topics": [
+     "3d-graphics",
+     "3d-movement",
+     "3d-rotation",
+     "3d-scene",
+     "3d-viewer",
+     "3d-zoomin",
+     "data-exchange",
+     "data-visualization"
+    ]
+   },
+   {
+    "full_name": "medinstech/cycloidgen",
+    "stars": 6,
+    "lang": "Python",
+    "desc": "Parametric cycloidal drive (gearbox) generator: exact conjugate geometry, live 2D and 3D, 56 self-explaining checks, a full engineering datasheet — contact stress, stiffness, backlash, transmission er",
+    "license": "Apache-2.0",
+    "updated": "2026-09-04",
+    "topics": [
+     "3d-printing",
+     "cad",
+     "cnc",
+     "cycloidal-drive",
+     "dxf",
+     "engineering-analysis",
+     "gear-design",
+     "gearbox"
+    ]
+   },
+   {
+    "full_name": "Qoo622/3D-print",
+    "stars": 5,
+    "lang": null,
+    "desc": "自作した3Dプリントパーツたちです。主にエアソフト向けのパーツを格納してあります。",
+    "license": null,
+    "updated": "2024-10-17",
+    "topics": [
+     "3d-printing",
+     "airsoft",
+     "step-files",
+     "stl-files"
+    ]
+   },
+   {
+    "full_name": "0oKevino0/claude-cad",
+    "stars": 4,
+    "lang": "Python",
+    "desc": "The verification layer for AI-generated CAD. Make Claude Code prove a CadQuery part is valid before it fails in SolidWorks.",
+    "license": "MIT",
+    "updated": "2026-08-08",
+    "topics": [
+     "3d-modeling",
+     "ai-tools",
+     "cad",
+     "cadquery",
+     "claude",
+     "claude-code",
+     "mcp",
+     "opencascade"
+    ]
+   },
+   {
+    "full_name": "itachimoonshot/VisionForge",
+    "stars": 3,
+    "lang": "Python",
+    "desc": "Turn a 3D CAD model into a mobile object-detector — no manual labeling. Auto-generates synthetic training data with Blender, trains YOLO, and deploys on-device.",
+    "license": "MIT",
+    "updated": "2026-07-03",
+    "topics": [
+     "3d",
+     "blender",
+     "cad",
+     "cad-yolo",
+     "computer-vision",
+     "fastapi",
+     "flutter",
+     "manufacturing-yolo"
+    ]
+   },
+   {
+    "full_name": "AiuRat/pcb-3d-models",
+    "stars": 2,
+    "lang": null,
+    "desc": "High-accuracy 3D CAD models of electronic components modeled strictly from official datasheets. Includes STEP and Autodesk Fusion (.f3d) source files. Perfect for PCB design (KiCad, Altium) and mechan",
+    "license": "CERN-OHL-P-2.0",
+    "updated": "2026-08-25",
+    "topics": [
+     "3d-models",
+     "altium",
+     "cad",
+     "electronic-components",
+     "fusion360",
+     "hardware",
+     "kicad",
+     "library"
+    ]
+   },
+   {
+    "full_name": "ilyakorni/microstrip-patch-array-2.4ghz",
+    "stars": 2,
+    "lang": null,
+    "desc": "2.44 GHz ISM-band microstrip inset-fed patch antenna and 2x2 corporate-fed array designed on Rogers RO4350B substrate. Includes Mathcad analytical synthesis, CST Studio Suite 3D electromagnetic simula",
+    "license": "CERN-OHL-P-2.0",
+    "updated": "2026-09-02",
+    "topics": [
+     "2-4ghz",
+     "antenna-array",
+     "cad-models",
+     "cern-ohl",
+     "cst-studio-suite",
+     "electromagnetic-simulation",
+     "ism-band",
+     "mathcad"
+    ]
+   },
+   {
+    "full_name": "iplayfast/stepParts",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "FreeCAD addon: search the step.parts catalog and insert STEP parts into the active document",
+    "license": "LGPL-2.1",
+    "updated": "2026-08-11",
+    "topics": [
+     "addon",
+     "cad",
+     "freecad",
+     "freecad-addon",
+     "freecad-workbench",
+     "step",
+     "step-files"
+    ]
+   },
+   {
+    "full_name": "aeksco/metric-hardware",
+    "stars": 1,
+    "lang": null,
+    "desc": ":nut_and_bolt: 3D models of 6mm to 50mm M3 Hex Cap Head Screws",
+    "license": "MIT",
+    "updated": "2020-11-27",
+    "topics": [
+     "3d-models",
+     "3d-printing",
+     "bolt",
+     "fusion-360",
+     "hardware",
+     "nut",
+     "step-file",
+     "step-files"
+    ]
+   },
+   {
+    "full_name": "FabworksHQ/fabworks-plugin",
+    "stars": 0,
+    "lang": null,
+    "desc": "Create online laser cutting quotes for sheet metal and tube parts from STEP files through the Fabworks MCP server",
+    "license": "MIT",
+    "updated": "2026-08-16",
+    "topics": [
+     "agent-skills",
+     "cad",
+     "claude-code-plugin",
+     "dfm",
+     "manufacturing",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol"
+    ]
+   },
+   {
+    "full_name": "SimonTechv/dcf850-jp-eu-spacers",
+    "stars": 0,
+    "lang": null,
+    "desc": "Магнитные проставки для DeWalt DCF850 / Magnetic Bit Adapters for DCF850 (3D print)",
+    "license": null,
+    "updated": "2026-08-06",
+    "topics": [
+     "3d-printing",
+     "dcf850",
+     "dewalt",
+     "impact",
+     "step-files"
+    ]
+   },
+   {
+    "full_name": "UnsignedArduino/Chessboard-Design",
+    "stars": 0,
+    "lang": null,
+    "desc": "Design files for a magnetic-piece-tracking digital chessboard! WIP",
+    "license": "CC-BY-SA-4.0",
+    "updated": "2025-07-01",
+    "topics": [
+     "3mf-files",
+     "autodesk-inventor",
+     "chess",
+     "chessboard",
+     "inventor",
+     "step-files"
+    ]
+   }
+  ]
+ },
+ "topic:3d-models": {
+  "query": "topic:3d-models",
+  "total": 3305,
+  "items": [
+   {
+    "full_name": "openscad/openscad",
+    "stars": 10235,
+    "lang": "C++",
+    "desc": "OpenSCAD - The Programmers Solid 3D CAD Modeller  ",
+    "license": "NOASSERTION",
+    "updated": "2026-09-18",
+    "topics": [
+     "3d",
+     "3d-graphics",
+     "3d-models",
+     "3d-printing",
+     "c-plus-plus",
+     "c-plus-plus-17",
+     "cad",
+     "dxf-files"
+    ]
+   },
+   {
+    "full_name": "google/model-viewer",
+    "stars": 8249,
+    "lang": "TypeScript",
+    "desc": "Easily display interactive 3D models on the web and in AR! ",
+    "license": "Apache-2.0",
+    "updated": "2026-07-07",
+    "topics": [
+     "3d",
+     "3d-models",
+     "augmented-reality",
+     "glb",
+     "gltf",
+     "magic-leap",
+     "model-viewer",
+     "three-js"
+    ]
+   },
+   {
+    "full_name": "agmmnn/awesome-blender",
+    "stars": 7341,
+    "lang": null,
+    "desc": "🪐 A curated list of awesome Blender addons, tools, tutorials; and 3D resources for everyone.",
+    "license": "CC0-1.0",
+    "updated": "2026-01-22",
+    "topics": [
+     "3d",
+     "3d-models",
+     "awesome",
+     "awesome-list",
+     "blender",
+     "blender-addon",
+     "list"
+    ]
+   },
+   {
+    "full_name": "cnr-isti-vclab/meshlab",
+    "stars": 5837,
+    "lang": "C++",
+    "desc": "The open source mesh processing system",
+    "license": "GPL-3.0",
+    "updated": "2026-08-25",
+    "topics": [
+     "3d",
+     "3d-models",
+     "3d-printing",
+     "3d-reconstruction",
+     "3d-scanning",
+     "mesh",
+     "mesh-editing",
+     "mesh-generation"
+    ]
+   },
+   {
+    "full_name": "gumyr/build123d",
+    "stars": 3154,
+    "lang": "Python",
+    "desc": "A python CAD programming library",
+    "license": "Apache-2.0",
+    "updated": "2026-09-19",
+    "topics": [
+     "3d",
+     "3d-models",
+     "3d-printing",
+     "brep",
+     "build123d",
+     "cad",
+     "cadquery",
+     "opencascade"
+    ]
+   },
+   {
+    "full_name": "CesiumGS/3d-tiles",
+    "stars": 2603,
+    "lang": "Batchfile",
+    "desc": "Specification for streaming massive heterogeneous 3D geospatial datasets :earth_americas:",
+    "license": null,
+    "updated": "2026-09-18",
+    "topics": [
+     "3d-models",
+     "3d-tiles",
+     "geospatial",
+     "gis",
+     "gltf",
+     "ogc",
+     "photogrammetry",
+     "point-cloud"
+    ]
+   },
+   {
+    "full_name": "issus/altium-library",
+    "stars": 2480,
+    "lang": null,
+    "desc": "Open source Altium Database Library with over 200,000 high quality components and full 3d models.",
+    "license": null,
+    "updated": "2026-08-07",
+    "topics": [
+     "3d-models",
+     "altium",
+     "altium-library",
+     "altiumdesigner",
+     "database",
+     "electronics",
+     "footprint",
+     "pcb"
+    ]
+   },
+   {
+    "full_name": "retroplasma/earth-reverse-engineering",
+    "stars": 2321,
+    "lang": "C",
+    "desc": "Reversing Google's 3D satellite mode",
+    "license": null,
+    "updated": "2020-12-23",
+    "topics": [
+     "3d-models",
+     "client",
+     "exporter",
+     "extract",
+     "gis",
+     "google-earth",
+     "google-maps",
+     "reverse-engineering"
+    ]
+   },
+   {
+    "full_name": "fogleman/sdf",
+    "stars": 2006,
+    "lang": "Python",
+    "desc": "Simple SDF mesh generation in Python",
+    "license": "MIT",
+    "updated": "2024-08-10",
+    "topics": [
+     "3d",
+     "3d-models",
+     "3d-printing",
+     "mesh",
+     "python",
+     "sdf",
+     "signed-distance-functions"
+    ]
+   },
+   {
+    "full_name": "xibyte/jsketcher",
+    "stars": 1740,
+    "lang": "JavaScript",
+    "desc": "Parametric 2D and 3D modeler written in pure javascript",
+    "license": "NOASSERTION",
+    "updated": "2026-04-16",
+    "topics": [
+     "2d-sketches",
+     "3d-models",
+     "brep",
+     "cad",
+     "parametric",
+     "sketches"
+    ]
+   },
+   {
+    "full_name": "the3deer/android-3D-model-viewer",
+    "stars": 1554,
+    "lang": "Java",
+    "desc": "Android OpenGL 2.x/3.x application to view 3D models. Published on Play Store",
+    "license": "MIT",
+    "updated": "2026-09-04",
+    "topics": [
+     "3d-engine",
+     "3d-library",
+     "3d-models",
+     "anaglyph",
+     "android",
+     "android-market",
+     "cardboard",
+     "collada"
+    ]
+   },
+   {
+    "full_name": "lume/lume",
+    "stars": 1519,
+    "lang": "TypeScript",
+    "desc": "GPU-powered 3D HTML. ✨🧊 <lume-box size=\"1 2 3\">",
+    "license": "MIT",
+    "updated": "2026-09-08",
+    "topics": [
+     "3d",
+     "3d-engine",
+     "3d-graphics",
+     "3d-models",
+     "css3d",
+     "custom-elements",
+     "dom-elements",
+     "graphics"
+    ]
+   },
+   {
+    "full_name": "daavoo/pyntcloud",
+    "stars": 1503,
+    "lang": "Python",
+    "desc": "pyntcloud is a Python library for working with 3D point clouds.",
+    "license": "MIT",
+    "updated": "2026-07-10",
+    "topics": [
+     "3d",
+     "3d-deep-learning",
+     "3d-graphics",
+     "3d-models",
+     "3d-point-clouds",
+     "deep-learning",
+     "point-clouds",
+     "python"
+    ]
+   },
+   {
+    "full_name": "unlimitedbacon/stl-thumb",
+    "stars": 1478,
+    "lang": "Rust",
+    "desc": "Thumbnail generator for STL files",
+    "license": "MIT",
+    "updated": "2025-03-11",
+    "topics": [
+     "3d-models",
+     "3d-printing",
+     "stl-files"
+    ]
+   },
+   {
+    "full_name": "GPUOpen-Tools/compressonator",
+    "stars": 1453,
+    "lang": "C++",
+    "desc": "Tool suite for Texture and 3D Model Compression, Optimization and Analysis using CPUs, GPUs and APUs",
+    "license": null,
+    "updated": "2024-06-19",
+    "topics": [
+     "3d-models",
+     "analysis",
+     "astc",
+     "bc1",
+     "bc6h",
+     "bc7",
+     "compression",
+     "compressonator"
+    ]
+   }
+  ]
+ },
+ "topic:cad-library": {
+  "query": "topic:cad-library",
+  "total": 0,
+  "items": []
+ },
+ "topic:stl": {
+  "query": "topic:stl",
+  "total": 2430,
+  "items": [
+   {
+    "full_name": "huihut/interview",
+    "stars": 38216,
+    "lang": "C++",
+    "desc": "📚 C/C++ 技术面试基础知识总结，包括语言、程序库、数据结构、算法、系统、网络、链接装载库等知识及面试经验、招聘、内推等信息。This repository is a summary of the basic knowledge of recruiting job seekers and beginners in the direction of C/C++ technology, inclu",
+    "license": "NOASSERTION",
+    "updated": "2026-09-17",
+    "topics": [
+     "algorithm",
+     "c",
+     "cpp",
+     "data-structures",
+     "database",
+     "interview",
+     "interview-practice",
+     "interview-preparation"
+    ]
+   },
+   {
+    "full_name": "earthtojake/text-to-cad",
+    "stars": 16140,
+    "lang": "Python",
+    "desc": "A library of agent skills for CAD, CAE and CAM",
+    "license": "MIT",
+    "updated": "2026-09-19",
+    "topics": [
+     "agents",
+     "ai-agents",
+     "cad",
+     "mechanical-engineering",
+     "robotics",
+     "step",
+     "stl",
+     "stp"
+    ]
+   },
+   {
+    "full_name": "assimp/assimp",
+    "stars": 13210,
+    "lang": "C++",
+    "desc": "The official Open-Asset-Importer-Library Repository. Loads 40+ 3D-file-formats into one unified and clean data structure. ",
+    "license": "NOASSERTION",
+    "updated": "2026-09-17",
+    "topics": [
+     "3mf",
+     "android",
+     "asset-pipeline",
+     "assets",
+     "assimp",
+     "c-plus-plus",
+     "collada",
+     "dae"
+    ]
+   },
+   {
+    "full_name": "Alinshans/MyTinySTL",
+    "stars": 12476,
+    "lang": "C++",
+    "desc": "Achieve a tiny STL in C++11",
+    "license": "NOASSERTION",
+    "updated": "2024-10-27",
+    "topics": [
+     "algorithm",
+     "cpp",
+     "cpp-library",
+     "cpp11",
+     "data-structure",
+     "stl"
+    ]
+   },
+   {
+    "full_name": "electronicarts/EASTL",
+    "stars": 9367,
+    "lang": "C++",
+    "desc": "EASTL stands for Electronic Arts Standard Template Library.  It is an extensive and robust implementation that has an emphasis on high performance.",
+    "license": "BSD-3-Clause",
+    "updated": "2025-11-15",
+    "topics": [
+     "c-plus-plus",
+     "c-plus-plus-11",
+     "c-plus-plus-14",
+     "c-plus-plus-17",
+     "c-plus-plus-20",
+     "eastl",
+     "games",
+     "modern-cpp"
+    ]
+   },
+   {
+    "full_name": "CadQuery/cadquery",
+    "stars": 5795,
+    "lang": "Python",
+    "desc": "A python parametric CAD scripting framework based on OCCT",
+    "license": "NOASSERTION",
+    "updated": "2026-09-13",
+    "topics": [
+     "3d",
+     "brep",
+     "cad",
+     "cadquery",
+     "dxf",
+     "modeling",
+     "occt",
+     "opencascade"
+    ]
+   },
+   {
+    "full_name": "Adam-CAD/CADAM",
+    "stars": 5160,
+    "lang": "TypeScript",
+    "desc": "CADAM is the open source text-to-CAD web application",
+    "license": "GPL-3.0",
+    "updated": "2026-09-18",
+    "topics": [
+     "agents",
+     "ai",
+     "ai-agents",
+     "cad",
+     "llms",
+     "mechnical-engineering",
+     "openscad",
+     "react"
+    ]
+   },
+   {
+    "full_name": "tangtangcoding/C-C-",
+    "stars": 4668,
+    "lang": null,
+    "desc": "程序员相关电子书资料免费分享，欢迎关注个人微信公众号：编程与实战",
+    "license": null,
+    "updated": "2024-04-04",
+    "topics": [
+     "algorithms",
+     "c",
+     "computer-science",
+     "cpp",
+     "golang",
+     "java",
+     "linux",
+     "mysql"
+    ]
+   },
+   {
+    "full_name": "slic3r/Slic3r",
+    "stars": 3656,
+    "lang": "C++",
+    "desc": "Open Source toolpath generator for 3D printers",
+    "license": "AGPL-3.0",
+    "updated": "2024-06-18",
+    "topics": [
+     "3d-printer",
+     "3d-printing",
+     "cam",
+     "digital-fabrication",
+     "stl"
+    ]
+   },
+   {
+    "full_name": "jscad/OpenJSCAD.org",
+    "stars": 3243,
+    "lang": "JavaScript",
+    "desc": "JSCAD is an open source set of modular, browser and command line tools for creating parametric 2D and 3D designs with JavaScript code. It provides a quick, precise and reproducible method for generati",
+    "license": "MIT",
+    "updated": "2026-09-13",
+    "topics": [
+     "2d-design",
+     "3d-design",
+     "3mf",
+     "amf",
+     "csg",
+     "dxf",
+     "hacktoberfest",
+     "javascript"
+    ]
+   },
+   {
+    "full_name": "ETLCPP/etl",
+    "stars": 3124,
+    "lang": "C++",
+    "desc": "Embedded Template Library",
+    "license": "MIT",
+    "updated": "2026-09-19",
+    "topics": [
+     "algorithms",
+     "c-plus-plus",
+     "containers",
+     "cpp",
+     "embedded",
+     "embedded-applications",
+     "embedded-systems",
+     "estd"
+    ]
+   },
+   {
+    "full_name": "sonic2kk/steamtinkerlaunch",
+    "stars": 2839,
+    "lang": "Shell",
+    "desc": "Linux wrapper tool for use with the Steam client for custom launch options and 3rd party programs",
+    "license": "GPL-3.0",
+    "updated": "2025-12-27",
+    "topics": [
+     "bash",
+     "game-command",
+     "game-launch",
+     "games",
+     "hacktoberfest",
+     "linux",
+     "linux-gaming",
+     "native-games"
+    ]
+   },
+   {
+    "full_name": "Dobiasd/FunctionalPlus",
+    "stars": 2294,
+    "lang": "C++",
+    "desc": "Functional Programming Library for C++. Write concise and readable C++ code.",
+    "license": "BSL-1.0",
+    "updated": "2026-09-13",
+    "topics": [
+     "algorithms",
+     "c-plus-plus",
+     "c-plus-plus-14",
+     "c-plus-plus-17",
+     "composition",
+     "cpp",
+     "cpp14",
+     "functional-programming"
+    ]
+   },
+   {
+    "full_name": "braindefender/KLP-Lame-Keycaps",
+    "stars": 2272,
+    "lang": null,
+    "desc": "Sculpted and curved keycaps for Kailh Choc and MX switches",
+    "license": "CC-BY-SA-4.0",
+    "updated": "2025-12-19",
+    "topics": [
+     "3d-printing",
+     "choc",
+     "ergonomic-keyboard",
+     "fusion-360",
+     "keycaps",
+     "mx",
+     "stl"
+    ]
+   },
+   {
+    "full_name": "fougue/mayo",
+    "stars": 2222,
+    "lang": "C++",
+    "desc": "3D CAD viewer and converter based on Qt + OpenCascade",
+    "license": "BSD-2-Clause",
+    "updated": "2026-09-18",
+    "topics": [
+     "3d-graphics",
+     "3d-viewer",
+     "brep",
+     "cad",
+     "converter",
+     "converter-cli",
+     "dxf",
+     "fbx"
+    ]
+   }
+  ]
+ },
+ "electrical parts library freecad": {
+  "query": "electrical parts library freecad",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "sisul01/FreeCAD-parts_library",
+    "stars": 1,
+    "lang": null,
+    "desc": "Mainly a collection of mechanical construction elements, supplemented by electrical and electronic components and circuits.",
+    "license": "CC-BY-SA-4.0",
+    "updated": "2026-04-18",
+    "topics": []
+   }
+  ]
+ },
+ "freecad electrical library": {
+  "query": "freecad electrical library",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "sisul01/FreeCAD-parts_library",
+    "stars": 1,
+    "lang": null,
+    "desc": "Mainly a collection of mechanical construction elements, supplemented by electrical and electronic components and circuits.",
+    "license": "CC-BY-SA-4.0",
+    "updated": "2026-04-18",
+    "topics": []
+   }
+  ]
+ }
+}

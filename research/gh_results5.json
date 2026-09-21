@@ -1,0 +1,1627 @@
+{
+ "circuit breaker mcp": {
+  "query": "circuit breaker mcp",
+  "total": 111,
+  "items": [
+   {
+    "full_name": "Terse-AI/terseai",
+    "stars": 58,
+    "lang": "JavaScript",
+    "desc": "Claude Code & Cursor token usage monitor and cost tracker for macOS & Windows. Live token/cost/burn monitoring across 8 AI coding agents, a budget circuit breaker that stops runaway agents before the next API call, an MC",
+    "license": "MIT",
+    "updated": "2026-09-08",
+    "topics": [
+     "ai-agents",
+     "anthropic",
+     "claude",
+     "claude-code",
+     "claude-usage",
+     "cost-optimization",
+     "cursor",
+     "developer-tools"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "jesseoue/opencode-configs",
+    "stars": 29,
+    "lang": "Shell",
+    "desc": "Pinned, hardened config stack for OpenCode + OpenRouter + oh-my-openagent (OmO). One install, OpenRouter-only routing, 19 models, deployment guards, content-aware uncensored routes, circuit breakers, cost-aware fallbacks",
+    "license": null,
+    "updated": "2026-09-18",
+    "topics": [
+     "ai-agent",
+     "circuit-breaker",
+     "claude",
+     "cli",
+     "coding-agent",
+     "config-as-code",
+     "context7",
+     "cost-aware"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "timoncool/telegram-api-mcp",
+    "stars": 28,
+    "lang": "TypeScript",
+    "desc": "Ultimate Telegram Bot API MCP server — full v9.6 coverage, meta-mode, rate limiting, circuit breaker. TypeScript.",
+    "license": "MIT",
+    "updated": "2026-09-14",
+    "topics": [
+     "ai-tools",
+     "chatbot",
+     "claude",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol",
+     "telegram",
+     "telegram-bot-api"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "JhostinAleck/brightspace-mcp",
+    "stars": 12,
+    "lang": "TypeScript",
+    "desc": "MCP server for D2L Brightspace with multi-strategy authentication (TOTP, OAuth, browser, etc.), retry/circuit breaker/cache tiers, and opt-in write operations.",
+    "license": "MIT",
+    "updated": "2026-08-03",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "sane-apps/SaneProcess",
+    "stars": 11,
+    "lang": "Ruby",
+    "desc": "Workflow guardrails for coding agents and LLM-assisted development: AGENTS.md, native hooks, MCP, SaneMaster, circuit breakers, and shared process checks.",
+    "license": "MIT",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai-agents",
+     "ai-safety",
+     "circuit-breaker",
+     "codex",
+     "coding-agents",
+     "developer-productivity",
+     "developer-tools",
+     "linux"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "vijaydeepsinha/harbor",
+    "stars": 10,
+    "lang": "TypeScript",
+    "desc": " TypeScript MCP gateway that connects AI agents to backend APIs via the Model Context Protocol — pluggable auth, V8 sandbox execution, circuit breaker, and audit logging.",
+    "license": "NOASSERTION",
+    "updated": "2026-09-13",
+    "topics": [
+     "adapter-pattern",
+     "agentic-ai",
+     "ai",
+     "context-engineering",
+     "extensible-framework",
+     "gateway",
+     "mcp",
+     "mcp-gateway"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "alphaparkinc/genpark-agent-runtime-circuit-breaker-state-rollback-skill",
+    "stars": 8,
+    "lang": "Python",
+    "desc": "Autonomous LLM agent failure circuit-breaker & state rollback orchestrator",
+    "license": null,
+    "updated": "2026-08-18",
+    "topics": [
+     "agent-skills",
+     "ai-agents",
+     "automation",
+     "claude",
+     "cursor",
+     "llm-tools",
+     "mcp",
+     "mcp-server"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "alphaparkinc/genpark-multi-tenant-token-budget-cost-circuit-breaker-skill",
+    "stars": 8,
+    "lang": "Python",
+    "desc": "Multi-tenant LLM token budget allocation & cost anomaly circuit breaker (Helicone)",
+    "license": null,
+    "updated": "2026-09-03",
+    "topics": [
+     "agent-skills",
+     "ai-agents",
+     "claude",
+     "cursor",
+     "llm-tools",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "gelse/ssh-mcp",
+    "stars": 8,
+    "lang": "Python",
+    "desc": "Containerized MCP server exposing SSH command execution and SFTP file transfer as tools over Streamable HTTP. Centralized gateway with per-client authorization, layered command policies, audit logging, rate limiting, cir",
+    "license": "MIT",
+    "updated": "2026-09-16",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "kanishka-namdeo/yfnhanced-mcp",
+    "stars": 7,
+    "lang": "TypeScript",
+    "desc": "Production-ready Model Context Protocol (MCP) server for Yahoo Finance financial data. Real-time stock quotes, historical data, earnings reports, analyst recommendations, options chains, and more with built-in caching, r",
+    "license": null,
+    "updated": "2026-01-19",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "intutic/intutic",
+    "stars": 7,
+    "lang": "TypeScript",
+    "desc": "The open source circuit breaker for AI agents. Real-time security, secret DLP, graph guardrails and loop burn prevention for Claude Code, Cursor, Antigravity, LangGraph, n8n and many more.",
+    "license": "MIT",
+    "updated": "2026-09-17",
+    "topics": [
+     "agentic-ai",
+     "ai-agents",
+     "ai-governance-framework",
+     "ai-guardrail",
+     "ai-security-tool",
+     "circuit-breaker",
+     "claude",
+     "claude-code-skill"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "furkankoykiran/OmniWire-MCP",
+    "stars": 6,
+    "lang": "TypeScript",
+    "desc": "Fault-tolerant news aggregation server with Sentinel architecture. Universal parser supporting RSS, Atom, JSON, and HTML feeds. Circuit breakers, hot-reload configuration, and real-time updates for AI assistants.",
+    "license": "MIT",
+    "updated": "2026-03-06",
+    "topics": [
+     "ai",
+     "circuit-breaker",
+     "data-aggregation",
+     "fault-tolerant",
+     "feed-parser",
+     "llm",
+     "mcp",
+     "model-context-protocol"
+    ],
+    "archived": false
+   }
+  ]
+ },
+ "electrical panel mcp": {
+  "query": "electrical panel mcp",
+  "total": 0,
+  "items": []
+ },
+ "switchgear mcp": {
+  "query": "switchgear mcp",
+  "total": 1,
+  "items": [
+   {
+    "full_name": "amnxlab/SwitchScope",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "AI engineering copilot for medium-voltage switchgear projects, searches specs, BOMs, drawings, quotes, and notes using RAG + MCP, with verified citations",
+    "license": null,
+    "updated": "2026-06-18",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "electrical mcp server": {
+  "query": "electrical mcp server",
+  "total": 16,
+  "items": [
+   {
+    "full_name": "Igualguana/AUTOCAD-ELECTRICAL-MCP",
+    "stars": 16,
+    "lang": "Python",
+    "desc": "MCP server and local AI control platform for AutoCAD Electrical — Claude, Ollama, web dashboard. macOS + Windows.",
+    "license": "AGPL-3.0",
+    "updated": "2026-04-15",
+    "topics": [
+     "ai-agents",
+     "autocad",
+     "autocad-electrical",
+     "cad-automation",
+     "fastapi",
+     "mcp",
+     "ollama",
+     "pwa"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "barmanoff/chance-electro-capstone",
+    "stars": 5,
+    "lang": "Python",
+    "desc": "Multi-agent (A2A) electrical estimating: napkin photo → priced proposal + invoice + shop order + GO/NO-GO margin verdict. MCP pricing server, Agent Skills, security guardrails. Google×Kaggle Vibe Coding Capstone — Agents",
+    "license": null,
+    "updated": "2026-07-06",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "RFingAdam/drawio-engineering-mcp",
+    "stars": 2,
+    "lang": "JavaScript",
+    "desc": "Draw.io MCP server for RF, electrical, PCB, and EMC engineering diagrams — 10 tools, 269 stencil symbols.",
+    "license": "AGPL-3.0",
+    "updated": "2026-09-10",
+    "topics": [
+     "ai-agents",
+     "diagrams",
+     "documentation",
+     "drawio",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol",
+     "rf-engineering"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "MarkoVisser/sans-calc-mcp",
+    "stars": 0,
+    "lang": null,
+    "desc": "MCP server for SANS/IEC electrical calculations",
+    "license": "MIT",
+    "updated": "2026-07-18",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "Gherkin/netlist-mcp",
+    "stars": 0,
+    "lang": "Rust",
+    "desc": "An MCP server for exposing electrical net lists to AI Agents",
+    "license": null,
+    "updated": "2026-09-10",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "gokimedia/cordfind-mcp",
+    "stars": 0,
+    "lang": "JavaScript",
+    "desc": "Public MCP server for CordFind generator guide search, connector compatibility, and cord sizing",
+    "license": "MIT",
+    "updated": "2026-08-31",
+    "topics": [
+     "cordfind",
+     "electrical",
+     "generator",
+     "mcp",
+     "model-context-protocol"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "dieselpro1111/trades-mcp-server",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "MCP server for skilled trades — building codes, material pricing, job scoping, and permit requirements for electrical, plumbing, and HVAC work",
+    "license": "MIT",
+    "updated": "2026-03-19",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "nihaalgaina/AutoCAD-Electrical-Interface-ECM",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "MCP server / local AI control platform for AutoCAD Electrical — Claude, Ollama, and web dashboard.",
+    "license": "AGPL-3.0",
+    "updated": "2026-09-14",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "matthicks05/energy-mcp",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "An MCP server providing access to electrical usage data for integration with AI Agents",
+    "license": null,
+    "updated": "2025-09-10",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "YUZU-Hub/wiring-diagram-mcp",
+    "stars": 0,
+    "lang": "TypeScript",
+    "desc": "MCP server for generating electrical wiring diagrams for campers, boats, and off-grid setups",
+    "license": "MIT",
+    "updated": "2026-06-08",
+    "topics": [
+     "camper",
+     "electrical",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol",
+     "off-grid",
+     "wiring-diagram"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "siderlee/drawio-engineering-mcp",
+    "stars": 0,
+    "lang": null,
+    "desc": "Draw.io MCP server for RF, electrical, PCB, and EMC engineering diagrams — 10 tools, 269 stencil symbols.",
+    "license": "AGPL-3.0",
+    "updated": "2026-05-13",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "di37/nlp-fastapi-mcp-server",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "This project provides service for Named Entity Recognition (NER) specifically tailored for the Electrical Engineering domains. It can be accessed both as a standard RESTful API and as a Model Context Protocol (MCP) servi",
+    "license": "MIT",
+    "updated": "2025-06-15",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "mcp server electrical engineering": {
+  "query": "mcp server electrical engineering",
+  "total": 3,
+  "items": [
+   {
+    "full_name": "RFingAdam/drawio-engineering-mcp",
+    "stars": 2,
+    "lang": "JavaScript",
+    "desc": "Draw.io MCP server for RF, electrical, PCB, and EMC engineering diagrams — 10 tools, 269 stencil symbols.",
+    "license": "AGPL-3.0",
+    "updated": "2026-09-10",
+    "topics": [
+     "ai-agents",
+     "diagrams",
+     "documentation",
+     "drawio",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol",
+     "rf-engineering"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "siderlee/drawio-engineering-mcp",
+    "stars": 0,
+    "lang": null,
+    "desc": "Draw.io MCP server for RF, electrical, PCB, and EMC engineering diagrams — 10 tools, 269 stencil symbols.",
+    "license": "AGPL-3.0",
+    "updated": "2026-05-13",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "di37/nlp-fastapi-mcp-server",
+    "stars": 0,
+    "lang": "Python",
+    "desc": "This project provides service for Named Entity Recognition (NER) specifically tailored for the Electrical Engineering domains. It can be accessed both as a standard RESTful API and as a Model Context Protocol (MCP) servi",
+    "license": "MIT",
+    "updated": "2025-06-15",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "IEC 61439 mcp": {
+  "query": "IEC 61439 mcp",
+  "total": 0,
+  "items": []
+ },
+ "electrical schematic mcp": {
+  "query": "electrical schematic mcp",
+  "total": 0,
+  "items": []
+ },
+ "panel design mcp server": {
+  "query": "panel design mcp server",
+  "total": 5,
+  "items": [
+   {
+    "full_name": "salitronic/eda-agent",
+    "stars": 210,
+    "lang": "Python",
+    "desc": "Open-source MCP server that lets an AI drive a live session of Altium Designer, and optionally KiCad or EasyEDA Pro, editing the open design in place while you watch. 300+ tools: schematic, PCB, library and project autom",
+    "license": "Apache-2.0",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai",
+     "altium",
+     "altium-designer",
+     "claude",
+     "delphiscript",
+     "easyeda",
+     "eda",
+     "electronic-design-automation"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Greg3001/kicad-claude-mcp",
+    "stars": 5,
+    "lang": "Python",
+    "desc": "MCP server giving Claude Code 105 tools to design KiCAD PCBs end-to-end: schematic, library indexing, PCB layout, autorouting (Freerouting), ERC/DRC, manufacturing outputs, signal integrity, RF design, thermal/EMC analys",
+    "license": null,
+    "updated": "2026-05-09",
+    "topics": [
+     "anthropic",
+     "claude",
+     "claude-code",
+     "eda",
+     "freerouting",
+     "kicad",
+     "mcp",
+     "mcp-server"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "StGarca/consensus-mcp",
+    "stars": 3,
+    "lang": "Python",
+    "desc": "Two modes for multi-AI coding. Consult: a panel of models you choose reviews each change and ships only on agreement. Build (now GA): an expensive model plans while a cheaper one writes code in a contained worktree - opt",
+    "license": "MIT",
+    "updated": "2026-07-16",
+    "topics": [
+     "ai",
+     "ai-agents",
+     "ai-orchestration",
+     "claude",
+     "code-generation",
+     "code-review",
+     "consensus",
+     "kimi"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "hyperscaleailabs/figma-to-code-demo",
+    "stars": 0,
+    "lang": "TypeScript",
+    "desc": "Material 3 switches panel built with Claude Code from a Figma design via the Figma MCP server",
+    "license": "MIT",
+    "updated": "2026-09-18",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "garrettHensley/MCP-Loader",
+    "stars": 0,
+    "lang": "JavaScript",
+    "desc": "This MCP Loader app is a user-friendly tool designed to help you easily manage and configure your Model Context Protocol (MCP) server setups. Think of it as your personal control panel for connecting AI models to various",
+    "license": null,
+    "updated": "2025-05-22",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "component selection mcp": {
+  "query": "component selection mcp",
+  "total": 4,
+  "items": [
+   {
+    "full_name": "madebyaris/rakitui-ai",
+    "stars": 5,
+    "lang": "TypeScript",
+    "desc": "🎨 Intelligent UI component design selection tool built on Model Context Protocol (MCP). Compare 3 designs with automatic CSS framework detection, adaptive layouts, and real-time selection. Perfect for design systems and ",
+    "license": "MIT",
+    "updated": "2026-02-02",
+    "topics": [
+     "ai-tools",
+     "component-library",
+     "design-selection",
+     "design-tools",
+     "frontend-tools",
+     "mcp",
+     "model-context-protocol",
+     "tailwind"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "ladown/figle",
+    "stars": 1,
+    "lang": null,
+    "desc": "Turns a Figma selection into a structured Spec and hands it to the AI agent already running in your IDE. Tokens resolved to project tokens, component instances resolved to project components, designer-hygiene warnings in",
+    "license": "MIT",
+    "updated": "2026-06-24",
+    "topics": [
+     "ai-agents",
+     "claude-code",
+     "design-to-code",
+     "design-tokens",
+     "figma",
+     "figma-plugin",
+     "mcp",
+     "tailwindcss"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "arifinbardansyah/design-to-code-json",
+    "stars": 1,
+    "lang": "TypeScript",
+    "desc": "A Figma MCP alternative: export a selection as component-aware JSON with real design tokens (colours, text styles, spacing) for AI codegen — Claude Code, Cursor, and any LLM. Runs in Dev Mode, fully offline.",
+    "license": "MIT",
+    "updated": "2026-07-10",
+    "topics": [
+     "claude-code",
+     "codegen",
+     "cursor",
+     "design-to-code",
+     "design-tokens",
+     "dev-mode",
+     "figma",
+     "figma-plugin"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "chiItepin/agent-lens",
+    "stars": 0,
+    "lang": "TypeScript",
+    "desc": "Select React components in a running app, persist the current UI selection, and feed that selection back into Claude Code without adding a custom MCP server.",
+    "license": "MIT",
+    "updated": "2026-03-07",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "electrical component catalog mcp": {
+  "query": "electrical component catalog mcp",
+  "total": 0,
+  "items": []
+ },
+ "mcp server cad": {
+  "query": "mcp server cad",
+  "total": 205,
+  "items": [
+   {
+    "full_name": "mixelpixx/KiCAD-MCP-Server",
+    "stars": 2352,
+    "lang": "Python",
+    "desc": "KiCAD MCP is a Model Context Protocol (MCP) implementation that enables Large Language Models (LLMs) like Claude to directly interact with KiCAD for printed circuit board design.",
+    "license": "MIT",
+    "updated": "2026-09-10",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "daobataotie/CAD-MCP",
+    "stars": 558,
+    "lang": "Python",
+    "desc": "CAD MCP Server",
+    "license": "MIT",
+    "updated": "2026-09-15",
+    "topics": [
+     "ai",
+     "cad",
+     "cadmcp",
+     "mcp",
+     "model-context-protocol"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "jdilla1277/agentcad",
+    "stars": 131,
+    "lang": "Python",
+    "desc": "CAD CLI and MCP server for AI agents",
+    "license": "Apache-2.0",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai-agents",
+     "build123d",
+     "cad",
+     "cadquery",
+     "mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "AuraFriday/Fusion-360-MCP-Server",
+    "stars": 126,
+    "lang": "Python",
+    "desc": "Control Fusion 360 with any AI through Model Context Protocol (MCP)",
+    "license": "NOASSERTION",
+    "updated": "2026-01-28",
+    "topics": [
+     "ai",
+     "cad",
+     "cam",
+     "fusion360",
+     "mcp",
+     "mcp-server",
+     "mcp-servers"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "AnCode666/multiCAD-mcp",
+    "stars": 115,
+    "lang": "Python",
+    "desc": "MCP server for use CAD software through AI assistants like Claude for Desktop or Cursor ",
+    "license": "Apache-2.0",
+    "updated": "2026-06-27",
+    "topics": [
+     "ai-tools",
+     "autocad",
+     "mcp-server",
+     "python",
+     "zwcad"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "ATOI-Ming/FreeCAD-MCP",
+    "stars": 100,
+    "lang": "Python",
+    "desc": "FreeCAD plugin for automating model creation and control via Model Contro Protocol (MCP). Provides a MCP server,GUl panel, and client for running macros,managing documents, and adjusting views.",
+    "license": "MIT",
+    "updated": "2026-06-17",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "U-C4N/Autocad-MCP",
+    "stars": 93,
+    "lang": "Python",
+    "desc": "Production-grade AutoCAD MCP server for AI agents — 122 tools, dual COM (live AutoCAD) + headless ezdxf engines, ISO GD&T and dimension-tolerance validation for CAD automation.",
+    "license": "MIT",
+    "updated": "2026-08-07",
+    "topics": [
+     "ai-agent-tools",
+     "ai-agents",
+     "autocad",
+     "automation",
+     "cad",
+     "cad-automation",
+     "claude",
+     "claude-desktop"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "pzfreo/build123d-mcp",
+    "stars": 90,
+    "lang": "Python",
+    "desc": "MCP server for build123d to improve AI cognition when creating 3D CAD models",
+    "license": "Apache-2.0",
+    "updated": "2026-09-04",
+    "topics": [
+     "ai-tools",
+     "build123d",
+     "cad",
+     "mcp",
+     "mcp-server",
+     "python3"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Cai-aa/CAD-Agent-Hub",
+    "stars": 65,
+    "lang": "Python",
+    "desc": "MCP servers and automation bridges for CATIA, SolidWorks, Siemens NX, and Autodesk Fusion",
+    "license": "MIT",
+    "updated": "2026-09-07",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "armpro24-blip/cad-cae-copilot",
+    "stars": 61,
+    "lang": "Python",
+    "desc": "CAD/CAE Copilot — an AI-native CAD/CAE/CAX workbench for AI agents. Text-to-CAD, text-to-CAE, real build123d/OpenCASCADE geometry, editable parameters, stable topology pointers, deterministic critique, and MCP server too",
+    "license": "MIT",
+    "updated": "2026-09-07",
+    "topics": [
+     "3d-modeling",
+     "ai-cad",
+     "ai-cae",
+     "ai-cax",
+     "ai-engineering",
+     "build123d",
+     "cad",
+     "cae"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "blwfish/freecad-mcp",
+    "stars": 45,
+    "lang": "Python",
+    "desc": "MCP server for FreeCAD — 32 tools for AI-assisted 3D CAD modeling",
+    "license": "LGPL-2.1",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai",
+     "cad",
+     "claude",
+     "cnc",
+     "freecad",
+     "mcp",
+     "parametric-cad"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "theosib/FreeCAD-MCP-Server",
+    "stars": 31,
+    "lang": "Python",
+    "desc": "MCP server that allows Claude Code to talk directly to FreeCAD to inspect and modify state",
+    "license": null,
+    "updated": "2026-03-05",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "eplan mcp": {
+  "query": "eplan mcp",
+  "total": 6,
+  "items": [
+   {
+    "full_name": "covagashi/eplan-rag-mcp",
+    "stars": 96,
+    "lang": "Python",
+    "desc": "EPLAN Electric P8 2026  2027 + AI: MCP servers, docs RAG, and a Claude Code skill for EPLAN scripting/API development. EEC PRO RAG",
+    "license": "MIT",
+    "updated": "2026-09-10",
+    "topics": [
+     "claude-code",
+     "claude-code-plugin",
+     "claude-skills",
+     "codex",
+     "cursor",
+     "eec",
+     "eec-pro",
+     "electrical-engineering"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "ryu-l/eplan_mcp",
+    "stars": 1,
+    "lang": "HTML",
+    "desc": "",
+    "license": "MIT",
+    "updated": "2026-08-22",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "binfen1/Eplan_2026_IA_MCP_scripts",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "MCP Server for EPLAN 2026 automation",
+    "license": "MIT",
+    "updated": "2026-04-11",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "swater-kankyo/eplan-mcp-oss",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "Open-core MCP server for EPLAN P8 automation (reference distribution)",
+    "license": "Apache-2.0",
+    "updated": "2026-06-29",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "Bibin-VR/eplanbridge",
+    "stars": 1,
+    "lang": null,
+    "desc": "Tovex Dev project - README",
+    "license": null,
+    "updated": "2026-07-30",
+    "topics": [
+     "csharp",
+     "eplan",
+     "eplan-pro-panel",
+     "industrial-automation",
+     "mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "paulinholt/eplan-mcp-bridge",
+    "stars": 0,
+    "lang": "C#",
+    "desc": "Give an LLM real access to the EPLAN Electric P8 data model via MCP - pages, devices, parts, copy a circuit, rename tags",
+    "license": "MIT",
+    "updated": "2026-09-15",
+    "topics": [],
+    "archived": false
+   }
+  ]
+ },
+ "mcp server bom": {
+  "query": "mcp server bom",
+  "total": 36,
+  "items": [
+   {
+    "full_name": "oaslananka/kicad-mcp-pro",
+    "stars": 95,
+    "lang": "Python",
+    "desc": "AI-ready MCP server for KiCad: automate schematic, PCB, ERC/DRC, DFM, BOM and manufacturing review from Claude, Cursor, Copilot and other AI agents.",
+    "license": "MIT",
+    "updated": "2026-09-18",
+    "topics": [
+     "ai-agent",
+     "bom",
+     "claude",
+     "dfm",
+     "drc",
+     "eda",
+     "eda-automation",
+     "electronics"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "oaslananka/easyeda-mcp-pro",
+    "stars": 46,
+    "lang": "TypeScript",
+    "desc": "MCP server for EasyEDA Pro: PCB inspection, BOM sourcing, manufacturing export, and AI-assisted hardware review.",
+    "license": "NOASSERTION",
+    "updated": "2026-09-15",
+    "topics": [
+     "ai-tools",
+     "bom",
+     "digikey",
+     "easyeda",
+     "easyeda-pro",
+     "eda",
+     "electronics",
+     "gerber"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Rekin226/aquascope",
+    "stars": 28,
+    "lang": "Python",
+    "desc": "Open-source Python toolkit for water data, hydrology, and agricultural water management — 29 unified collectors (USGS, UK EA, Hub'Eau, GRDC, BOM, FAO…), Bulletin 17C flood frequency, FAO-56 ET₀, an MCP server, and an AI ",
+    "license": "MIT",
+    "updated": "2026-09-18",
+    "topics": [
+     "agricultural-water",
+     "ai",
+     "aquastat",
+     "data-collection",
+     "environmental-science",
+     "evapotranspiration",
+     "fao-56",
+     "flood-frequency"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "dimitar-grigorov/mcp-file-tools",
+    "stars": 24,
+    "lang": "Go",
+    "desc": "MCP server for file operations on non-UTF-8 text: detects the encoding from the bytes, hands the model UTF-8, and writes back in the original encoding with BOM and CRLF/LF intact. 24 encodings — Cyrillic/CP1251, CP1252, ",
+    "license": "GPL-3.0",
+    "updated": "2026-09-19",
+    "topics": [
+     "bom",
+     "claude",
+     "cp1251",
+     "cp1252",
+     "cyrillic",
+     "delphi",
+     "gbk",
+     "golang"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "john0909/ZWCAD-Mechanical-MCP",
+    "stars": 16,
+    "lang": "Python",
+    "desc": "ZWCAD机械版 CAD MCP Server — 提供37个高度整合的工具，让AI通过MCP协议全面操控中望机械CAD，支持2D/3D绘图、标注、图块、图层样式、表格、对象编辑变换、图框/标题栏/明细表管理、视图控制、命令行执行等完整CAD自动化能力MCP Server for ZWCAD MFG — 37 consolidated tools,enabling AI-driven CAD automation: 2D/3D draw",
+    "license": "MIT",
+    "updated": "2026-09-05",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "ProductOfAmerica/mcp-server-kicad",
+    "stars": 10,
+    "lang": "Python",
+    "desc": "KiCad MCP server: 100+ Model Context Protocol tools that let an AI assistant do schematic capture and PCB layout. Place parts, route traces, run ERC and DRC, export Gerbers, BOM, and 3D models.",
+    "license": "MIT",
+    "updated": "2026-08-15",
+    "topics": [
+     "ai",
+     "claude",
+     "claude-code",
+     "drc",
+     "eda",
+     "electronics",
+     "erc",
+     "gerber"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "mysteryboy2000/ZWCAD-Mechanical-MCP",
+    "stars": 6,
+    "lang": null,
+    "desc": "ZWCAD机械版 CAD MCP Server — 提供200+工具，让AI通过MCP协议全面操控中望机械CAD，支持2D/3D绘图、标注、图块、图层样式、表格、对象编辑变换、图框/标题栏/明细表管理、视图控制、LISP执行、文件导入导出等完整CAD自动化能力 MCP Server for ZWCAD MFG— 200+ tools enabling AI-driven CAD automation: 2D/3D drawing, di",
+    "license": "MIT",
+    "updated": "2026-05-06",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "JPMarhefka/Partuno",
+    "stars": 3,
+    "lang": "Python",
+    "desc": "Partuno - DigiKey and Mouser MCP server for electronics component search, BOM analysis, sourcing comparison, and safe distributor workflows.",
+    "license": "Apache-2.0",
+    "updated": "2026-09-09",
+    "topics": [
+     "bill-of-materials",
+     "bom",
+     "bom-analysis",
+     "component-sourcing",
+     "digikey",
+     "digikey-api",
+     "electronic-components",
+     "electronics"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "craigles75/au-weather-mcp",
+    "stars": 2,
+    "lang": "Python",
+    "desc": "AU Weather MCP Server (Data from BOM)",
+    "license": null,
+    "updated": "2025-10-10",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "renovate-bot/oaslananka-lab-_-kicad-mcp-pro",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "MCP server for KiCad 10/9 — schematic capture, PCB layout, DRC/ERC/DFM, signal & power integrity, EMC, SPICE simulation, FreeRouting, and Gerber/BOM/IPC-2581/STEP exports via AI agents.",
+    "license": "MIT",
+    "updated": "2026-05-14",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "dbugom/tenderai-mcp-server",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "AI-powered MCP server for government & enterprise tender management — RFP parsing, proposal writing, financial BOM assembly, partner coordination",
+    "license": null,
+    "updated": "2026-03-02",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "LuisEnVilla/furniture-designer-mcp",
+    "stars": 1,
+    "lang": "Python",
+    "desc": "MCP Server for professional furniture design — structural validation, cut optimization, BOM generation, and ergonomic standards.",
+    "license": "MIT",
+    "updated": "2026-03-27",
+    "topics": [
+     "bill-of-materials",
+     "cad",
+     "cut-optimization",
+     "design",
+     "furniture",
+     "mcp",
+     "woodworking"
+    ],
+    "archived": false
+   }
+  ]
+ },
+ "kicad mcp server": {
+  "query": "kicad mcp server",
+  "total": 87,
+  "items": [
+   {
+    "full_name": "mixelpixx/KiCAD-MCP-Server",
+    "stars": 2352,
+    "lang": "Python",
+    "desc": "KiCAD MCP is a Model Context Protocol (MCP) implementation that enables Large Language Models (LLMs) like Claude to directly interact with KiCAD for printed circuit board design.",
+    "license": "MIT",
+    "updated": "2026-09-10",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "lamaalrajih/kicad-mcp",
+    "stars": 524,
+    "lang": "Python",
+    "desc": "Model Context Protocol server for KiCad on Mac, Windows, and Linux",
+    "license": "MIT",
+    "updated": "2025-10-17",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "salitronic/eda-agent",
+    "stars": 210,
+    "lang": "Python",
+    "desc": "Open-source MCP server that lets an AI drive a live session of Altium Designer, and optionally KiCad or EasyEDA Pro, editing the open design in place while you watch. 300+ tools: schematic, PCB, library and project autom",
+    "license": "Apache-2.0",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai",
+     "altium",
+     "altium-designer",
+     "claude",
+     "delphiscript",
+     "easyeda",
+     "eda",
+     "electronic-design-automation"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Seeed-Studio/kicad-mcp-server",
+    "stars": 130,
+    "lang": "Python",
+    "desc": "🔌 MCP server for KiCad EDA - Analyze schematics & PCBs, trace pin-level connections, automate design editing. Works with any MCP-compatible AI tool",
+    "license": null,
+    "updated": "2026-09-09",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "oaslananka/kicad-mcp-pro",
+    "stars": 95,
+    "lang": "Python",
+    "desc": "AI-ready MCP server for KiCad: automate schematic, PCB, ERC/DRC, DFM, BOM and manufacturing review from Claude, Cursor, Copilot and other AI agents.",
+    "license": "MIT",
+    "updated": "2026-09-18",
+    "topics": [
+     "ai-agent",
+     "bom",
+     "claude",
+     "dfm",
+     "drc",
+     "eda",
+     "eda-automation",
+     "electronics"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Finerestaurant/kicad-mcp-python",
+    "stars": 40,
+    "lang": "Python",
+    "desc": "MCP server for KiCad PCB design automation using official kicad IPC-API. Enables AI models to create, modify, and analyze PCB layouts and schematics.",
+    "license": null,
+    "updated": "2025-07-15",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "circuit-synth/mcp-kicad-sch-api",
+    "stars": 20,
+    "lang": "Python",
+    "desc": "Model Context Protocol server for KiCAD schematic manipulation - AI agent integration for electronic circuit design",
+    "license": "MIT",
+    "updated": "2025-08-20",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "blwfish/kicad-mcp",
+    "stars": 19,
+    "lang": "Python",
+    "desc": "MCP server for KiCad — 71 tools for AI-assisted electronics design",
+    "license": "MIT",
+    "updated": "2026-09-15",
+    "topics": [
+     "kicad",
+     "kicad-pcb",
+     "mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "Netlist-Studio/kicad-mcp",
+    "stars": 19,
+    "lang": "Python",
+    "desc": "An MCP server for controlling KiCad 9 over its IPC API",
+    "license": "MIT",
+    "updated": "2026-02-25",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "biosshot/kicad-copilot",
+    "stars": 13,
+    "lang": "TypeScript",
+    "desc": "AI-powered MCP server for KiCad schematic generation, PCB placement, local routing, and project automation.",
+    "license": "MIT",
+    "updated": "2026-08-23",
+    "topics": [
+     "ai-agent",
+     "ai-agents",
+     "kicad",
+     "kicad-pcb",
+     "kicad-schematics",
+     "mcp",
+     "mcp-server",
+     "schematics"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "ProductOfAmerica/mcp-server-kicad",
+    "stars": 10,
+    "lang": "Python",
+    "desc": "KiCad MCP server: 100+ Model Context Protocol tools that let an AI assistant do schematic capture and PCB layout. Place parts, route traces, run ERC and DRC, export Gerbers, BOM, and 3D models.",
+    "license": "MIT",
+    "updated": "2026-08-15",
+    "topics": [
+     "ai",
+     "claude",
+     "claude-code",
+     "drc",
+     "eda",
+     "electronics",
+     "erc",
+     "gerber"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "belaszalontai/kipilot-mcp",
+    "stars": 8,
+    "lang": "Python",
+    "desc": "Model Context Protocol (MCP) server for KiCad, enabling Agentic AI workflows for SCH and PCB design.",
+    "license": "Apache-2.0",
+    "updated": "2026-09-17",
+    "topics": [
+     "agentic-ai",
+     "copilot",
+     "kicad",
+     "mcp",
+     "python"
+    ],
+    "archived": false
+   }
+  ]
+ },
+ "awesome mcp servers": {
+  "query": "awesome mcp servers",
+  "total": 526,
+  "items": [
+   {
+    "full_name": "punkpeye/awesome-mcp-servers",
+    "stars": 95279,
+    "lang": null,
+    "desc": "A collection of MCP servers.",
+    "license": "MIT",
+    "updated": "2026-09-15",
+    "topics": [
+     "ai",
+     "mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "yzfly/Awesome-MCP-ZH",
+    "stars": 7664,
+    "lang": null,
+    "desc": "MCP 资源精选， MCP指南，Claude MCP，MCP Servers, MCP Clients",
+    "license": "MIT",
+    "updated": "2026-09-07",
+    "topics": [
+     "claude",
+     "claude-mcp",
+     "deepseek",
+     "deepseek-mcp",
+     "mcp",
+     "mcp-clients",
+     "mcp-host",
+     "mcp-server"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "appcypher/awesome-mcp-servers",
+    "stars": 5773,
+    "lang": null,
+    "desc": "Awesome MCP Servers - A curated list of Model Context Protocol servers",
+    "license": null,
+    "updated": "2026-05-06",
+    "topics": [
+     "ai",
+     "anthropic-claude",
+     "awesome",
+     "context",
+     "mcp",
+     "model-context-protocol",
+     "servers",
+     "tool-use"
+    ],
+    "archived": true
+   },
+   {
+    "full_name": "homeassistant-ai/ha-mcp",
+    "stars": 4789,
+    "lang": "Python",
+    "desc": "The Unofficial and Awesome Home Assistant MCP Server",
+    "license": "MIT",
+    "updated": "2026-09-19",
+    "topics": [
+     "ai",
+     "claude",
+     "hacs",
+     "home-assistant",
+     "home-automation",
+     "llm",
+     "mcp",
+     "model-context-protocol"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "wong2/awesome-mcp-servers",
+    "stars": 4316,
+    "lang": null,
+    "desc": "A curated list of Model Context Protocol (MCP) servers",
+    "license": "MIT",
+    "updated": "2026-07-13",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "wesammustafa/Claude-Code-Everything-You-Need-to-Know",
+    "stars": 3026,
+    "lang": "Python",
+    "desc": "A practical Claude Code guide with clear mental models and copy-paste examples — setup, prompt engineering, slash commands, skills, hooks, subagents, agent teams, and MCP servers. Beginner path to power-user depth. Featu",
+    "license": "MIT",
+    "updated": "2026-07-28",
+    "topics": [
+     "agent-skills",
+     "agentic-coding",
+     "ai-agents",
+     "anthropic",
+     "anthropic-claude",
+     "best-practices",
+     "claude",
+     "claude-ai"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "AmoyLab/Unla",
+    "stars": 2230,
+    "lang": "TypeScript",
+    "desc": "🧩 MCP Gateway - A lightweight gateway service that instantly transforms existing MCP Servers and APIs into MCP servers with zero code changes. Features Docker deployment and management UI, requiring no infrastructure mod",
+    "license": "MIT",
+    "updated": "2026-08-27",
+    "topics": [
+     "awesome",
+     "mcp",
+     "mcp-adapter",
+     "mcp-gateway",
+     "mcp-server",
+     "rest-to-mcp",
+     "restful-to-mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "chatmcp/mcpso",
+    "stars": 2108,
+    "lang": "TypeScript",
+    "desc": "directory for Awesome MCP Servers",
+    "license": "Apache-2.0",
+    "updated": "2025-03-26",
+    "topics": [
+     "awesome-mcp-servers",
+     "mcp",
+     "mcp-server-store",
+     "mcp-servers",
+     "mcp-servers-directory"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "composio-community/awesome-claude-plugins",
+    "stars": 1970,
+    "lang": "JavaScript",
+    "desc": "A curated list of Plugins that let you extend Claude Code with custom commands, agents, hooks, and MCP servers through the plugin system.",
+    "license": null,
+    "updated": "2026-07-26",
+    "topics": [
+     "anthropic",
+     "claude-ai",
+     "claude-code",
+     "claude-code-plugin",
+     "claude-code-plugin-marketplace",
+     "claude-code-plugins",
+     "claude-code-plugins-marketplace",
+     "claude-cowork"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "jaw9c/awesome-remote-mcp-servers",
+    "stars": 1118,
+    "lang": null,
+    "desc": "Remote MCP Servers",
+    "license": "MIT",
+    "updated": "2026-06-23",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "YuzeHao2023/Awesome-MCP-Servers",
+    "stars": 1066,
+    "lang": null,
+    "desc": "A curated list of Model Context Protocol (MCP) servers ",
+    "license": "Apache-2.0",
+    "updated": "2026-08-07",
+    "topics": [
+     "awesome",
+     "awesome-list",
+     "llm",
+     "mcp",
+     "mcp-server"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "rohitg00/awesome-devops-mcp-servers",
+    "stars": 1023,
+    "lang": null,
+    "desc": "A curated list of awesome MCP servers focused on DevOps tools and capabilities.",
+    "license": "MIT",
+    "updated": "2026-05-12",
+    "topics": [
+     "ai",
+     "cloudnative",
+     "devops",
+     "genai",
+     "llm",
+     "mcp"
+    ],
+    "archived": false
+   }
+  ]
+ },
+ "mcp servers catalog": {
+  "query": "mcp servers catalog",
+  "total": 683,
+  "items": [
+   {
+    "full_name": "microsoft/mcp",
+    "stars": 3688,
+    "lang": "C#",
+    "desc": "Catalog of official Microsoft MCP (Model Context Protocol) server implementations for AI-powered data access and tool integration",
+    "license": "MIT",
+    "updated": "2026-09-18",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "shinthink/blitzstrike",
+    "stars": 638,
+    "lang": "TypeScript",
+    "desc": "⚡ Blitz Strike — a universal MCP penetration-testing toolbelt. Structured methodology: reconnaissance & attack-surface mapping, source-to-sink analysis, and live validation. 57 escalation chains, 130-tool catalog, intell",
+    "license": "MIT",
+    "updated": "2026-09-19",
+    "topics": [
+     "active-directory",
+     "blue-team",
+     "bug-bounty",
+     "cve",
+     "defensive-security",
+     "exploit",
+     "mcp",
+     "mcp-server"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "apappascs/mcp-servers-hub",
+    "stars": 332,
+    "lang": null,
+    "desc": "Discover the most comprehensive and up-to-date collection of MCP servers in the market. This repository serves as a centralized hub, offering an extensive catalog of open-source and proprietary MCP servers, complete with",
+    "license": null,
+    "updated": "2026-09-16",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "epheterson/applemusic-mcp",
+    "stars": 99,
+    "lang": "Python",
+    "desc": "Apple Music MCP server: playlists, library, catalog, playback and the Up Next queue, on macOS, Windows and Linux. A Mac or an Apple Music subscription is all you need.",
+    "license": "MIT",
+    "updated": "2026-08-31",
+    "topics": [
+     "apple-music",
+     "applescript",
+     "claude",
+     "claude-code",
+     "claude-desktop",
+     "cursor",
+     "macos",
+     "mcp"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "ahmedEid1/lumen",
+    "stars": 87,
+    "lang": "Python",
+    "desc": "Lumen — learner-owned AI education platform. Tell the AI what you want to learn: it builds you a private course in ~a minute, tutors you with course-scoped RAG + citations, and lets you share, clone & remix via a moderat",
+    "license": "GPL-3.0",
+    "updated": "2026-06-07",
+    "topics": [
+     "agentic-ai",
+     "ai-tutor",
+     "byok",
+     "celery",
+     "docker",
+     "e-learning",
+     "evals",
+     "fastapi"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "JordanGunn/gdal-mcp",
+    "stars": 80,
+    "lang": "Python",
+    "desc": "Model Context Protocol server that packages GDAL-style geospatial workflows through Python-native libraries (Rasterio, GeoPandas, PyProj, etc.) to give AI agents catalog discovery, metadata intelligence, and raster/vecto",
+    "license": "MIT",
+    "updated": "2026-05-25",
+    "topics": [
+     "earth-observation",
+     "gdal",
+     "geospatial",
+     "gis",
+     "mcp",
+     "mcp-server",
+     "raster",
+     "remote-sensing"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "serac-labs/serac",
+    "stars": 78,
+    "lang": "TypeScript",
+    "desc": "A ServiceNow MCP server, and the skill guides that teach an agent to use it. 400+ snow_* tools over stdio or streamable HTTP, loaded on demand so the catalog fits a context window, plus blast-radius impact analysis. 57 S",
+    "license": "Apache-2.0",
+    "updated": "2026-09-10",
+    "topics": [
+     "agent-skills",
+     "ai",
+     "developer-tools",
+     "llm",
+     "mcp",
+     "mcp-server",
+     "model-context-protocol",
+     "servicenow"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "bsab/france-mcp-servers",
+    "stars": 61,
+    "lang": "Python",
+    "desc": "A curated catalog of Model Context Protocol servers for French data, laws, and services.",
+    "license": "MIT",
+    "updated": "2026-09-08",
+    "topics": [
+     "france",
+     "mcp",
+     "mcp-servers",
+     "model-context-protocol",
+     "open-data"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "xakpc/anymcp-io",
+    "stars": 60,
+    "lang": "Nunjucks",
+    "desc": "A catalog of single-file MCP servers for .NET 10",
+    "license": "MIT",
+    "updated": "2026-08-20",
+    "topics": [],
+    "archived": false
+   },
+   {
+    "full_name": "bsab/sweden-mcp-servers",
+    "stars": 57,
+    "lang": "Python",
+    "desc": "A curated catalog of Model Context Protocol servers for Swedish data, laws and services.",
+    "license": "MIT",
+    "updated": "2026-09-14",
+    "topics": [
+     "awesome-list",
+     "mcp",
+     "model-context-protocol",
+     "open-data",
+     "sweden",
+     "swedish"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "RafaelCartenet/mcp-databricks-server",
+    "stars": 43,
+    "lang": "Python",
+    "desc": "Model Context Protocol (MCP) server for Databricks that empowers AI agents to autonomously interact with Unity Catalog metadata. Enables data discovery, lineage analysis, and intelligent SQL execution. Agents explore cat",
+    "license": "MIT",
+    "updated": "2026-03-28",
+    "topics": [
+     "databricks",
+     "llm",
+     "mcp",
+     "unitycatalog"
+    ],
+    "archived": false
+   },
+   {
+    "full_name": "morristai/iceberg-mcp",
+    "stars": 36,
+    "lang": "Rust",
+    "desc": "MCP server for Apache Iceberg",
+    "license": null,
+    "updated": "2025-11-17",
+    "topics": [
+     "catalog",
+     "glue",
+     "iceberg",
+     "lakehouse",
+     "mcp",
+     "olap"
+    ],
+    "archived": false
+   }
+  ]
+ }
+}

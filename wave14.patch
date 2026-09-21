@@ -1,0 +1,2014 @@
+diff --git a/VERSION.json b/VERSION.json
+index a531885..9ac67eb 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 57,
++  "mcp_tool_count": 58,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -62,6 +62,7 @@
+     "kompas_cabinet_bom_reconcile",
+     "kompas_cabinet_calc",
+     "kompas_cabinet_catalog_search",
++    "kompas_cabinet_spec",
+     "kompas_docs_search",
+     "kompas_normative_tables",
+     "kompas_open_copy",
+diff --git a/data/normative/designation_map.json b/data/normative/designation_map.json
+new file mode 100644
+index 0000000..189dc88
+--- /dev/null
++++ b/data/normative/designation_map.json
+@@ -0,0 +1,72 @@
++{
++ "rows": [
++  {
++   "code": "QF",
++   "kind": "breaker",
++   "note": "Выключатель автоматический"
++  },
++  {
++   "code": "W",
++   "kind": "busbar",
++   "note": "Линии и элементы СВЧ, антенны (группа W) — шина как линия"
++  },
++  {
++   "code": "KM",
++   "kind": "contactor",
++   "note": "Контактор, магнитный пускатель"
++  },
++  {
++   "code": "QS",
++   "kind": "disconnect_switch",
++   "note": "Разъединитель"
++  },
++  {
++   "code": "FU",
++   "kind": "fuse",
++   "note": "Предохранитель плавкий"
++  },
++  {
++   "code": "G",
++   "kind": "psu",
++   "note": "Генераторы, источники питания (группа G)"
++  },
++  {
++   "code": null,
++   "kind": "rcd",
++   "note": "в ГОСТ 2.710-81 нет кода для УЗО: отдельного вида элемента «устройство защитного отключения» в таблице кодов нет",
++   "refused": true
++  },
++  {
++   "code": "K",
++   "kind": "relay",
++   "note": "Реле, контакторы, пускатели (группа К)"
++  },
++  {
++   "code": "FV",
++   "kind": "surge_protector",
++   "note": "Дискретный элемент защиты по напряжению, разрядник"
++  },
++  {
++   "code": "XT",
++   "kind": "terminal",
++   "note": "Соединение разборное"
++  }
++ ],
++ "source": {
++  "conditions": "Один вид изделия — один код; где кода нет, стоит null.",
++  "derived": true,
++  "document": "составлено по таблице кодов ГОСТ 2.710-81 ЕСКД. Обозначения буквенно-цифровые в электрических схемах",
++  "legal": "Соответствие составлено по открытой публикации стандарта.",
++  "note": "Это соответствие составлено, а не процитировано: в ГОСТ 2.710-81 коды заданы для видов элементов схемы, а не для видов изделий щита. Для УЗО кода в стандарте нет — расчёт маркировки по нему отказывает, а не берёт код автоматического выключателя.",
++  "publisher": "публикация files.stroyinf.ru",
++  "retrieved": "2026-09-21",
++  "row_count": 10,
++  "table": "designation_map",
++  "tables": [
++   "таблица буквенных кодов ГОСТ 2.710-81"
++  ],
++  "title": "Соответствие вида изделия буквенному коду ГОСТ 2.710-81",
++  "url": "https://files.stroyinf.ru/Data1/11/11510/index.htm"
++ },
++ "table": "designation_map"
++}
+\ No newline at end of file
+diff --git a/data/normative/designations.json b/data/normative/designations.json
+new file mode 100644
+index 0000000..803af4e
+--- /dev/null
++++ b/data/normative/designations.json
+@@ -0,0 +1,644 @@
++{
++ "rows": [
++  {
++   "code": "B",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BA",
++   "element": "Громкоговоритель",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BB",
++   "element": "Магнитострикционный элемент",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BC",
++   "element": "Сельсин-датчик",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BD",
++   "element": "Детектор ионизирующих излучений",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BE",
++   "element": "Сельсин-приемник",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BF",
++   "element": "Телефон (капсюль)",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BK",
++   "element": "Тепловой датчик",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BL",
++   "element": "Фотоэлемент",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BM",
++   "element": "Микрофон",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BP",
++   "element": "Датчик давления",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BQ",
++   "element": "Пьезоэлемент",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BR",
++   "element": "Датчик частоты вращения (тахогенератор)",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BS",
++   "element": "Звукосниматель",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "BV",
++   "element": "Датчик скорости",
++   "group": "Преобразователи неэлектрических величин в электрические (кроме генераторов и источников питания) или наоборот аналоговые или многоразрядные преобразователи или датчики для указания или измерения",
++   "letter": "B"
++  },
++  {
++   "code": "D",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Схемы интегральные, микросборки",
++   "letter": "D"
++  },
++  {
++   "code": "DA",
++   "element": "Схема интегральная аналоговая",
++   "group": "Схемы интегральные, микросборки",
++   "letter": "D"
++  },
++  {
++   "code": "DD",
++   "element": "Схема интегральная, цифровая, логический элемент",
++   "group": "Схемы интегральные, микросборки",
++   "letter": "D"
++  },
++  {
++   "code": "DS",
++   "element": "Устройства хранения информации",
++   "group": "Схемы интегральные, микросборки",
++   "letter": "D"
++  },
++  {
++   "code": "DT",
++   "element": "Устройство задержки",
++   "group": "Схемы интегральные, микросборки",
++   "letter": "D"
++  },
++  {
++   "code": "E",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Элементы разные",
++   "letter": "E"
++  },
++  {
++   "code": "EK",
++   "element": "Нагревательный элемент",
++   "group": "Элементы разные",
++   "letter": "E"
++  },
++  {
++   "code": "EL",
++   "element": "Лампа осветительная",
++   "group": "Элементы разные",
++   "letter": "E"
++  },
++  {
++   "code": "ET",
++   "element": "Пиропатрон",
++   "group": "Элементы разные",
++   "letter": "E"
++  },
++  {
++   "code": "F",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Разрядники, предохранители, устройства защитные",
++   "letter": "F"
++  },
++  {
++   "code": "FA",
++   "element": "Дискретный элемент защиты по току мгновенного действия",
++   "group": "Разрядники, предохранители, устройства защитные",
++   "letter": "F"
++  },
++  {
++   "code": "FP",
++   "element": "Дискретный элемент защиты по току инерционного действия",
++   "group": "Разрядники, предохранители, устройства защитные",
++   "letter": "F"
++  },
++  {
++   "code": "FU",
++   "element": "Предохранитель плавкий",
++   "group": "Разрядники, предохранители, устройства защитные",
++   "letter": "F"
++  },
++  {
++   "code": "FV",
++   "element": "Дискретный элемент защиты по напряжению, разрядник",
++   "group": "Разрядники, предохранители, устройства защитные",
++   "letter": "F"
++  },
++  {
++   "code": "G",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Генераторы, источники питания",
++   "letter": "G"
++  },
++  {
++   "code": "GB",
++   "element": "Батарея",
++   "group": "Генераторы, источники питания",
++   "letter": "G"
++  },
++  {
++   "code": "H",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Устройства индикационные и сигнальные",
++   "letter": "H"
++  },
++  {
++   "code": "HA",
++   "element": "Прибор звуковой сигнализации",
++   "group": "Устройства индикационные и сигнальные",
++   "letter": "H"
++  },
++  {
++   "code": "HG",
++   "element": "Индикатор символьный",
++   "group": "Устройства индикационные и сигнальные",
++   "letter": "H"
++  },
++  {
++   "code": "HL",
++   "element": "Прибор световой сигнализации",
++   "group": "Устройства индикационные и сигнальные",
++   "letter": "H"
++  },
++  {
++   "code": "K",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KA",
++   "element": "Реле токовое",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KH",
++   "element": "Реле указательное",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KK",
++   "element": "Реле электротепловое",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KM",
++   "element": "Контактор, магнитный пускатель",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KT",
++   "element": "Реле времени",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "KV",
++   "element": "Реле напряжения",
++   "group": "Реле, контакторы, пускатели",
++   "letter": "K"
++  },
++  {
++   "code": "L",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Катушки индуктивности, дроссели",
++   "letter": "L"
++  },
++  {
++   "code": "LL",
++   "element": "Дроссель люминесцентного освещения",
++   "group": "Катушки индуктивности, дроссели",
++   "letter": "L"
++  },
++  {
++   "code": "P",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PA",
++   "element": "Амперметр",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PC",
++   "element": "Счетчик импульсов",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PF",
++   "element": "Частотомер",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PI",
++   "element": "Счетчик активной энергии",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PK",
++   "element": "Счетчик реактивной энергии",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PR",
++   "element": "Омметр",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PS",
++   "element": "Регистрирующий прибор",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PT",
++   "element": "Часы, измеритель времени действия",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PV",
++   "element": "Вольтметр",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "PW",
++   "element": "Ваттметр",
++   "group": "Приборы, измерительное оборудование Примечание. Сочетание РЕ применять не допускается",
++   "letter": "P"
++  },
++  {
++   "code": "Q",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Выключатели и разъединители в силовых цепях (энергоснабжение, питание оборудования и т.д.)",
++   "letter": "Q"
++  },
++  {
++   "code": "QF",
++   "element": "Выключатель автоматический",
++   "group": "Выключатели и разъединители в силовых цепях (энергоснабжение, питание оборудования и т.д.)",
++   "letter": "Q"
++  },
++  {
++   "code": "QK",
++   "element": "Короткозамыкатель",
++   "group": "Выключатели и разъединители в силовых цепях (энергоснабжение, питание оборудования и т.д.)",
++   "letter": "Q"
++  },
++  {
++   "code": "QS",
++   "element": "Разъединитель",
++   "group": "Выключатели и разъединители в силовых цепях (энергоснабжение, питание оборудования и т.д.)",
++   "letter": "Q"
++  },
++  {
++   "code": "R",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Резисторы",
++   "letter": "R"
++  },
++  {
++   "code": "RK",
++   "element": "Терморезистор",
++   "group": "Резисторы",
++   "letter": "R"
++  },
++  {
++   "code": "RP",
++   "element": "Потенциометр",
++   "group": "Резисторы",
++   "letter": "R"
++  },
++  {
++   "code": "RS",
++   "element": "Шунт измерительный",
++   "group": "Резисторы",
++   "letter": "R"
++  },
++  {
++   "code": "RU",
++   "element": "Варистор",
++   "group": "Резисторы",
++   "letter": "R"
++  },
++  {
++   "code": "S",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SA",
++   "element": "Выключатель или переключатель",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SBSF",
++   "element": "Выключатель кнопочный",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SK",
++   "element": "от температуры",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SL",
++   "element": "от уровня",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SP",
++   "element": "от давления",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SQ",
++   "element": "от положения (путевой)",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "SR",
++   "element": "от частоты вращения",
++   "group": "Устройства коммутационные в цепях управления, сигнализации и измерительных Примечание . Обозначение SF применяют для аппаратов, не имеющих контактов силовых цепей",
++   "letter": "S"
++  },
++  {
++   "code": "T",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Трансформаторы, автотрансформаторы",
++   "letter": "T"
++  },
++  {
++   "code": "TA",
++   "element": "Трансформатор тока",
++   "group": "Трансформаторы, автотрансформаторы",
++   "letter": "T"
++  },
++  {
++   "code": "TS",
++   "element": "Электромагнитный стабилизатор",
++   "group": "Трансформаторы, автотрансформаторы",
++   "letter": "T"
++  },
++  {
++   "code": "TV",
++   "element": "Трансформатор напряжения",
++   "group": "Трансформаторы, автотрансформаторы",
++   "letter": "T"
++  },
++  {
++   "code": "U",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Устройства связи",
++   "letter": "U"
++  },
++  {
++   "code": "UB",
++   "element": "Модулятор",
++   "group": "Устройства связи",
++   "letter": "U"
++  },
++  {
++   "code": "UI",
++   "element": "Дискриминатор",
++   "group": "Устройства связи",
++   "letter": "U"
++  },
++  {
++   "code": "UZ",
++   "element": "Преобразователь частотный, инвертор, генератор частоты, выпрямитель",
++   "group": "Устройства связи",
++   "letter": "U"
++  },
++  {
++   "code": "V",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Приборы электровакуумные и полупроводниковые",
++   "letter": "V"
++  },
++  {
++   "code": "VD",
++   "element": "Диод, стабилитрон",
++   "group": "Приборы электровакуумные и полупроводниковые",
++   "letter": "V"
++  },
++  {
++   "code": "VL",
++   "element": "Прибор электровакуумный",
++   "group": "Приборы электровакуумные и полупроводниковые",
++   "letter": "V"
++  },
++  {
++   "code": "VS",
++   "element": "Тиристор",
++   "group": "Приборы электровакуумные и полупроводниковые",
++   "letter": "V"
++  },
++  {
++   "code": "VT",
++   "element": "Транзистор",
++   "group": "Приборы электровакуумные и полупроводниковые",
++   "letter": "V"
++  },
++  {
++   "code": "W",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "WA",
++   "element": "Антенна",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "WE",
++   "element": "Ответвитель",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "WK",
++   "element": "Короткозамыкатель",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "WS",
++   "element": "Вентиль",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "WU",
++   "element": "Аттенюатор",
++   "group": "Линии и элементы СВЧ",
++   "letter": "W"
++  },
++  {
++   "code": "X",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "XA",
++   "element": "Токосъемник, контакт скользящий",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "XP",
++   "element": "Штырь",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "XS",
++   "element": "Гнездо",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "XT",
++   "element": "Соединение разборное",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "XW",
++   "element": "Соединитель высокочастотный",
++   "group": "Соединения контактные",
++   "letter": "X"
++  },
++  {
++   "code": "Y",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Устройства механические с электромагнитным приводом",
++   "letter": "Y"
++  },
++  {
++   "code": "YA",
++   "element": "Электромагнит",
++   "group": "Устройства механические с электромагнитным приводом",
++   "letter": "Y"
++  },
++  {
++   "code": "YB",
++   "element": "Тормоз с электромагнитным приводом",
++   "group": "Устройства механические с электромагнитным приводом",
++   "letter": "Y"
++  },
++  {
++   "code": "YC",
++   "element": "Муфта с электромагнитным приводом",
++   "group": "Устройства механические с электромагнитным приводом",
++   "letter": "Y"
++  },
++  {
++   "code": "YH",
++   "element": "Электромагнитный патрон или плита",
++   "group": "Устройства механические с электромагнитным приводом",
++   "letter": "Y"
++  },
++  {
++   "code": "Z",
++   "element": "группа без двухбуквенного уточнения",
++   "group": "Устройства оконечные фильтры",
++   "letter": "Z"
++  },
++  {
++   "code": "ZL",
++   "element": "Ограничитель",
++   "group": "Устройства оконечные фильтры",
++   "letter": "Z"
++  }
++ ],
++ "source": {
++  "conditions": "Код вида элемента по ГОСТ 2.710-81; вид изделия сопоставляется коду отдельно.",
++  "document": "ГОСТ 2.710-81 ЕСКД. Обозначения буквенно-цифровые в электрических схемах",
++  "legal": "Значения из открытой публикации стандарта (files.stroyinf.ru).",
++  "note": "Таблица даёт код и вид элемента, но не даёт соответствия «изделие щита → код»: такого соответствия в стандарте нет. Оно вынесено в отдельную таблицу designation_map и помечено как составленное, а не процитированное.",
++  "publisher": "публикация files.stroyinf.ru",
++  "retrieved": "2026-09-21",
++  "row_count": 104,
++  "table": "designations",
++  "tables": [
++   "Таблица буквенных кодов (приложение)"
++  ],
++  "title": "Буквенно-цифровые обозначения элементов электрических схем",
++  "url": "https://files.stroyinf.ru/Data1/11/11510/index.htm"
++ },
++ "table": "designations"
++}
+\ No newline at end of file
+diff --git a/docs/WAVE14_CHANGES.md b/docs/WAVE14_CHANGES.md
+new file mode 100644
+index 0000000..63222bc
+--- /dev/null
++++ b/docs/WAVE14_CHANGES.md
+@@ -0,0 +1,129 @@
++# Волна 14: спецификация и маркировка щита из раскладки
++
++## Что закрыто
++
++Второй по цене остаток против конкурентов: **конфигуратор щита как изделия —
++спецификация и маркировка**. До этой волны мост умел проверить состав, рассчитать
++раскладку, материализовать её и сверить перечень с уже существующим документом,
++но **сам перечень из раскладки не рождался**: он только читался. Поле `labels` в
++модели раскладки оставалось пустым. Щит можно было разложить и построить, но
++нельзя было получить из этого документ.
++
++Машина с КОМПАС для этой задачи не нужна: перечень, обозначения и шильды — это
++данные. Запись их в документ КОМПАС остаётся за волной, которой нужен живой
++КОМПАС.
++
++## Новый модуль `src/cabinet_spec.py`
++
++Чистые функции, без COM. Один вид на входе — три вида на выходе:
++
++| `kind` | Что отдаёт |
++|---|---|
++| `bom` | перечень: что стоит, сколько, какого габарита и в каких координатах |
++| `marking` | позиционные обозначения по ГОСТ 2.710-81 (QF1, KM1, XT1…) |
++| `labels` | шильды: обозначение, текст и координаты для нанесения |
++
++Нумерация идёт **по порядку расположения на плате** — сверху вниз, затем слева
++направо, — а не по алфавиту наименований. Обозначение должно читаться так, как
++оно читается глазами на щите: QF1 левее QF2, даже если «Контактор» в списке
++выше «Автомата».
++
++## Буквенные коды: откуда они берутся
++
++Код берётся одним из трёх способов, в порядке приоритета:
++
++1. **явно** — поле `codes`: `{"brk": "QF"}`. Высший приоритет: если инженер
++   знает код, модуль его не переспрашивает;
++2. **по виду изделия** — поле `kinds` плюс таблица соответствия
++   `designation_map` из реестра нормативных таблиц. Источник таблицы
++   возвращается в `provenance`;
++3. **никак** — тогда позиция уходит в `unresolved` с указанием причины.
++
++### Почему соответствие помечено как составленное
++
++`data/normative/designations.json` — 104 кода, добытые из открытой публикации
++ГОСТ 2.710-81. Это **цитата**: код и вид элемента схемы.
++
++`data/normative/designation_map.json` — соответствие «вид изделия щита → код».
++Это **не цитата**: в ГОСТ 2.710-81 коды заданы для видов элементов схемы, а не
++для видов изделий щита, и такого соответствия в стандарте нет. Оно составлено и
++прямо помечено в `source.note`. Выдавать составленное соответствие за цитату из
++стандарта — подмена, поэтому различие зафиксировано в данных.
++
++## Отказ вместо выдумывания
++
++- **Для УЗО в ГОСТ 2.710-81 кода нет.** Отдельного вида элемента «устройство
++  защитного отключения» в таблице кодов нет. Позиция **не получает код
++  автоматического выключателя**, а уходит в `unresolved`, и в `code_refusals`
++  появляется запись `no_code_for_kind`. Инженер задаёт код сам через `codes`.
++- Позиция, чей `lib_key` отсутствует в `library`, не получает «типового»
++  наименования: `name` остаётся `None`, позиция уходит в `unverified`.
++- Вид изделия, которого нет в таблице соответствия, — отказ `kind_not_in_table`,
++  а не подбор похожего.
++- Пустая раскладка — отказ `empty_layout`. Ни одного присвоенного обозначения —
++  для `labels` отказ `no_designations`: наносить нечего.
++
++## Интеграция: ответ раскладчика передаётся целиком
++
++`kompas_cabinet_layout_build` отдаёт `{"ok": ..., "layout": {...}}`. Функция
++`unwrap` разворачивает эту обёртку, если `elements` и `groups` не переданы
++явно, — иначе звено «раскладка → спецификация» существовало бы только на
++словах, а пользователь разбирал бы ответ руками. Явно переданные `elements`
++при этом выигрывают: обёртка не затирает то, что задано напрямую.
++
++Проверено тестом: раскладка из трёх строк (2 автомата, контактор, 3 клеммы)
++даёт 6 обозначений с кодами QF, KM, XT.
++
++## Поверхность
++
++| Было | Стало |
++|---|---|
++| 57 инструментов | 58 |
++
++Новый инструмент: **`kompas_cabinet_spec`** (`cabinet.spec`).
++
++Регистрация: `mcp/tools_catalog.py` (описание, схема, маршрут),
++`src/engineering_capabilities.py` (диспетчер), `src/cabinet_tools.py`
++(обработчик), `VERSION.json` (счётчик и список).
++
++## Тесты
++
++`tests/test_wave14.py` — 29 тестов. Всего 567 (было 538).
++
++Что проверяется сверх очевидного:
++
++- группа разворачивается в позиции с шагом по габариту (5 клемм по 6 мм дают
++  x = 10, 16, 22, 28, 34);
++- нумерация внутри кода идёт по координате, а не по имени;
++- явный код перебивает код из таблицы;
++- УЗО остаётся без обозначения;
++- `designation_map` помечен как составленный, а не процитированный;
++- таблица `designations` — реальная, более 50 строк, источник ГОСТ 2.710-81;
++- ответ `kompas_cabinet_layout_build` передаётся следующим вызовом целиком.
++
++## Ошибки, найденные тестами
++
++1. **`_assign` возвращал 4 значения вместо 5** на пустой раскладке —
++   `ValueError: not enough values to unpack`. Вызывающие разбирали два разных
++   формата; теперь пустая раскладка возвращает тот же пятиэлементный кортеж.
++2. **Ответ раскладчика не разворачивался** — передача `build_layout` дальше
++   давала `empty_layout`. Появилась `unwrap`.
++
++## Что осталось внутри этой задачи
++
++- **Запись перечня и маркировки в документ КОМПАС.** Здесь только данные.
++  Требуется машина с КОМПАС.
++- **Формат перечня по ГОСТ 2.106** (графы, размеры, основная надпись) — сейчас
++  структура данных, а не оформленный бланк.
++- **Маркировка клемм по ГОСТ 2.710** с нумерацией зажимов внутри ряда: сейчас
++  каждая клемма получает свой XT по порядку, а не `XT1:1…XT1:5`.
++
++## Ограничения
++
++Записаны в `LIMITS` модуля и возвращаются в каждом ответе:
++
++- перечень строится из раскладки — чего нет в `library`, того нет в перечне с
++  достоверным наименованием;
++- соответствие вида изделия коду составлено, а не процитировано;
++- для УЗО кода в ГОСТ 2.710-81 нет;
++- запись в документ КОМПАС здесь не производится.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index f6ef2cc..f8ec135 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -115,6 +115,7 @@ TOOLS = [
+     {"name":"kompas_cabinet_bom_reconcile","description":"Reconcile the expected cabinet composition against the bill of materials read from KOMPAS. Matching is by part file name, not by positional designation, because under the first_only marking policy a set of 24 terminals carries a single designation in the BOM. Reports missing items, quantity mismatches, unexpected items and designation gaps; a gap is annotated with its cause instead of being counted as an assembly error. Pure comparison over supplied data - the tool does not read KOMPAS itself.","inputSchema":{"type":"object","properties":{"layout":{"type":"object"},"bom":{"type":"object"},"marking_policy":{"type":"string","enum":["first_only","all"]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_calc","description":"Electrical calculation for a low-voltage cabinet, computed by the engine rather than by the model. kind=current derives current from power, voltage and cos phi. kind=voltage_drop computes drop from length, section and conductor resistivity. kind=fault_current computes short-circuit current from source impedance, short-circuit power or transformer nameplate plus line impedance. kind=derating multiplies correction factors. kind=max_demand, cable_size, breaker_select and selectivity require normative tables supplied in the tables field: demand factors, cable ampacity, breaker catalogue and time-current curves. A table may be given inline as rows, or referenced from the bundled registry as normative:ampacity, normative:breakers, normative:trip_curves, normative:derating, normative:voltage_drop_limits or normative:demand_factors, in which case its source is echoed in provenance. Rows are selected with table_filters when a table depends on installation conditions, and single values such as a correction factor or a voltage-drop limit are taken with table_select. Tables are not invented here - when a required table or a matching row is missing the call is refused instead of being answered with a plausible guess, and any criterion that cannot be checked is reported under not_checked rather than assumed to pass. Each accepted table carries a source string which is echoed in provenance so the result can be traced back to the norm. Pure arithmetic, no COM, no KOMPAS.","inputSchema":{"type":"object","required":["kind"],"properties":{"kind":{"type":"string","enum":["current","max_demand","voltage_drop","fault_current","derating","cable_size","breaker_select","selectivity"]},"tables":{"type":"object","description":"Normative tables: ampacity, breakers, trip_curves, demand_factors, derating, voltage_drop_limits. Each is a list of rows, {rows, source}, or a registry reference normative:<name>."},"table_filters":{"type":"object","description":"Per-table row selection, e.g. {ampacity: {material: copper, insulation: pvc, loaded_conductors: 3, method: C}}. A filter that matches nothing is refused with the available values."},"table_select":{"type":"object","description":"Per-table single-row selection, e.g. {derating: {kind: ambient_temperature, insulation: pvc, ambient_c: 40}} or {voltage_drop_limits: {installation_type: A, load_type: other}}."},"power_w":{"type":"number"},"power_kw":{"type":"number"},"voltage_v":{"type":"number","exclusiveMinimum":0},"cos_phi":{"type":"number","exclusiveMinimum":0,"maximum":1},"phases":{"type":"integer","enum":[1,3]},"efficiency":{"type":"number","exclusiveMinimum":0,"maximum":1},"current_a":{"type":"number"},"length_m":{"type":"number","exclusiveMinimum":0},"section_mm2":{"type":"number","exclusiveMinimum":0},"material":{"type":"string","enum":["copper","aluminium"]},"resistivity_ohm_mm2_per_m":{"type":"number","exclusiveMinimum":0},"reactance_ohm":{"type":"number","minimum":0},"drop_limit_percent":{"type":"number","exclusiveMinimum":0},"derating_product":{"type":"number","exclusiveMinimum":0},"factors":{"type":"array","items":{"type":"object"}},"allowable_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_ka":{"type":"number","exclusiveMinimum":0},"poles":{"type":"integer"},"trip_curve":{"type":"string"},"transformer":{"type":"object"},"source_impedance_ohm":{"type":"number","exclusiveMinimum":0},"source_short_circuit_mva":{"type":"number","exclusiveMinimum":0},"zero_sequence_impedance_ohm":{"type":"number","exclusiveMinimum":0},"loads":{"type":"array","items":{"type":"object"}},"upstream":{"type":"object"},"downstream":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_catalog_search","description":"Search a cabinet equipment catalogue for breakers, RCDs, contactors, relays, terminals, busbars and power supplies by parameters: kind, poles, rating range, trip curve, breaking capacity, leakage current, mount type and overall dimensions. Every returned item carries its source string, and every item with known dimensions also carries a ready-made layout entry (width_mm, height_mm, rail_offset_mm) so a pick can go straight into kompas_cabinet_layout_build or into kompas_cabinet_calc. No catalogue data is built in: the catalogue is supplied in the catalog field or loaded from catalog_path inside the project root. The bundled data/cabinet_catalog.example.json is a placeholder of typical DIN 43880 modular dimensions with no manufacturers or article numbers, and any answer built on it is flagged example=True. Items missing required dimensions go to unverified instead of being filled with a typical value. Pure search, no COM, no KOMPAS.","inputSchema":{"type":"object","properties":{"catalog":{"description":"Catalogue inline: list of rows or {items, source, example}."},"catalog_path":{"type":"string","description":"Path to a JSON catalogue inside the project root."},"query":{"type":"object","description":"Filters: kind, poles, rating_min_a, rating_max_a, trip_curve, breaking_ka_min, leakage_ma, rcd_type, mount, width_max_mm, height_max_mm, depth_max_mm, manufacturer, series, text."},"kind":{"type":"string"},"poles":{},"rating_min_a":{"type":"number"},"rating_max_a":{"type":"number"},"trip_curve":{"type":"string"},"breaking_ka_min":{"type":"number"},"leakage_ma":{"type":"number"},"rcd_type":{"type":"string"},"mount":{"type":"string"},"width_max_mm":{"type":"number"},"height_max_mm":{"type":"number"},"text":{"type":"string"},"limit":{"type":"integer"},"need_geometry":{"type":"boolean","description":"Move items without dimensions to unverified."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_spec","description":"Turn a cabinet layout into documents: kind=bom builds the parts list from the layout (what stands, how many, which overall size, at which coordinates); kind=marking assigns positional designations by GOST 2.710-81 letter codes (QF1, KM1, XT1) numbered in the order the items read on the plate - top to bottom, then left to right; kind=labels produces nameplates with the designation, optional item name and the coordinates to place them on. Letter codes come from the caller as codes={lib_key: QF}, or from the item kind via kinds={lib_key: breaker} resolved through the bundled designation_map table, whose source is echoed in provenance. The mapping item kind to letter code is compiled, not quoted: GOST 2.710-81 assigns codes to kinds of element in a diagram, not to kinds of cabinet product, and no code exists there for an RCD - such a position goes to unresolved rather than borrowing the breaker code. Positions absent from the library keep no invented name. Writing the list into a KOMPAS document is not done here: this returns data. Pure, no COM, no KOMPAS.","inputSchema":{"type":"object","required":["kind"],"properties":{"kind":{"type":"string","enum":["bom","marking","labels"]},"layout":{"type":"object","description":"Layout produced by kompas_cabinet_layout_build: plate, library, elements, groups, ducts."},"plate":{"type":"object"},"library":{"type":"array","items":{"type":"object"}},"elements":{"type":"array","items":{"type":"object"}},"groups":{"type":"array","items":{"type":"object"}},"ducts":{"type":"array","items":{"type":"object"}},"codes":{"type":"object","description":"Explicit letter codes: {lib_key: QF}. Highest priority."},"kinds":{"type":"object","description":"Item kinds: {lib_key: breaker|contactor|terminal|rcd|fuse|relay|disconnect_switch|busbar|psu|surge_protector}. Resolved through designation_map."},"tables":{"type":"object","description":"Override tables, e.g. {designation_map: normative:designation_map} or inline rows."},"with_name":{"type":"boolean","description":"Append the item name to the nameplate text."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_docs_search","description":"Full-text search over the project documentation and normative documents on disk, returning a citation for every hit: file, line number and the fragment itself. Every answer is traceable to a real file, so it can be verified instead of trusted. Search is substring-based, not semantic: all query words must appear on the line, so an imprecise query returns nothing rather than a plausible answer. Reading is limited to the project root and the current directory; a path outside them is refused. Scanning stops at max_files and reports truncated, so an empty result under truncation does not mean the subject is absent. Binary and unreadable files are skipped. No network access and no COM.","inputSchema":{"type":"object","required":["query"],"properties":{"query":{"description":"Search string, or a list of strings; all words must match."},"root":{"type":"string","description":"Directory to scan; defaults to the project root."},"extensions":{"type":"array","items":{"type":"string"}},"context_lines":{"type":"integer","minimum":0},"max_results":{"type":"integer","minimum":0},"max_files":{"type":"integer","minimum":1},"case_sensitive":{"type":"boolean"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_normative_tables","description":"Normative tables as data. The repository now ships the tables the calculation engine needs, each with document, table number, URL, publisher and retrieval date. kind=list inventories what is present and what is missing and why. kind=get returns rows, optionally filtered by field values. kind=validate checks a caller-supplied table against the schema before it is used in a calculation. Sources: GOST R 50571.5.52-2011 (IEC 60364-5-52) cable ampacity, correction factors for ambient temperature and grouping, and voltage-drop limits; GOST R 50345-2010 (IEC 60898-1) time-current trip bands for curves B, C and D; PUE 7th edition clause 6.3.39 for the one demand factor it norms; IEK published product cards for the breaker catalogue. Filtering is not optional convenience: the ampacity table holds every installation method, and selecting across all of them at once would return the smallest section permitted by the most favourable method, which is plausible and wrong. A filter that matches no row is refused together with the list of available values. The demand factor table is partial on purpose - PUE has no demand-factor table, so uncovered load types are reported as unverified instead of being filled with a typical coefficient. Data only, no calculation, no COM.","inputSchema":{"type":"object","properties":{"kind":{"type":"string","enum":["list","get","validate"],"description":"list inventories the registry, get returns rows, validate checks rows against the schema."},"table":{"type":"string","enum":["ampacity","breakers","trip_curves","derating","voltage_drop_limits","demand_factors"]},"name":{"type":"string","description":"Alias for table."},"filter":{"type":"object","description":"Row selection by field values, e.g. {material: copper, insulation: pvc, loaded_conductors: 3, method: C}."},"limit":{"type":"integer","minimum":0,"description":"Return at most this many rows; truncated is reported."},"rows":{"type":"array","description":"For kind=validate: rows to check. Omitted means validate the bundled table."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+@@ -187,6 +188,7 @@ ACTION_MAP = {
+     "kompas_cabinet_bom_reconcile": ("cabinet.bom_reconcile", lambda a: a),
+     "kompas_cabinet_calc": ("cabinet.calc", lambda a: a),
+     "kompas_cabinet_catalog_search": ("cabinet.catalog_search", lambda a: a),
++    "kompas_cabinet_spec": ("cabinet.spec", lambda a: a),
+     "kompas_docs_search": ("docs.search", lambda a: a),
+     "kompas_normative_tables": ("normative.tables", lambda a: a),
+ }
+diff --git a/src/cabinet_spec.py b/src/cabinet_spec.py
+new file mode 100644
+index 0000000..e96dd06
+--- /dev/null
++++ b/src/cabinet_spec.py
+@@ -0,0 +1,447 @@
++"""Спецификация и маркировка щита из раскладки — чистые функции, без COM.
++
++Волны 7–10 научили мост проверять состав, считать раскладку, материализовать её
++и сверять перечень с уже существующим. Одно звено отсутствовало: **перечень сам
++из раскладки не рождался**. Спецификация в мосте только читалась, а поле
++`labels` в модели раскладки оставалось пустым — то есть щит можно было
++разложить и даже построить, но нельзя было получить из этого документа.
++
++Эта волна закрывает звено тремя видами:
++
++- ``bom`` — перечень: что стоит, сколько, какого габарита и где;
++- ``marking`` — позиционные обозначения по ГОСТ 2.710-81 (QF1, KM1, XT1…);
++- ``labels`` — шильды: обозначение с координатами для нанесения.
++
++Дисциплина та же, что в расчёте: **отказ вместо выдумывания**.
++
++- позиция без наименования в библиотеке не получает «типовое» имя, а уходит в
++  ``unverified``;
++- изделие, у которого нет буквенного кода (УЗО: в ГОСТ 2.710-81 отдельного кода
++  для устройства защитного отключения нет), не получает код автоматического
++  выключателя, а уходит в ``unverified`` с указанием причины;
++- нумерация идёт по порядку расположения на плате, а не по алфавиту
++  наименований: обозначение должно читаться слева направо и сверху вниз.
++
++Соответствие «вид изделия → код» лежит в реестре нормативных таблиц
++(``designation_map``) и помечено как составленное, а не процитированное: в
++стандарте коды заданы для видов элементов схемы, а не для изделий щита. Это
++различие важно — выдавать составленное соответствие за цитату из стандарта
++нельзя.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Optional, Tuple
++
++import cabinet_layout
++import normative_tables
++
++KIND_BOM = "bom"
++KIND_MARKING = "marking"
++KIND_LABELS = "labels"
++KINDS = (KIND_BOM, KIND_MARKING, KIND_LABELS)
++
++LIMITS = [
++    "Перечень и маркировка строятся из раскладки: что не попало в library, "
++    "того в перечне нет с достоверным наименованием и габаритом.",
++    "Буквенные коды — по ГОСТ 2.710-81. Соответствие вида изделия коду "
++    "составлено, а не процитировано: в стандарте коды заданы для видов "
++    "элементов схемы.",
++    "Для УЗО кода в ГОСТ 2.710-81 нет: позиция уходит в unverified, а не "
++    "получает код автоматического выключателя.",
++    "Нумерация идёт по порядку расположения на плате (сверху вниз, слева "
++    "направо), а не по наименованию.",
++    "Запись перечня и маркировки в документ КОМПАС здесь не производится: "
++    "модуль отдаёт данные.",
++]
++
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
++    item: Dict[str, Any] = {"code": code, "message": message}
++    item.update(extra)
++    return item
++
++
++def _result(kind: str, data: Dict[str, Any], refusals: Optional[List[Dict[str, Any]]] = None,
++            notes: Optional[List[str]] = None,
++            provenance: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
++    return {
++        "kind": kind,
++        "ok": not refusals,
++        "verdict": "refused" if refusals else "computed",
++        "result": data,
++        "refusals": list(refusals or []),
++        "notes": list(notes or []),
++        "provenance": list(provenance or []),
++        "limits": list(LIMITS),
++    }
++
++
++# --------------------------------------------------------------------------
++# разбор раскладки в позиции
++# --------------------------------------------------------------------------
++
++def collect_positions(model: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
++    """Позиции из раскладки и то, что не удалось разобрать.
++
++    Одна запись ``elements`` — одна позиция. Запись ``groups`` — несколько
++    одинаковых изделий подряд, то есть ``count`` позиций с coordinates ряда.
++    """
++    library = model.get("library") or {}
++    positions: List[Dict[str, Any]] = []
++    unverified: List[Dict[str, Any]] = []
++
++    for element in _as_list(model.get("elements")):
++        record = _as_dict(element)
++        key = _text(record.get("lib_key"))
++        item = library.get(key) if key else None
++        position = {
++            "id": _text(record.get("id")) or None,
++            "lib_key": key or None,
++            "name": (item or {}).get("name") if item else None,
++            "width_mm": (item or {}).get("width_mm") if item else None,
++            "height_mm": (item or {}).get("height_mm") if item else None,
++            "rail_offset_mm": (item or {}).get("rail_offset_mm") if item else None,
++            "x_mm": _num(record.get("x_mm")),
++            "y_mm": _num(record.get("y_mm")),
++            "rot_deg": _num(record.get("rot_deg")),
++            "count": 1,
++            "origin": "element",
++        }
++        if item is None:
++            position["unverified_reason"] = "lib_key отсутствует в library"
++            unverified.append(position)
++        positions.append(position)
++
++    for group in _as_list(model.get("groups")):
++        record = _as_dict(group)
++        key = _text(record.get("lib_key"))
++        item = library.get(key) if key else None
++        count = int(_num(record.get("count"), 1.0) or 1.0)
++        x_mm = _num(record.get("x_mm"))
++        y_mm = _num(record.get("y_mm"))
++        internal_gap = _num(record.get("internal_gap_mm"), 0.0) or 0.0
++        step = (item or {}).get("width_mm") or 0.0
++        step = float(step) + internal_gap
++        for index in range(max(count, 1)):
++            position = {
++                "id": ("%s[%d]" % (_text(record.get("id")) or key, index + 1)) if key else None,
++                "lib_key": key or None,
++                "name": (item or {}).get("name") if item else None,
++                "width_mm": (item or {}).get("width_mm") if item else None,
++                "height_mm": (item or {}).get("height_mm") if item else None,
++                "rail_offset_mm": (item or {}).get("rail_offset_mm") if item else None,
++                "x_mm": None if x_mm is None else x_mm + step * index,
++                "y_mm": y_mm,
++                "rot_deg": _num(record.get("rot_deg")),
++                "count": 1,
++                "origin": "group",
++            }
++            if item is None:
++                position["unverified_reason"] = "lib_key отсутствует в library"
++                unverified.append(position)
++            positions.append(position)
++    return positions, unverified
++
++
++def unwrap(payload: Any) -> Dict[str, Any]:
++    """Развернуть обёртку ``kompas_cabinet_layout_build``.
++
++    Раскладчик волны 8 отдаёт ``{"ok": ..., "layout": {...}}``. Пользователь
++    должен иметь возможность передать этот ответ следующим вызовом целиком, не
++    разбирая его руками: иначе звено «раскладка → спецификация» существует
++    только на словах.
++    """
++    data = _as_dict(payload)
++    inner = data.get("layout")
++    if isinstance(inner, dict) and not data.get("elements") and not data.get("groups"):
++        merged = dict(inner)
++        for key, value in data.items():
++            if key not in ("layout", "ok", "result", "limits", "notes",
++                           "self_check", "parse_issues", "unplaced",
++                           "rows", "ducts_generated"):
++                merged.setdefault(key, value)
++        return merged
++    return data
++
++
++def _order_key(position: Dict[str, Any]) -> Tuple[float, float, str]:
++    """Порядок нумерации: сверху вниз, затем слева направо."""
++    y = position.get("y_mm")
++    x = position.get("x_mm")
++    return (y if y is not None else 1e9,
++            x if x is not None else 1e9,
++            position.get("id") or "")
++
++
++# --------------------------------------------------------------------------
++# коды обозначений
++# --------------------------------------------------------------------------
++
++def resolve_codes(payload: Dict[str, Any], notes: List[str],
++                  provenance: List[Dict[str, Any]]) -> Tuple[Dict[str, str], List[Dict[str, Any]]]:
++    """Буквенный код для каждого lib_key.
++
++    Код берётся одним из трёх способов, в порядке приоритета:
++
++    1. явно переданное поле ``codes`` — ``{lib_key: "QF"}``;
++    2. вид изделия (``kinds``: ``{lib_key: "breaker"}``) плюс таблица
++       соответствия из реестра или переданная своя;
++    3. ничего — тогда позиция уходит в ``unverified``.
++    """
++    data = _as_dict(payload)
++    explicit: Dict[str, str] = {}
++    for key, value in _as_dict(data.get("codes")).items():
++        code = _text(value)
++        if code:
++            explicit[_text(key)] = code.upper()
++
++    kinds: Dict[str, str] = {}
++    for key, value in _as_dict(data.get("kinds")).items():
++        kind = _text(value)
++        if kind:
++            kinds[_text(key)] = kind.lower()
++
++    mapping: Dict[str, Optional[str]] = {}
++    entry = _as_dict(data.get("tables")).get("designation_map")
++    if entry is None and kinds:
++        entry = "normative:designation_map"
++        notes.append("таблица designation_map взята из реестра data/normative")
++    if entry is not None:
++        if isinstance(entry, (list, tuple)):
++            rows = [r for r in entry if isinstance(r, dict)]
++            source = None
++        elif normative_tables.is_reference(entry):
++            rows, source, refusals, extra_notes = normative_tables.resolve_reference(entry)
++            notes.extend(extra_notes)
++            if refusals:
++                return {}, refusals
++        else:
++            raw = _as_dict(entry)
++            rows = [r for r in _as_list(raw.get("rows")) if isinstance(r, dict)]
++            source = _text(raw.get("source")) or None
++        if source:
++            provenance.append({"table": "designation_map", "source": source})
++        for row in rows:
++            kind = _text(row.get("kind")).lower()
++            code = _text(row.get("code")) or None
++            if kind:
++                mapping[kind] = code.upper() if code else None
++
++    codes: Dict[str, str] = dict(explicit)
++    refused: List[Dict[str, Any]] = []
++    for key, kind in kinds.items():
++        if key in codes:
++            continue
++        code = mapping.get(kind)
++        if code:
++            codes[key] = code
++        elif kind in mapping:
++            refused.append({"lib_key": key, "kind": kind,
++                            "reason": "no_code_for_kind",
++                            "message": "Для вида изделия %s нет кода в ГОСТ 2.710-81."
++                                       % kind})
++        else:
++            refused.append({"lib_key": key, "kind": kind,
++                            "reason": "kind_not_in_table",
++                            "message": "Вида изделия %s нет в таблице соответствия "
++                                       "кодам." % kind})
++    if not codes and not kinds and not explicit:
++        notes.append("коды обозначений не заданы: позиции останутся без "
++                     "позиционных обозначений")
++    return codes, refused
++
++
++# --------------------------------------------------------------------------
++# виды
++# --------------------------------------------------------------------------
++
++def build_bom(payload: Any) -> Dict[str, Any]:
++    """Перечень: что стоит, сколько, какого габарита и где."""
++    data = unwrap(payload)
++    model = cabinet_layout.load_layout(data)
++    notes: List[str] = []
++    for issue in _as_list(model.get("parse_issues")):
++        notes.append("разбор раскладки: %s" % _as_dict(issue).get("message"))
++    positions, unverified = collect_positions(model)
++    if not positions:
++        return _result(KIND_BOM, {}, [_refusal("empty_layout",
++                                               "В раскладке нет ни одной позиции.",
++                                               required_any=["elements", "groups"])],
++                       notes=notes)
++
++    grouped: Dict[str, Dict[str, Any]] = {}
++    for position in positions:
++        key = position.get("lib_key") or "?"
++        entry = grouped.setdefault(key, {
++            "lib_key": position.get("lib_key"),
++            "name": position.get("name"),
++            "width_mm": position.get("width_mm"),
++            "height_mm": position.get("height_mm"),
++            "rail_offset_mm": position.get("rail_offset_mm"),
++            "count": 0,
++            "positions": [],
++        })
++        entry["count"] += 1
++        entry["positions"].append({"id": position.get("id"),
++                                   "x_mm": position.get("x_mm"),
++                                   "y_mm": position.get("y_mm")})
++
++    items = sorted(grouped.values(), key=lambda item: _text(item["lib_key"]))
++    total = sum(int(item["count"]) for item in items)
++    return _result(KIND_BOM, {
++        "items": items,
++        "item_count": len(items),
++        "total_count": total,
++        "unverified": unverified,
++        "ducts": [{"id": _text(_as_dict(d).get("id")) or None,
++                   "width_mm": _num(_as_dict(d).get("width_mm")),
++                   "length_mm": _num(_as_dict(d).get("length_mm"))}
++                  for d in _as_list(model.get("ducts"))],
++        "plate": model.get("plate"),
++    }, notes=notes)
++
++
++def _assign(payload: Any):
++    """Общая часть marking и labels.
++
++    Всегда возвращает пять значений: ``(позиции, неразрешённое, отказы по
++    кодам, notes, provenance)``. Для пустой раскладки позиции — ``None``, а
++    отказ лежит там же, где неразрешённое, чтобы вызывающий не разбирал два
++    разных формата.
++    """
++    data = unwrap(payload)
++    model = cabinet_layout.load_layout(data)
++    notes: List[str] = []
++    provenance: List[Dict[str, Any]] = []
++    for issue in _as_list(model.get("parse_issues")):
++        notes.append("разбор раскладки: %s" % _as_dict(issue).get("message"))
++    positions, unverified = collect_positions(model)
++    if not positions:
++        return (None,
++                [_refusal("empty_layout",
++                          "В раскладке нет ни одной позиции.",
++                          required_any=["elements", "groups"])],
++                [], notes, provenance)
++
++    codes, code_refusals = resolve_codes(data, notes, provenance)
++    ordered = sorted(positions, key=_order_key)
++    counters: Dict[str, int] = {}
++    for position in ordered:
++        key = position.get("lib_key") or ""
++        code = codes.get(key)
++        if not code:
++            position["designation"] = None
++            position["unverified_reason"] = ("нет буквенного кода: задайте codes "
++                                             "или kinds с таблицей designation_map")
++            continue
++        counters[code] = counters.get(code, 0) + 1
++        position["designation"] = "%s%d" % (code, counters[code])
++
++    unresolved = list(unverified)
++    for position in ordered:
++        if not position.get("designation"):
++            unresolved.append(position)
++    return ordered, unresolved, code_refusals, notes, provenance
++
++
++def build_marking(payload: Any) -> Dict[str, Any]:
++    """Позиционные обозначения по ГОСТ 2.710-81."""
++    ordered, unresolved, code_refusals, notes, provenance = _assign(payload)
++    if ordered is None:
++        return _result(KIND_MARKING, {}, unresolved, notes=notes,
++                       provenance=provenance)
++    assigned = sorted([p for p in ordered if p.get("designation")],
++                      key=lambda p: (len(p["designation"]), p["designation"]))
++    return _result(KIND_MARKING, {
++        "positions": assigned,
++        "assigned_count": len(assigned),
++        "unresolved": unresolved,
++        "code_refusals": code_refusals,
++    }, notes=notes, provenance=provenance)
++
++
++def build_labels(payload: Any) -> Dict[str, Any]:
++    """Шильды: обозначение с координатами для нанесения."""
++    data = unwrap(payload)
++    ordered, unresolved, code_refusals, notes, provenance = _assign(payload)
++    if ordered is None:
++        return _result(KIND_LABELS, {}, unresolved, notes=notes,
++                       provenance=provenance)
++    with_name = bool(data.get("with_name"))
++    labels: List[Dict[str, Any]] = []
++    for position in ordered:
++        designation = position.get("designation")
++        if not designation:
++            continue
++        text = designation
++        if with_name and position.get("name"):
++            text = "%s %s" % (designation, position["name"])
++        labels.append({
++            "designation": designation,
++            "text": text,
++            "lib_key": position.get("lib_key"),
++            "x_mm": position.get("x_mm"),
++            "y_mm": position.get("y_mm"),
++            "width_mm": position.get("width_mm"),
++            "height_mm": position.get("height_mm"),
++        })
++    if not labels:
++        return _result(KIND_LABELS, {}, [_refusal("no_designations",
++                                                  "Ни одной позиции не присвоено "
++                                                  "обозначение: шильды нечего "
++                                                  "наносить.",
++                                                  unresolved=unresolved)],
++                       notes=notes, provenance=provenance)
++    return _result(KIND_LABELS, {
++        "labels": labels,
++        "label_count": len(labels),
++        "unresolved": unresolved,
++    }, notes=notes, provenance=provenance)
++
++
++_DISPATCH = {
++    KIND_BOM: build_bom,
++    KIND_MARKING: build_marking,
++    KIND_LABELS: build_labels,
++}
++
++
++def build(payload: Any) -> Dict[str, Any]:
++    """Единая точка входа: ``{"kind": "bom|marking|labels"}``."""
++    data = _as_dict(payload)
++    kind = _text(data.get("kind")).lower() or KIND_BOM
++    if kind not in _DISPATCH:
++        return {
++            "kind": kind or None,
++            "ok": False,
++            "verdict": "refused",
++            "result": {},
++            "refusals": [_refusal("unknown_kind",
++                                  "Неизвестный вид: %s." % (kind or "не задан"),
++                                  known_kinds=list(KINDS))],
++            "notes": [],
++            "provenance": [],
++            "limits": list(LIMITS),
++        }
++    return _DISPATCH[kind](data)
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index 687e431..6afc5ff 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -18,6 +18,7 @@ from cabinet_exec import execute_plan
+ from cabinet_reconcile import reconcile
+ from cabinet_calc import calculate
+ from cabinet_catalog import search as catalog_search
++from cabinet_spec import build as build_spec
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -62,6 +63,11 @@ def cabinet_catalog_search(session: Any, params: Dict[str, Any]) -> Dict[str, An
+     return ok("cabinet.catalog_search", catalog_search(params))
+ 
+ 
++def cabinet_spec_build(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Спецификация, маркировка и шильды щита из раскладки."""
++    return ok("cabinet.spec", build_spec(params))
++
++
+ def cabinet_bom_reconcile(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     """Сверить ожидаемый состав щита с перечнем, прочитанным из КОМПАС."""
+     return ok("cabinet.bom_reconcile", reconcile(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 98ff683..d541011 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -30,7 +30,7 @@ from view_tools import set_view, fit, rotate, visibility, projections
+ from cabinet_tools import (cabinet_spec_check, cabinet_layout_check, cabinet_layout_build,
+                            cabinet_materialize_plan, cabinet_materialize_apply,
+                            cabinet_bom_reconcile, cabinet_calc,
+-                           cabinet_catalog_search)
++                           cabinet_catalog_search, cabinet_spec_build)
+ from docs_tools import docs_search_handler
+ from normative_tools import normative_tables_handler
+ 
+@@ -335,6 +335,7 @@ registry = {
+     "cabinet.bom_reconcile": cabinet_bom_reconcile,
+     "cabinet.calc": cabinet_calc,
+     "cabinet.catalog_search": cabinet_catalog_search,
++    "cabinet.spec": cabinet_spec_build,
+     "docs.search": docs_search_handler,
+     "normative.tables": normative_tables_handler,
+ }
+diff --git a/src/normative_tables.py b/src/normative_tables.py
+index f546948..3e9a0ec 100644
+--- a/src/normative_tables.py
++++ b/src/normative_tables.py
+@@ -45,9 +45,12 @@ TABLE_TRIP_CURVES = "trip_curves"
+ TABLE_DERATING = "derating"
+ TABLE_VOLTAGE_DROP_LIMITS = "voltage_drop_limits"
+ TABLE_DEMAND_FACTORS = "demand_factors"
++TABLE_DESIGNATIONS = "designations"
++TABLE_DESIGNATION_MAP = "designation_map"
+ 
+ TABLES = (TABLE_AMPACITY, TABLE_BREAKERS, TABLE_TRIP_CURVES, TABLE_DERATING,
+-          TABLE_VOLTAGE_DROP_LIMITS, TABLE_DEMAND_FACTORS)
++          TABLE_VOLTAGE_DROP_LIMITS, TABLE_DEMAND_FACTORS,
++          TABLE_DESIGNATIONS, TABLE_DESIGNATION_MAP)
+ 
+ # Обязательные поля строки: без них строка не пригодна для расчёта. Тип вторым
+ # элементом — чтобы «16» и «16 А» не выдавались за одно и то же.
+@@ -58,6 +61,8 @@ SCHEMAS: Dict[str, Dict[str, str]] = {
+     TABLE_DERATING: {"factor": "number"},
+     TABLE_VOLTAGE_DROP_LIMITS: {"limit_percent": "number"},
+     TABLE_DEMAND_FACTORS: {"load_type": "text", "demand_factor": "number"},
++    TABLE_DESIGNATIONS: {"code": "text", "element": "text"},
++    TABLE_DESIGNATION_MAP: {"kind": "text", "code": "text"},
+ }
+ 
+ # Поля, по которым таблица обычно отбирается. Нужны для подсказки в ответе:
+@@ -69,6 +74,8 @@ FILTER_HINTS: Dict[str, Tuple[str, ...]] = {
+     TABLE_DERATING: ("kind", "insulation", "ambient_c", "circuits", "item"),
+     TABLE_VOLTAGE_DROP_LIMITS: ("installation_type", "load_type"),
+     TABLE_DEMAND_FACTORS: ("load_type",),
++    TABLE_DESIGNATIONS: ("letter", "code", "group"),
++    TABLE_DESIGNATION_MAP: ("kind",),
+ }
+ 
+ # Таблицы, которых в репозитории нет, с причиной. Держать этот список в коде
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index 88e3c97..f942898 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 57, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 58, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave10.py b/tests/test_wave10.py
+index f4670e2..e3659f8 100644
+--- a/tests/test_wave10.py
++++ b/tests/test_wave10.py
+@@ -67,7 +67,7 @@ TERMINALS = [{"id": "c", "lib_key": "term", "qty": 24, "tag_start": "B101",
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_tool_declared(self):
+         self.assertIn("kompas_cabinet_bom_reconcile",
+diff --git a/tests/test_wave14.py b/tests/test_wave14.py
+new file mode 100644
+index 0000000..9717ece
+--- /dev/null
++++ b/tests/test_wave14.py
+@@ -0,0 +1,264 @@
++"""Волна 14: спецификация и маркировка щита из раскладки.
++
++Проверяется не только то, что перечень строится, но и то, что он **не
++выдумывает**: позиция без наименования в библиотеке не получает «типового»
++имени, а изделие без буквенного кода не получает чужого кода.
++
++Тесты на реальных данных сверяют маркировку с ГОСТ 2.710-81: код берётся из
++таблицы, добытой из открытой публикации стандарта, а не из памяти.
++"""
++
++from __future__ import annotations
++
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_spec  # noqa: E402
++import cabinet_build  # noqa: E402
++import normative_tables  # noqa: E402
++
++LAYOUT = {
++    "plate": {"width_mm": 600, "height_mm": 800},
++    "library": [
++        {"lib_key": "brk", "name": "Автомат 1P C16", "width_mm": 18, "height_mm": 80},
++        {"lib_key": "cont", "name": "Контактор 25А", "width_mm": 45, "height_mm": 80},
++        {"lib_key": "term", "name": "Клемма", "width_mm": 6, "height_mm": 45},
++        {"lib_key": "rcd", "name": "УЗО 2P 40А", "width_mm": 42, "height_mm": 80},
++    ],
++    "elements": [
++        {"id": "e1", "lib_key": "brk", "x_mm": 10, "y_mm": 100},
++        {"id": "e2", "lib_key": "brk", "x_mm": 40, "y_mm": 100},
++        {"id": "e3", "lib_key": "cont", "x_mm": 100, "y_mm": 100},
++        {"id": "e4", "lib_key": "rcd", "x_mm": 200, "y_mm": 100},
++    ],
++    "groups": [
++        {"id": "g1", "lib_key": "term", "x_mm": 10, "y_mm": 300, "count": 5,
++         "internal_gap_mm": 0},
++    ],
++}
++
++KINDS = {"brk": "breaker", "cont": "contactor", "term": "terminal", "rcd": "rcd"}
++
++
++def layout(kind, **extra):
++    payload = dict(LAYOUT)
++    payload["kind"] = kind
++    payload.update(extra)
++    return payload
++
++
++class BomTests(unittest.TestCase):
++
++    def test_group_is_expanded_into_positions(self):
++        result = cabinet_spec.build(layout("bom"))
++        self.assertEqual(result["verdict"], "computed")
++        self.assertEqual(result["result"]["total_count"], 9)
++
++    def test_items_are_grouped_by_lib_key(self):
++        result = cabinet_spec.build(layout("bom"))["result"]
++        counts = {item["lib_key"]: item["count"] for item in result["items"]}
++        self.assertEqual(counts, {"brk": 2, "cont": 1, "rcd": 1, "term": 5})
++
++    def test_group_coordinates_step_by_width(self):
++        result = cabinet_spec.build(layout("bom"))["result"]
++        term = next(i for i in result["items"] if i["lib_key"] == "term")
++        self.assertEqual([p["x_mm"] for p in term["positions"]],
++                         [10.0, 16.0, 22.0, 28.0, 34.0])
++
++    def test_empty_layout_is_refused(self):
++        result = cabinet_spec.build({"kind": "bom", "elements": []})
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "empty_layout")
++
++    def test_position_outside_library_goes_to_unverified(self):
++        payload = layout("bom")
++        payload["elements"] = payload["elements"] + [
++            {"id": "x", "lib_key": "unknown", "x_mm": 0, "y_mm": 0}]
++        result = cabinet_spec.build(payload)["result"]
++        self.assertEqual(len(result["unverified"]), 1)
++        self.assertIn("library", result["unverified"][0]["unverified_reason"])
++        item = next(i for i in result["items"] if i["lib_key"] == "unknown")
++        self.assertIsNone(item["name"])
++
++    def test_unknown_kind_is_refused(self):
++        result = cabinet_spec.build({"kind": "inventar"})
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "unknown_kind")
++
++    def test_default_kind_is_bom(self):
++        payload = dict(LAYOUT)
++        self.assertEqual(cabinet_spec.build(payload)["kind"], "bom")
++
++
++class MarkingTests(unittest.TestCase):
++
++    def test_codes_come_from_registry_by_kind(self):
++        result = cabinet_spec.build(layout("marking", kinds=KINDS))
++        self.assertEqual(result["verdict"], "computed")
++        assigned = {p["id"]: p["designation"] for p in result["result"]["positions"]}
++        self.assertEqual(assigned["e1"], "QF1")
++        self.assertEqual(assigned["e2"], "QF2")
++        self.assertEqual(assigned["e3"], "KM1")
++        self.assertEqual(assigned["g1[1]"], "XT1")
++        self.assertEqual(assigned["g1[5]"], "XT5")
++
++    def test_numbering_follows_plate_order_not_names(self):
++        result = cabinet_spec.build(layout("marking", kinds=KINDS))
++        positions = result["result"]["positions"]
++        # контактор стоит левее второго автомата, но нумерация внутри кода своя
++        order = [p["designation"] for p in positions]
++        self.assertEqual(order, sorted(order, key=lambda s: (len(s), s)))
++        qf = [p for p in positions if p["designation"].startswith("QF")]
++        self.assertEqual([p["x_mm"] for p in qf], [10.0, 40.0])
++
++    def test_explicit_code_wins_over_kind(self):
++        result = cabinet_spec.build(layout("marking", kinds=KINDS,
++                                           codes={"rcd": "QF"}))
++        assigned = {p["id"]: p["designation"] for p in result["result"]["positions"]}
++        self.assertEqual(assigned["e4"], "QF3")
++        self.assertNotIn("e4", [p["id"] for p in result["result"]["unresolved"]])
++
++    def test_rcd_has_no_code_and_is_unresolved(self):
++        result = cabinet_spec.build(layout("marking", kinds=KINDS))
++        unresolved = {p["lib_key"] for p in result["result"]["unresolved"]}
++        self.assertIn("rcd", unresolved)
++        refusals = {r["kind"] for r in result["result"]["code_refusals"]}
++        self.assertIn("rcd", refusals)
++
++    def test_without_codes_nothing_is_assigned(self):
++        result = cabinet_spec.build(layout("marking"))
++        self.assertEqual(result["result"]["assigned_count"], 0)
++        self.assertTrue(result["result"]["unresolved"])
++
++    def test_kind_missing_from_table_is_refused(self):
++        result = cabinet_spec.build(layout("marking", kinds={"brk": "widget"}))
++        reasons = {r["reason"] for r in result["result"]["code_refusals"]}
++        self.assertIn("kind_not_in_table", reasons)
++
++    def test_provenance_names_the_standard(self):
++        result = cabinet_spec.build(layout("marking", kinds=KINDS))
++        text = str(result["provenance"]).lower()
++        self.assertIn("2.710", text)
++
++    def test_registry_note_is_compiled_not_quoted(self):
++        rows, source, _, _ = normative_tables.load_table("designation_map")
++        self.assertTrue(any(r.get("kind") == "rcd" and r.get("code") is None
++                            for r in rows))
++        self.assertIn("составлено", str(source).lower())
++
++
++class LabelsTests(unittest.TestCase):
++
++    def test_label_carries_coordinates(self):
++        result = cabinet_spec.build(layout("labels", kinds=KINDS))
++        labels = {x["designation"]: x for x in result["result"]["labels"]}
++        self.assertEqual(labels["QF1"]["x_mm"], 10.0)
++        self.assertEqual(labels["QF1"]["y_mm"], 100.0)
++        self.assertEqual(labels["QF1"]["width_mm"], 18.0)
++
++    def test_with_name_appends_item_name(self):
++        result = cabinet_spec.build(layout("labels", kinds=KINDS, with_name=True))
++        first = result["result"]["labels"][0]
++        self.assertEqual(first["text"], "%s Автомат 1P C16" % first["designation"])
++
++    def test_without_name_text_is_designation(self):
++        result = cabinet_spec.build(layout("labels", kinds=KINDS))
++        first = result["result"]["labels"][0]
++        self.assertEqual(first["text"], first["designation"])
++
++    def test_unresolved_positions_get_no_label(self):
++        result = cabinet_spec.build(layout("labels", kinds=KINDS))
++        designations = {x["designation"] for x in result["result"]["labels"]}
++        self.assertFalse(any(d is None for d in designations))
++        self.assertEqual(result["result"]["label_count"], 8)
++
++    def test_no_designations_is_refused(self):
++        result = cabinet_spec.build(layout("labels"))
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "no_designations")
++
++
++class RealDataTests(unittest.TestCase):
++    """Маркировка по таблице, добытой из публикации ГОСТ 2.710-81."""
++
++    def test_designations_table_is_real(self):
++        rows, source, _, _ = normative_tables.load_table("designations")
++        self.assertGreater(len(rows), 50)
++        self.assertIn("2.710", source["document"])
++
++    def test_breaker_code_is_qf(self):
++        rows, _, _, _ = normative_tables.load_table("designations")
++        codes = {r["code"]: r["element"].lower() for r in rows}
++        self.assertIn("QF", codes)
++        self.assertTrue("выключатель" in codes["QF"] or "автомат" in codes["QF"])
++
++    def test_terminal_code_is_xt(self):
++        rows, _, _, _ = normative_tables.load_table("designation_map")
++        entry = next(r for r in rows if r["kind"] == "terminal")
++        self.assertEqual(entry["code"], "XT")
++
++    def test_layout_from_builder_feeds_marking(self):
++        """Ответ раскладчика волны 8 передаётся дальше целиком."""
++        built = cabinet_build.build_layout({
++            "plate": {"width_mm": 800.0, "height_mm": 600.0},
++            "library": LAYOUT["library"],
++            "lines": [{"id": "l1", "lib_key": "brk", "qty": 2},
++                      {"id": "l2", "lib_key": "cont", "qty": 1},
++                      {"id": "l3", "lib_key": "term", "qty": 3}],
++        })
++        payload = dict(built)
++        payload["kind"] = "marking"
++        payload["kinds"] = KINDS
++        result = cabinet_spec.build(payload)
++        self.assertEqual(result["verdict"], "computed")
++        self.assertEqual(result["result"]["assigned_count"], 6)
++        codes = {p["designation"][:2] for p in result["result"]["positions"]}
++        self.assertEqual(codes, {"QF", "KM", "XT"})
++
++    def test_layout_wrapper_is_unwrapped(self):
++        """Поле layout разворачивается, если elements не переданы явно."""
++        built = cabinet_build.build_layout({
++            "plate": {"width_mm": 800.0, "height_mm": 600.0},
++            "library": LAYOUT["library"],
++            "lines": [{"id": "l1", "lib_key": "brk", "qty": 1}],
++        })
++        self.assertTrue(cabinet_spec.unwrap(dict(built)).get("groups")
++                        or cabinet_spec.unwrap(dict(built)).get("elements"))
++
++    def test_explicit_elements_win_over_wrapper(self):
++        payload = {"layout": {"library": [], "elements": [
++                       {"id": "inner", "lib_key": "z", "x_mm": 0, "y_mm": 0}]},
++                   "elements": [{"id": "outer", "lib_key": "y", "x_mm": 0, "y_mm": 0}]}
++        unwrapped = cabinet_spec.unwrap(payload)
++        self.assertEqual(unwrapped["elements"][0]["id"], "outer")
++
++
++class SurfaceTests(unittest.TestCase):
++    """Инструмент зарегистрирован: поверхность выросла осознанно."""
++
++    def test_tool_is_registered(self):
++        import tools_catalog
++        names = [t["name"] for t in tools_catalog.TOOLS]
++        self.assertIn("kompas_cabinet_spec", names)
++        self.assertEqual(len(names), 58,
++                         "поверхность изменилась - обновите ожидание осознанно")
++
++    def test_tool_has_route(self):
++        import tools_catalog
++        self.assertIn("kompas_cabinet_spec", tools_catalog.ACTION_MAP)
++
++    def test_schema_lists_three_kinds(self):
++        import tools_catalog
++        tool = next(t for t in tools_catalog.TOOLS
++                    if t["name"] == "kompas_cabinet_spec")
++        self.assertEqual(
++            tool["inputSchema"]["properties"]["kind"]["enum"],
++            ["bom", "marking", "labels"])
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index dc49092..b3eb887 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -321,7 +321,7 @@ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index ad519fe..28dc24d 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -315,7 +315,7 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ class TestCatalogWave3(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index e4b11d0..479b6b3 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -317,7 +317,7 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ class TestCatalogWave4(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index ec37bf8..8053df3 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -392,7 +392,7 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ class TestCatalogSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index 6da6b69..08e622f 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -435,7 +435,7 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ class TestCatalogSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index 43c816f..8628d2b 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git a/tests/test_wave8.py b/tests/test_wave8.py
+index 8fc6ddd..ba26686 100644
+--- a/tests/test_wave8.py
++++ b/tests/test_wave8.py
+@@ -72,7 +72,7 @@ def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None)
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_build_tool_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tests/test_wave9.py b/tests/test_wave9.py
+index 249f099..8a40268 100644
+--- a/tests/test_wave9.py
++++ b/tests/test_wave9.py
+@@ -101,7 +101,7 @@ class FakeExecutor:
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 57)
++        self.assertEqual(len(tools_catalog.TOOLS), 58)
+ 
+     def test_both_tools_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tools/build_normative_tables.py b/tools/build_normative_tables.py
+index 0c8cca8..0c996e4 100644
+--- a/tools/build_normative_tables.py
++++ b/tools/build_normative_tables.py
+@@ -507,6 +507,147 @@ def parse_voltage_drop_limits(html: str):
+     }
+ 
+ 
++# --------------------------------------------------------------------------
++# designations: ГОСТ 2.710-81, буквенно-цифровые обозначения
++# --------------------------------------------------------------------------
++
++GOST_2710 = {
++    "document": "ГОСТ 2.710-81 ЕСКД. Обозначения буквенно-цифровые в электрических схемах",
++    "url": "https://files.stroyinf.ru/Data1/11/11510/index.htm",
++    "publisher": "публикация files.stroyinf.ru",
++}
++
++# Коды в публикации набраны кириллицей (например «QF», «ХТ»). Приводим к
++# латинице по начертанию: обозначение по ГОСТ 2.710 — латинское.
++_CODE_TRANSLIT = {
++    "А": "A", "A": "A", "В": "B", "B": "B", "С": "C", "C": "C", "Е": "E",
++    "E": "E", "Н": "H", "H": "H", "К": "K", "K": "K", "М": "M", "M": "M",
++    "О": "O", "O": "O", "Р": "P", "P": "P", "Т": "T", "T": "T", "У": "Y",
++    "Y": "Y", "Х": "X", "X": "X", "Г": "G", "I": "I", "L": "L", "Q": "Q",
++    "S": "S", "W": "W", "Z": "Z", "V": "V", "F": "F", "D": "D", "R": "R",
++    "G": "G", "J": "J", "N": "N",
++}
++
++# Соответствие вида изделия буквенному коду. Это НЕ цитата из стандарта: в
++# ГОСТ 2.710-81 коды заданы для видов элементов схемы, а здесь виды изделий
++# щита сопоставлены этим кодам. Откуда что взято — указано в source.
++# Вид, для которого кода нет, в таблицу не попадает: подставлять «похожий»
++# код нельзя.
++KIND_TO_CODE = {
++    "breaker": ("QF", "Выключатель автоматический"),
++    "contactor": ("KM", "Контактор, магнитный пускатель"),
++    "relay": ("K", "Реле, контакторы, пускатели (группа К)"),
++    "terminal": ("XT", "Соединение разборное"),
++    "fuse": ("FU", "Предохранитель плавкий"),
++    "rcd": (None, "в ГОСТ 2.710-81 нет кода для УЗО: отдельного вида элемента "
++                  "«устройство защитного отключения» в таблице кодов нет"),
++    "busbar": ("W", "Линии и элементы СВЧ, антенны (группа W) — шина как линия"),
++    "psu": ("G", "Генераторы, источники питания (группа G)"),
++    "disconnect_switch": ("QS", "Разъединитель"),
++    "surge_protector": ("FV", "Дискретный элемент защиты по напряжению, разрядник"),
++}
++
++
++def _latin_code(raw: str) -> str:
++    out = ""
++    for char in raw:
++        if char.isspace():
++            continue
++        out += _CODE_TRANSLIT.get(char, char)
++    return out
++
++
++def parse_designations(html: str):
++    tables = _tables(html)
++    target = None
++    for index, table in enumerate(tables):
++        # Шапка в публикации набрана с разбиением по буквам («Г р у п п а»),
++        # поэтому сравнение идёт по тексту без пробелов. Наличие колонки
++        # «Двухбуквенный код» отличает нужную таблицу от таблицы однобуквенных
++        # групп, которая идёт перед ней.
++        compact = re.sub(r"\s+", "", " ".join(_strip_tags(table)))
++        if "Группавидовэлементов" in compact and "Двухбуквенныйкод" in compact:
++            target = index
++            break
++    if target is None:
++        raise SystemExit("таблица буквенных кодов не найдена")
++
++    rows = []
++    letter = None
++    group = None
++    for cells in _grid(tables[target]):
++        cells = [c for c in cells if c.strip()]
++        if len(cells) >= 4 and len(cells[0]) <= 2:
++            letter = _latin_code(cells[0])
++            group = cells[1]
++            code = _latin_code(cells[3]) if len(cells) > 3 else ""
++            if code:
++                rows.append({"code": code, "letter": letter,
++                             "group": group, "element": cells[2]})
++            continue
++        if len(cells) == 2 and letter:
++            code = _latin_code(cells[1])
++            if code and code[0] == letter:
++                rows.append({"code": code, "letter": letter,
++                             "group": group, "element": cells[0]})
++
++    # Однобуквенные группы: нужны, когда двухбуквенного уточнения нет.
++    seen = {row["code"] for row in rows}
++    for row in list(rows):
++        if row["letter"] not in seen:
++            seen.add(row["letter"])
++            rows.append({"code": row["letter"], "letter": row["letter"],
++                         "group": row["group"],
++                         "element": "группа без двухбуквенного уточнения"})
++    if not rows:
++        raise SystemExit("буквенные коды не распознаны")
++    rows.sort(key=lambda r: (r["code"], r["element"]))
++    return rows, {
++        "table": "designations",
++        "title": "Буквенно-цифровые обозначения элементов электрических схем",
++        "document": GOST_2710["document"],
++        "tables": ["Таблица буквенных кодов (приложение)"],
++        "url": GOST_2710["url"],
++        "publisher": GOST_2710["publisher"],
++        "retrieved": RETRIEVED,
++        "row_count": len(rows),
++        "conditions": "Код вида элемента по ГОСТ 2.710-81; вид изделия сопоставляется коду отдельно.",
++        "note": ("Таблица даёт код и вид элемента, но не даёт соответствия "
++                 "«изделие щита → код»: такого соответствия в стандарте нет. "
++                 "Оно вынесено в отдельную таблицу designation_map и помечено "
++                 "как составленное, а не процитированное."),
++        "legal": "Значения из открытой публикации стандарта (files.stroyinf.ru).",
++    }
++
++
++def build_designation_map():
++    rows = []
++    for kind, (code, note) in sorted(KIND_TO_CODE.items()):
++        row = {"kind": kind, "code": code, "note": note}
++        if code is None:
++            row["code"] = None
++            row["refused"] = True
++        rows.append(row)
++    return rows, {
++        "table": "designation_map",
++        "title": "Соответствие вида изделия буквенному коду ГОСТ 2.710-81",
++        "document": "составлено по таблице кодов " + GOST_2710["document"],
++        "tables": ["таблица буквенных кодов ГОСТ 2.710-81"],
++        "url": GOST_2710["url"],
++        "publisher": GOST_2710["publisher"],
++        "retrieved": RETRIEVED,
++        "row_count": len(rows),
++        "conditions": "Один вид изделия — один код; где кода нет, стоит null.",
++        "note": ("Это соответствие составлено, а не процитировано: в ГОСТ "
++                 "2.710-81 коды заданы для видов элементов схемы, а не для "
++                 "видов изделий щита. Для УЗО кода в стандарте нет — расчёт "
++                 "маркировки по нему отказывает, а не берёт код автоматического "
++                 "выключателя."),
++        "legal": "Соответствие составлено по открытой публикации стандарта.",
++        "derived": True,
++    }
++
++
+ # --------------------------------------------------------------------------
+ # demand_factors: ПУЭ 7-е издание, п. 6.3.39
+ # --------------------------------------------------------------------------
+@@ -634,6 +775,7 @@ def main(argv=None):
+     parser.add_argument("--gost-50345", help="HTML ГОСТ Р 50345-2010")
+     parser.add_argument("--catalog", help="JSON каталога IEK")
+     parser.add_argument("--pue", help="PDF ПУЭ 7-го издания")
++    parser.add_argument("--gost-2710", help="HTML ГОСТ 2.710-81")
+     parser.add_argument("--out", default=OUT_DIR)
+     args = parser.parse_args(argv)
+ 
+@@ -659,6 +801,13 @@ def main(argv=None):
+     if args.pue:
+         rows, meta = parse_demand_factors(args.pue)
+         written.append(write_table("demand_factors", meta, rows))
++    if args.gost_2710:
++        with open(args.gost_2710, encoding="utf-8", errors="replace") as handle:
++            html = handle.read()
++        rows, meta = parse_designations(html)
++        written.append(write_table("designations", meta, rows))
++        rows, meta = build_designation_map()
++        written.append(write_table("designation_map", meta, rows))
+     if args.catalog:
+         rows, meta = build_breakers(args.catalog)
+         written.append(write_table("breakers", meta, rows))

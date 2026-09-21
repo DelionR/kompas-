@@ -1,0 +1,1289 @@
+{
+ "rows": [
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 6.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 10.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 16.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 20.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 25.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 32.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 40.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 50.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 3.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 63.0,
+   "trip_curve": "B",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 6.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 10.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 16.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 20.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 25.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 32.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 40.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 50.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 5.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 63.0,
+   "trip_curve": "C",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 6.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 10.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 16.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 20.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 25.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…60 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 60.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 32.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 40.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 50.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  },
+  {
+   "points": [
+    {
+     "meaning": "без расцепления в течение 3600 с",
+     "multiple": 1.13,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 3600.0,
+     "test": "a"
+    },
+    {
+     "meaning": "расцепление в течение 3600 с",
+     "multiple": 1.45,
+     "result": "trip",
+     "t_max_s": 3600.0,
+     "t_min_s": null,
+     "test": "b"
+    },
+    {
+     "meaning": "расцепление в интервале 1…120 с",
+     "multiple": 2.55,
+     "result": "trip",
+     "t_max_s": 120.0,
+     "t_min_s": 1.0,
+     "test": "c"
+    },
+    {
+     "meaning": "без расцепления в течение 0,1 с",
+     "multiple": 10.0,
+     "result": "no_trip",
+     "t_max_s": null,
+     "t_min_s": 0.1,
+     "test": "d"
+    },
+    {
+     "meaning": "расцепление в течение 0,1 с",
+     "multiple": 20.0,
+     "result": "trip",
+     "t_max_s": 0.1,
+     "t_min_s": null,
+     "test": "e"
+    }
+   ],
+   "rating_a": 63.0,
+   "trip_curve": "D",
+   "units": "multiple — кратный ток I/In; t_min_s/t_max_s — границы времени, с"
+  }
+ ],
+ "source": {
+  "conditions": "Контрольная температура калибровки 30 °С. Токи заданы кратными номинальному: 1,13·In, 1,45·In, 2,55·In и пороги типов B/C/D.",
+  "document": "ГОСТ Р 50345-2010 (МЭК 60898-1:2003)",
+  "legal": "Числовые значения из открытой публикации стандарта (files.stroyinf.ru). Для ответственных ответов берите паспортную кривую изготовителя.",
+  "note": "Это границы, установленные стандартом для испытаний, а не паспортная кривая изготовителя: внутри коридора реальное время отключения неизвестно. Отсутствующая граница оставлена null — там, где стандарт нормирует только «не отключается» или только «отключается», второй границы нет.",
+  "publisher": "ФГУП «СТАНДАРТИНФОРМ», публикация files.stroyinf.ru",
+  "retrieved": "2026-09-21",
+  "row_count": 27,
+  "table": "trip_curves",
+  "tables": [
+   "Таблица время-токовых испытаний (пп. a-e)"
+  ],
+  "title": "Время-токовые характеристики автоматических выключателей (границы по стандарту)",
+  "url": "https://files.stroyinf.ru/Data2/1/4293804/4293804289.htm"
+ },
+ "table": "trip_curves"
+}

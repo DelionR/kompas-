@@ -1,0 +1,1470 @@
+diff --git a/VERSION.json b/VERSION.json
+index 87471c3..4afdc49 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -4,7 +4,7 @@
+   "protocol_version": "1.1.11",
+   "mcp_protocol_version": "2025-11-25",
+   "mcp_supported_protocol_versions": ["2025-06-18", "2025-11-25"],
+-  "mcp_tool_count": 38,
++  "mcp_tool_count": 40,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -31,6 +31,8 @@
+     "kompas_mate_read",
+     "kompas_mate_create",
+     "kompas_artifact_check",
++    "kompas_dialogs",
++    "kompas_version_check",
+     "kompas_model_bbox",
+     "kompas_set_view",
+     "kompas_fit_view",
+diff --git a/config/agent_config.example.json b/config/agent_config.example.json
+index f854524..894f679 100644
+--- a/config/agent_config.example.json
++++ b/config/agent_config.example.json
+@@ -32,6 +32,14 @@
+     "allow_keyboard_rotation_fallback": true,
+     "max_rotation_steps_per_call": 12
+   },
++  "kompas": {
++    "version_matrix": {
++      "entries": [],
++      "default_level": "unverified",
++      "guarded_actions": [],
++      "notes": "Формат записи: {\"pattern\": \"25.*\", \"level\": \"certified|targeted|experimental|unsupported\", \"notes\": \"...\"}. Пустая матрица означает «не проверено», а не «поддерживается». Действия из guarded_actions блокируются, пока версия не попадёт в certified или targeted."
++    }
++  },
+   "safety": {
+     "protected_roots": [
+       "C:\\KOMPAS_AI_WORKSPACE\\00_SOURCE",
+diff --git b/docs/WAVE3_CHANGES.md b/docs/WAVE3_CHANGES.md
+new file mode 100644
+index 0000000..f50f4b5
+--- /dev/null
++++ b/docs/WAVE3_CHANGES.md
+@@ -0,0 +1,165 @@
++# Волна 3: сторож модальных диалогов и матрица версий
++
++Изменения третьего приоритета: мост перестал зависеть от застрявшего окна,
++которое никто не видит, и начал сверять версию КОМПАСа с тем, что реально
++проверено.
++
++Всё в этой волне проверяется **без КОМПАСа**: 41 тест в `tests/test_wave3.py`
++плюс 42 теста волны 1, 39 тестов волны 2 и контрактные тесты.
++
++## Проверка
++
++```powershell
++cd <bridge_root>
++python -m unittest discover -s tests -p "test_wave3.py" -v
++python -m unittest discover -s tests -p "test_wave1.py"
++python -m unittest discover -s tests -p "test_wave2.py"
++python tests\test_mcp_stdio.py
++powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\RUN_STATIC_TESTS.ps1 -Root (Resolve-Path .)
++```
++
++## Что сделано
++
++### 1. Сторож модальных диалогов (C2)
++
++**Было.** Застрявший модальный диалог останавливал весь мост: COM-вызовы
++начинали висеть, воркер уходил в таймаут, и агент не мог отличить «операция
++не удалась» от «КОМПАС ждёт нажатия кнопки». В `winui.py` был только поиск
++главного окна.
++
++**Стало.** `src/dialogs.py` (классификация) и две функции в `src/winui.py`
++(перечисление и закрытие), плюс инструмент `kompas_dialogs`.
++
++Ключевое решение: **сторож не использует COM**. Если КОМПАС висит на
++модальном окне, обращение через Automation повиснет на том самом окне,
++которое нужно продиагностировать. Поэтому процесс ищется через `tasklist`,
++а окна - через Win32 `EnumWindows` с фильтром по классу диалога `#32770`.
++
++Политика из трёх уровней:
++
++| Политика | Что попадает | Что делает мост |
++|---|---|---|
++| `close` | информационные окна с единственной кнопкой подтверждения | может закрыть по `apply=true` |
++| `report` | вопросы, сохранение, выбор файла, ошибки, предупреждения, настройки, **неизвестные окна** | только сообщает |
++| `ignore` | окна прогресса, скрытые окна, окна не-диалоговых классов | не трогает |
++
++Почему так: у окна «Сохранить изменения?» крестик означает «не сохранять»,
++и автозакрытие такого окна - это потеря данных. Поэтому всё, что связано с
++выбором, сохранением и файлами, получает `report`, а незнакомое окно тоже
++попадает в `report`, а не закрывается наугад.
++
++Ограничения соблюдены явно: `apply` по умолчанию `false` (инструмент только
++читает), за вызов закрывается не больше трёх окон, остальные честно
++перечисляются как отложенные.
++
++### 2. Матрица подтверждённых версий (C5)
++
++**Было.** Версия КОМПАСа читалась только для отчёта в `kompas_status`.
++Мост вызывал десятки интерфейсов API5/API7, не зная, существуют ли они в
++этой сборке. На неподтверждённой версии инструмент мог сделать не то, а
++агент не имел способа отличить «работает» от «повезло».
++
++**Стало.** `src/version_matrix.py` и инструмент `kompas_version_check`.
++
++Матрица живёт в конфиге, в секции `kompas.version_matrix`:
++
++```json
++{
++  "kompas": {
++    "version_matrix": {
++      "entries": [
++        {"pattern": "25.*", "level": "certified", "notes": "проверено на v25 x64"}
++      ],
++      "default_level": "unverified",
++      "guarded_actions": ["mate.create"]
++    }
++  }
++}
++```
++
++Уровни: `certified`, `targeted`, `experimental`, `unsupported`, `unverified`.
++Действия из `guarded_actions` разрешены только на `certified` и `targeted`;
++на остальных поднимается `kompas_version_not_verified` с объяснением, что
++делать.
++
++Три решения, которые стоит отметить:
++
++* **Пустая матрица ничего не запрещает.** Уровень по умолчанию -
++  `unverified`, то есть «не проверено», а не «запрещено». Поведение
++  существующей установки не меняется, пока оператор не заполнит матрицу.
++* **Номера версий не выдуманы.** Матрица - утверждение оператора «на этой
++  сборке проверено», а не догадка автора кода. Именно поэтому в примере
++  конфига `entries` пуст.
++* **Версия запрашивается только при защите.** `guard_for_session` сначала
++  смотрит, есть ли действие в `guarded_actions`, и только потом обращается
++  к COM. На обычных вызовах накладных расходов нет, а результат кэшируется
++  в сессии. Тест проверяет это счётчиком обращений: для незащищённого
++  действия `status()` не вызывается ни разу.
++
++Разбор версии учитывает, что в названии продукта есть посторонние цифры:
++`KOMPAS-3D V25.0` → `(25, 0)`, `25.0.0.1234` → `(25, 0, 0, 1234)`,
++а `KOMPAS-3D` без номера не разбирается вообще (и это попадает в `warnings`,
++а не превращается в догадку).
++
++## Изменения, заметные оператору
++
++1. **Поверхность выросла с 38 до 40 инструментов:** `kompas_dialogs`,
++   `kompas_version_check`. `VERSION.json` обновлён.
++2. **Появилась секция `kompas.version_matrix` в конфиге.** Отсутствие секции
++   безопасно: матрица пуста, ничего не блокируется.
++3. **Заполнив `guarded_actions`, вы можете заблокировать себе работу.**
++   Действие из этого списка на версии вне `certified`/`targeted` будет
++   отклоняться. Это и есть цель, но знать об этом нужно заранее.
++4. **`kompas_dialogs` по умолчанию ничего не закрывает.** Закрытие окон
++   требует `apply=true`, и это осознанное действие, а не побочный эффект
++   диагностики.
++5. **Тесты `test_wave1.py` и `test_wave2.py` обновлены осознанно** -
++   ожидаемое число инструментов теперь 40. Это их работа: заставить заметить
++   изменение поверхности.
++6. **Версия сборки снова не поднята** - осталась `1.1.14_CAP2`, по той же
++   причине, что и в волне 2: строка зашита в десяти местах, включая сборку
++   golden-пакета.
++
++## Чего в этой волне нет
++
++* чертежи, основная надпись, экспорт DXF как операция (B2);
++* спецификация как документ (B3);
++* сам экспорт STEP через COM (B4) - контроль результата сделан в волне 2;
++* устойчивые ссылки на объекты (D2), сухой прогон для всех мутирующих
++  инструментов (D4), checkpoint/rollback (D5);
++* самокалибровка кадра скриншота (D6);
++* упаковка, CI, лицензия (E1-E3).
++
++Отдельно про сторож: шаблоны заголовков неполны по определению, потому что
++живого стенда с диалогами КОМПАСа под рукой не было. Незнакомое окно
++получает `report` - безопасное поведение, но список шаблонов стоит
++пополнять по мере реальных наблюдений.
++
++Актуальный список приоритетов - в отчёте `KOMPAS-3D_AI_Bridge_audit_plan.html`.
++
++## Состав изменений
++
++Новые файлы:
++
++| Файл | Назначение |
++|---|---|
++| `src/dialogs.py` | классификация модальных окон и политика закрытия |
++| `src/version_matrix.py` | разбор версии, матрица поддержки, защита действий |
++| `tests/test_wave3.py` | 41 тест без КОМПАСа |
++| `docs/WAVE3_CHANGES.md` | этот документ |
++
++Изменённые файлы:
++
++| Файл | Что изменилось |
++|---|---|
++| `src/winui.py` | `enumerate_dialogs()`, `close_dialog()`, фильтр по классу диалога |
++| `src/settings.py` | секция `kompas.version_matrix` в настройках |
++| `src/kompas_session.py` | кэш версии КОМПАСа в сессии |
++| `src/worker.py` | проверка версии перед защищёнными действиями |
++| `src/engineering_capabilities.py` | действия `dialogs.watch`, `version.check` |
++| `mcp/tools_catalog.py` | два новых инструмента и их маршрутизация |
++| `VERSION.json` | 40 инструментов |
++| `config/agent_config.example.json` | пример секции матрицы версий |
++| `tests/test_wave1.py`, `tests/test_wave2.py` | ожидаемое число инструментов 40 |
++| `tests/RUN_STATIC_TESTS.ps1` | шаг волны 3, новые обязательные файлы |
++| `skills/kompas-engineering/SKILL.md` | правила работы с диалогами и версиями |
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index fc893a2..af4c425 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -87,6 +87,8 @@ TOOLS = [
+     {"name":"kompas_mate_read","description":"Read the mate constraints of the active assembly through the native IMateConstraint collection: kind, direction, numeric value, fixed flag and participant names. Call it before adding mates so you work from the real constraint set. Reports which interface name actually resolved, and returns interface.confirmed=false instead of an empty list when no known collection name matched.","inputSchema":{"type":"object","properties":{"max_items":{"type":"integer","minimum":1,"maximum":2000,"default":200}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_mate_create","description":"Create exactly ONE native mate constraint between two existing components of a closed direct-work *_AGENT_COPY.a3d. kind=distance or angle require value in mm or degrees; coincident, parallel, perpendicular, concentric and tangent must not carry a value. Performs a byte transaction snapshot, exact active-path checks, mate-count growth check, Save->Close->Reopen persistence verification, and restores the previously active document. Refuses with mate_create_interface_not_available when no known create method resolves, instead of reporting success.","inputSchema":{"type":"object","required":["assembly_filename","kind","selector_a","selector_b"],"properties":{"assembly_filename":{"type":"string","minLength":1},"kind":{"type":"string","enum":["coincident","parallel","perpendicular","concentric","tangent","distance","angle"]},"selector_a":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"selector_b":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"value":{"type":"number","exclusiveMinimum":0},"align":{"type":"string","enum":["aligned","opposite","auto"],"default":"auto"},"fixed":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+     {"name":"kompas_artifact_check","description":"Verify an exported artifact by its content instead of trusting that the export call returned without error: STEP header/end markers plus entity and solid counts, DXF sections plus entity count, PDF page count, PNG dimensions. Use it after any export or kompas_run_job that produced a file, because a failed KOMPAS export normally raises nothing at all.","inputSchema":{"type":"object","required":["relative_path"],"properties":{"relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_dialogs","description":"Scan KOMPAS for stuck modal dialogs and report which of them block the bridge. Deliberately avoids COM, because an Automation call would hang on the very dialog being diagnosed. apply=false only reports; apply=true closes at most three informational dialogs whose policy is close. Dialogs that ask to save, choose or confirm are never closed automatically - they are reported for a human to decide.","inputSchema":{"type":"object","properties":{"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++    {"name":"kompas_version_check","description":"Read the running KOMPAS version and its verdict against the version support matrix from config (kompas.version_matrix): matched pattern, support level, and which actions are guarded. Call it before trusting a write on an unfamiliar KOMPAS build. An empty matrix means 'not verified', not 'supported'. Pass version explicitly to evaluate a build without a running KOMPAS.","inputSchema":{"type":"object","properties":{"version":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_model_bbox","description":"Read the exact native bounding box of the active top-level model. Use it to sanity-check overall size before and after geometry edits. It is a whole-model measure and is not a substitute for the per-component bounding box returned by kompas_component_info.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+     {"name":"kompas_fit_view","description":"Fit the active 3D model in the KOMPAS viewport using API5 ZoomPrevNextOrAll(2). Call it before kompas_viewport_capture when the model may be out of frame or off-screen. It changes only the camera, never geometry, and performs no Save.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+@@ -140,6 +142,8 @@ ACTION_MAP = {
+     "kompas_mate_read": ("mate.read", lambda a: a),
+     "kompas_mate_create": ("mate.create", lambda a: a),
+     "kompas_artifact_check": ("artifact.check", lambda a: a),
++    "kompas_dialogs": ("dialogs.watch", lambda a: a),
++    "kompas_version_check": ("version.check", lambda a: a),
+     "kompas_model_bbox": ("model.bbox", lambda a: {}),
+     "kompas_set_view": ("view.set", lambda a: a),
+     "kompas_fit_view": ("view.fit", lambda a: {}),
+diff --git a/skills/kompas-engineering/SKILL.md b/skills/kompas-engineering/SKILL.md
+index 17381e7..607ce45 100644
+--- a/skills/kompas-engineering/SKILL.md
++++ b/skills/kompas-engineering/SKILL.md
+@@ -52,6 +52,19 @@ Read them from the model/source requirements or explicitly mark them unresolved.
+ - `ok: false` means the export failed. Fix the cause; do not hand the file to the user.
+ - The check is structural only. When STEP is a deliverable, additionally open/import the exported STEP and compare overall dimensions against the model - `kompas_artifact_check` does not prove geometry equivalence.
+ 
++## Stuck modal dialogs
++- A stuck modal dialog freezes the whole bridge: COM calls hang and every later tool times out. When a call times out with no obvious cause, run `kompas_dialogs` before retrying anything.
++- `kompas_dialogs` avoids COM deliberately: an Automation call would hang on the very dialog being diagnosed. It works even when KOMPAS is unresponsive.
++- Only informational dialogs are closable. Dialogs that ask to save, choose or confirm are never closed automatically - report them and stop. The decision belongs to the human.
++- `apply=true` closes at most three windows per call. Do not raise that limit by calling it in a loop.
++- If the scan reports a blocking dialog, do not continue the engineering task as if it succeeded.
++
++## KOMPAS version
++- Before trusting a write on an unfamiliar KOMPAS build, run `kompas_version_check`. An empty matrix means "not verified", not "supported".
++- The matrix lives in `config/agent_config.json` under `kompas.version_matrix` and is filled by the operator. Do not add entries for builds you have not actually exercised.
++- Actions listed in `guarded_actions` are refused on unverified versions with the code `kompas_version_not_verified`. Do not work around it by editing the config.
++- When an interface was resolved by trying known name variants, record the one that worked in the matrix notes so the next session does not rediscover it.
++
+ ## Temporary visual state
+ `hide`, `isolate`, view rotation, and similar operations are inspection aids. Restore temporary visibility before saving unless changed visibility is explicitly part of the requested deliverable.
+ 
+@@ -92,6 +105,7 @@ API QA should cover, as applicable:
+ - save/reopen persistence;
+ - mate set: count before and after each added mate, kind and value readback;
+ - exported artifacts verified with `kompas_artifact_check`, not by the absence of an export error;
++- blocking modal dialogs cleared or reported before the task is declared finished;
+ - specifications and exports when required.
+ 
+ Vision QA should cover, as applicable:
+diff --git b/src/dialogs.py b/src/dialogs.py
+new file mode 100644
+index 0000000..c60558c
+--- /dev/null
++++ b/src/dialogs.py
+@@ -0,0 +1,231 @@
++"""Сторож модальных диалогов КОМПАСа.
++
++Зачем этот модуль существует
++---------------------------
++Застрявший модальный диалог останавливает весь мост: COM-вызовы к KOMPAS
++начинают висеть, воркер уходит в таймаут, а агент не понимает, почему
++последняя операция перестала отвечать. Причина почти всегда одна - окно,
++которое ждёт нажатия кнопки человеком.
++
++Здесь живёт только решение «что это за окно и можно ли его трогать».
++Сам Win32-слой (перечисление и закрытие) остаётся в ``winui.py``, поэтому
++классификатор проверяется тестами без КОМПАСа и без окон вообще.
++
++Границы честности
++-----------------
++Автоматическое закрытие диалогов опасно: у окна «Сохранить изменения?»
++крестик означает «не сохранять», и это потеря данных. Поэтому:
++
++* политика ``close`` выдаётся только информационным окнам с одной кнопкой;
++* всё, что связано с выбором, сохранением или файлами, получает ``report`` -
++  его закрывает человек, а не мост;
++* по умолчанию инструмент ничего не закрывает: ``apply`` нужно запросить явно;
++* за один вызов закрывается не больше ``MAX_CLOSE_PER_CALL`` окон.
++"""
++from __future__ import annotations
++
++import re
++from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
++
++# Стандартный класс Win32-диалога. Окна этого класса - кандидаты на сторож.
++DIALOG_CLASS = "#32770"
++
++CLOSE = "close"
++REPORT = "report"
++IGNORE = "ignore"
++
++MAX_CLOSE_PER_CALL = 3
++
++# Идентификатор, шаблон по нормализованному заголовку, политика, причина.
++# Порядок важен: первое совпадение выигрывает, поэтому опасные шаблоны
++# (сохранение, вопрос) стоят выше безобидных.
++RULES: Tuple[Tuple[str, str, str, str], ...] = (
++    (
++        "save_changes",
++        r"(сохранить изменения|сохранить файл|save changes|save file|unsaved)",
++        REPORT,
++        "закрытие крестиком означает отказ от сохранения - решает человек",
++    ),
++    (
++        "question",
++        r"(вопрос|подтвердите|подтверждение|question|confirm|are you sure)",
++        REPORT,
++        "диалог выбора: у кнопок разный смысл, автозакрытие недопустимо",
++    ),
++    (
++        "file_dialog",
++        r"(сохранить как|открыть файл|выбор файла|save as|open file|select file)",
++        REPORT,
++        "диалог работы с файлами требует решения человека",
++    ),
++    (
++        "error_ack",
++        r"^(ошибка|error|критическая ошибка|fatal)",
++        REPORT,
++        "ошибку должен прочитать человек, а не гасить мост",
++    ),
++    (
++        "warning_ack",
++        r"^(предупреждение|внимание|warning|caution)",
++        REPORT,
++        "предупреждение может требовать прочтения перед продолжением",
++    ),
++    (
++        "info_message",
++        r"^(сообщение|информация|сведения|information|message|note)$",
++        CLOSE,
++        "информационное окно с единственной кнопкой подтверждения",
++    ),
++    (
++        "progress",
++        r"(ожидание|выполняется|пожалуйста подождите|please wait|processing)",
++        IGNORE,
++        "окно прогресса закроется само; вмешательство только навредит",
++    ),
++    (
++        "options",
++        r"(параметры|настройки|конфигурация|options|preferences|settings)",
++        REPORT,
++        "окно настроек открыто человеком намеренно",
++    ),
++)
++
++_STRIP_PREFIXES = (
++    "компас-3d",
++    "компас 3d",
++    "kompas-3d",
++    "kompas 3d",
++    "kompas",
++    "компас",
++)
++
++_WHITESPACE = re.compile(r"\s+")
++_TRAILING = re.compile(r"[\s.:!…]+$")
++
++
++def normalize_title(title: Any) -> str:
++    """Привести заголовок окна к виду, по которому работают правила."""
++    text = str(title or "").strip()
++    text = _WHITESPACE.sub(" ", text)
++    lowered = text.lower()
++    for prefix in _STRIP_PREFIXES:
++        if lowered.startswith(prefix):
++            lowered = lowered[len(prefix):].strip(" -—–:")
++            break
++    lowered = _TRAILING.sub("", lowered)
++    return lowered.strip()
++
++
++def classify(
++    title: Any,
++    class_name: str = "",
++    visible: bool = True,
++    enabled: Optional[bool] = None,
++) -> Dict[str, Any]:
++    """Определить, что это за окно и что с ним можно делать."""
++    normalized = normalize_title(title)
++    matched: Optional[Tuple[str, str, str]] = None
++    for dialog_id, pattern, policy, reason in RULES:
++        if re.search(pattern, normalized):
++            matched = (dialog_id, policy, reason)
++            break
++
++    if matched is None:
++        dialog_id, policy, reason = (
++            "unknown",
++            REPORT,
++            "правило не найдено: неизвестное окно не закрывается автоматически",
++        )
++    else:
++        dialog_id, policy, reason = matched
++
++    is_dialog = str(class_name or "") == DIALOG_CLASS
++    if not is_dialog:
++        policy = IGNORE
++        reason = f"класс окна {class_name or '<unknown>'} не является диалогом Win32"
++
++    if not visible:
++        policy = IGNORE
++        reason = "окно не отображается"
++
++    return {
++        "title": str(title or ""),
++        "normalized_title": normalized,
++        "class_name": str(class_name or ""),
++        "dialog_id": dialog_id,
++        "policy": policy,
++        "reason": reason,
++        "visible": bool(visible),
++        "enabled": enabled,
++        "is_dialog_class": is_dialog,
++        "closable": policy == CLOSE,
++        "blocking": policy == REPORT and bool(visible) and enabled is not False,
++    }
++
++
++def summarize(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
++    """Сводка по просканированным окнам."""
++    counts = {CLOSE: 0, REPORT: 0, IGNORE: 0}
++    blocking: List[Dict[str, Any]] = []
++    closable: List[Dict[str, Any]] = []
++    for row in rows:
++        policy = str(row.get("policy") or IGNORE)
++        counts[policy] = counts.get(policy, 0) + 1
++        if row.get("blocking"):
++            blocking.append(row)
++        if row.get("closable"):
++            closable.append(row)
++    return {
++        "window_count": len(rows),
++        "counts": counts,
++        "blocking_count": len(blocking),
++        "closable_count": len(closable),
++        "blocking": blocking,
++        "closable": closable,
++    }
++
++
++def dismiss_plan(rows: Sequence[Dict[str, Any]], apply: bool = False) -> Dict[str, Any]:
++    """Решить, какие окна закрывать, и объяснить отказ по каждому остальному."""
++    closable = [row for row in rows if row.get("closable")]
++    skipped = [
++        {"hwnd": row.get("hwnd"), "title": row.get("title"), "policy": row.get("policy"), "reason": row.get("reason")}
++        for row in rows
++        if not row.get("closable")
++    ]
++    selected = closable[:MAX_CLOSE_PER_CALL]
++    deferred = closable[MAX_CLOSE_PER_CALL:]
++
++    return {
++        "apply": bool(apply),
++        "selected": selected,
++        "selected_count": len(selected),
++        "deferred_count": len(deferred),
++        "deferred": [
++            {"hwnd": row.get("hwnd"), "title": row.get("title")} for row in deferred
++        ],
++        "skipped_count": len(skipped),
++        "skipped": skipped[:20],
++        "limit": MAX_CLOSE_PER_CALL,
++    }
++
++
++def describe_policy() -> Dict[str, Any]:
++    """Описание политики - для ответа инструмента и документации."""
++    return {
++        "dialog_class": DIALOG_CLASS,
++        "max_close_per_call": MAX_CLOSE_PER_CALL,
++        "default_action": "scan_only",
++        "rules": [
++            {"dialog_id": dialog_id, "pattern": pattern, "policy": policy, "reason": reason}
++            for dialog_id, pattern, policy, reason in RULES
++        ],
++        "limits": [
++            "Закрываются только окна политики close: информационные сообщения "
++            "с единственной кнопкой подтверждения.",
++            "Диалоги выбора, сохранения и работы с файлами не закрываются никогда - "
++            "их решение остаётся за человеком.",
++            "Список шаблонов неполон по определению: незнакомое окно получает "
++            "политику report, а не закрывается наугад.",
++        ],
++    }
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 9a44c68..41e158f 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -20,6 +20,8 @@ from bom_tools import bom_read
+ from component_pattern_tools import component_pattern_linear
+ from mate_tools import mate_create, mate_read
+ from artifact_check import artifact_check
++from dialogs import classify, describe_policy, dismiss_plan, summarize
++from version_matrix import classify_version
+ from view_tools import set_view, fit, rotate, visibility, projections
+ 
+ 
+@@ -158,6 +160,98 @@ def create_component_linear_pattern(s, p): return ok("component.pattern_linear",
+ def read_mates(s, p): return ok("mate.read", mate_read(s, p.get("max_items", 200)))
+ def create_mate(s, p): return ok("mate.create", mate_create(s, p["assembly_filename"], p["kind"], p["selector_a"], p["selector_b"], p.get("value"), p.get("align", "auto"), p.get("fixed", False)))
+ def check_artifact(s, p): return ok("artifact.check", artifact_check(s.root, p["relative_path"]))
++
++
++def dialogs_watch(s, p):
++    """Сторож модальных диалогов. Работает без COM: если КОМПАС висит на
++    модальном окне, обращение через Automation тоже повиснет, поэтому
++    процесс ищется через tasklist, а окна - через Win32."""
++    from winui import close_dialog, enumerate_dialogs, kompas_pids
++
++    warnings = []
++    try:
++        pids = sorted(kompas_pids())
++    except Exception as exc:
++        pids = []
++        warnings.append("kompas_process_lookup_failed: " + type(exc).__name__)
++
++    if not pids:
++        warnings.append(
++            "KOMPAS.exe не найден среди процессов. Если система запущена под "
++            "другим пользователем или с повышением прав, сторож её не увидит."
++        )
++
++    classified = []
++    for pid in pids:
++        try:
++            windows = enumerate_dialogs(pid)
++        except Exception as exc:
++            warnings.append(f"enumeration_failed_pid_{pid}: {type(exc).__name__}")
++            continue
++        for row in windows:
++            verdict = classify(
++                row.get("title"),
++                row.get("class_name", ""),
++                bool(row.get("visible")),
++                bool(row.get("enabled")),
++            )
++            classified.append({**row, **verdict})
++
++    summary = summarize(classified)
++    apply_changes = bool(p.get("apply", False))
++    plan = dismiss_plan(classified, apply=apply_changes)
++
++    closed = []
++    if apply_changes:
++        for item in plan["selected"]:
++            try:
++                closed.append(close_dialog(item["hwnd"]))
++            except Exception as exc:
++                closed.append({
++                    "hwnd": item.get("hwnd"),
++                    "closed": False,
++                    "reason": type(exc).__name__,
++                })
++
++    return ok("dialogs.watch", {
++        "kompas_pids": pids,
++        "dialog_count": len(classified),
++        "dialogs": classified[:50],
++        "summary": summary,
++        "plan": plan,
++        "applied": apply_changes,
++        "closed": closed,
++        "policy": describe_policy(),
++        "read_only": not apply_changes,
++        "saved": False,
++        "warnings": warnings,
++    })
++
++
++def version_check(s, p):
++    """Версия КОМПАСа и её место в матрице подтверждённых версий."""
++    from settings import settings_for
++
++    matrix = settings_for(s.root).version_matrix
++    version = str(p.get("version") or "").strip()
++    warnings = []
++    if not version:
++        try:
++            version = str(s.status().get("version") or "")
++        except Exception as exc:
++            warnings.append("kompas_version_unavailable: " + type(exc).__name__)
++
++    verdict = classify_version(version, matrix)
++    verdict["warnings"] = list(verdict.get("warnings") or []) + warnings
++    verdict["matrix"] = {
++        "entries": list(matrix.get("entries") or [])[:20],
++        "default_level": matrix.get("default_level"),
++        "guarded_actions": list(matrix.get("guarded_actions") or []),
++        "notes": matrix.get("notes") or "",
++        "source": str(settings_for(s.root).config_path),
++    }
++    verdict["read_only"] = True
++    return ok("version.check", verdict)
+ def bbox(s, p): return ok("model.bbox", model_bbox(s))
+ def refs(s, p): return ok("qa.references", references_qa(s, p.get("package_root"), int(p.get("max_depth", 8))))
+ def view_projections(s, p): return ok("view.projections", {"projections": projections(s)})
+@@ -197,6 +291,8 @@ registry = {
+     "mate.read": read_mates,
+     "mate.create": create_mate,
+     "artifact.check": check_artifact,
++    "dialogs.watch": dialogs_watch,
++    "version.check": version_check,
+     "model.bbox": bbox,
+     "qa.references": refs,
+     "view.projections": view_projections,
+diff --git a/src/kompas_session.py b/src/kompas_session.py
+index a904a8d..4b8d96f 100644
+--- a/src/kompas_session.py
++++ b/src/kompas_session.py
+@@ -9,6 +9,9 @@ class KompasSession:
+         self.app = None
+         self.last_document_path = None
+         self.visibility_snapshot = None
++        # Кэш версии КОМПАСа: заполняется только когда действие под защитой
++        # матрицы версий, чтобы не платить COM-обращением за каждый вызов.
++        self.kompas_version = None
+ 
+     def connect(self, visible=True):
+         """
+diff --git a/src/settings.py b/src/settings.py
+index 714526c..f7ada7c 100644
+--- a/src/settings.py
++++ b/src/settings.py
+@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any, Dict, List, Mapping, Sequence, Tuple
+ 
++from version_matrix import load_matrix
++
+ CONFIG_RELPATH = Path("config") / "agent_config.json"
+ 
+ # Значения по умолчанию повторяют то, что раньше было захардкожено в safety.py,
+@@ -101,6 +103,10 @@ class Settings:
+     # мог уехать ответ на несколько сотен килобайт.
+     compact_threshold_bytes: int = 60_000
+     compact_max_items: int = 200
++    # Матрица подтверждённых версий КОМПАСа: какие сборки проверены и какие
++    # действия запрещено выполнять на непроверенной версии. Пустая матрица
++    # означает «не проверено», а не «работает», и ничего не блокирует.
++    version_matrix: Mapping[str, Any] = field(default_factory=dict)
+     warnings: Tuple[str, ...] = ()
+ 
+     # -- удобные производные ------------------------------------------------
+@@ -127,6 +133,8 @@ class Settings:
+             "mcp_tool_timeout_sec": self.mcp_tool_timeout_sec,
+             "job_timeout_max_sec": self.job_timeout_max_sec,
+             "compact_threshold_bytes": self.compact_threshold_bytes,
++            "version_matrix_entries": len(self.version_matrix.get("entries") or []),
++            "guarded_action_count": len(self.version_matrix.get("guarded_actions") or []),
+             "warnings": list(self.warnings),
+         }
+ 
+@@ -153,6 +161,8 @@ def read_settings(bridge_root: Any) -> Settings:
+     safety = raw.get("safety") if isinstance(raw.get("safety"), Mapping) else {}
+     viewport = raw.get("viewport") if isinstance(raw.get("viewport"), Mapping) else {}
+     view = raw.get("view") if isinstance(raw.get("view"), Mapping) else {}
++    kompas = raw.get("kompas") if isinstance(raw.get("kompas"), Mapping) else {}
++    version_matrix = load_matrix(kompas.get("version_matrix"))
+ 
+     protected = _as_path_tuple(safety.get("protected_roots"), root) or tuple(
+         _norm(_expand(p, root)) for p in DEFAULT_PROTECTED_ROOTS
+@@ -215,6 +225,7 @@ def read_settings(bridge_root: Any) -> Settings:
+         projection_indices=projections,
+         compact_threshold_bytes=_int("compact_threshold_bytes", 60_000, 1_000, 10_000_000),
+         compact_max_items=_int("compact_max_items", 200, 1, 100_000),
++        version_matrix=version_matrix,
+         warnings=tuple(warnings),
+     )
+ 
+diff --git b/src/version_matrix.py b/src/version_matrix.py
+new file mode 100644
+index 0000000..d775be0
+--- /dev/null
++++ b/src/version_matrix.py
+@@ -0,0 +1,226 @@
++"""Матрица подтверждённых версий КОМПАСа.
++
++Зачем этот модуль существует
++---------------------------
++Мост вызывает десятки COM-интерфейсов API5/API7, и часть из них появилась
++не в первой версии КОМПАСа. При этом версия системы нигде не проверялась:
++на неподтверждённой сборке КОМПАСа инструмент мог либо тихо сделать не то,
++либо уронить документ, а агент не имел способа отличить «работает» от
++«повезло».
++
++Здесь версия приложения сравнивается с матрицей, которую заполняет оператор,
++и для отмеченных действий включается запрет на неподтверждённой версии.
++
++Что важно в устройстве
++----------------------
++* По умолчанию матрица **пуста**, а уровень по умолчанию - ``unverified``.
++  Это значит «не проверено», а не «запрещено»: поведение существующей
++  установки не меняется, пока оператор не заполнит матрицу.
++* Список ``guarded_actions`` по умолчанию пуст, поэтому накладных расходов
++  на обычных вызовах нет: версия запрашивается у КОМПАСа только тогда,
++  когда действие действительно под защитой.
++* Мы не выдумываем номера версий. Матрица - это утверждение оператора
++  «на этой версии проверено», а не догадка автора кода.
++"""
++from __future__ import annotations
++
++import re
++from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
++
++# Уровни поддержки. Порядок - от наиболее подтверждённого к наименее.
++CERTIFIED = "certified"
++TARGETED = "targeted"
++EXPERIMENTAL = "experimental"
++UNSUPPORTED = "unsupported"
++UNVERIFIED = "unverified"
++
++SUPPORT_LEVELS: Tuple[str, ...] = (CERTIFIED, TARGETED, EXPERIMENTAL, UNSUPPORTED, UNVERIFIED)
++
++# Уровни, на которых действие под защитой разрешено.
++ALLOWED_LEVELS: Tuple[str, ...] = (CERTIFIED, TARGETED)
++
++DEFAULT_LEVEL = UNVERIFIED
++
++DEFAULT_MATRIX: Dict[str, Any] = {
++    "entries": [],
++    "default_level": DEFAULT_LEVEL,
++    "guarded_actions": [],
++    "notes": "",
++}
++
++
++def parse_version(text: Any) -> Optional[Tuple[int, ...]]:
++    """Вытащить версию из строки, которую вернул КОМПАС.
++
++    Строка приходит в разных видах: ``25.0.0.1234``, ``KOMPAS-3D V25.0``,
++    ``V25``. Первое правдоподобное число в диапазоне 10..99 считается
++    мажорной версией: в названии продукта есть посторонние цифры (``3D``),
++    поэтому брать просто первое число нельзя.
++    """
++    raw = str(text or "").strip()
++    if not raw:
++        return None
++
++    explicit = re.search(r"(?:[Vv]|версия|version)\s*(\d{1,2}(?:\.\d{1,5})*)", raw)
++    if explicit:
++        return tuple(int(part) for part in explicit.group(1).split("."))
++
++    # Версия без префикса: берём первую группу вида 25.0.0.1234, но только
++    # если её мажорный компонент правдоподобен - иначе это часть названия
++    # продукта вроде "3D".
++    dotted = re.search(r"(\d{1,2}(?:\.\d{1,5})+)", raw)
++    if dotted:
++        parts = dotted.group(1).split(".")
++        if 10 <= int(parts[0]) <= 99:
++            return tuple(int(part) for part in parts)
++
++    numbers = [int(token) for token in re.findall(r"\d+", raw)]
++    plausible = [number for number in numbers if 10 <= number <= 99]
++    if plausible:
++        return (plausible[0],)
++    return None
++
++
++def _match_pattern(version: Sequence[int], pattern: str) -> bool:
++    """Сравнить версию с маской вида ``25.*`` или ``24.1``."""
++    parts = [part.strip() for part in str(pattern or "").split(".") if part.strip()]
++    if not parts:
++        return False
++    for index, part in enumerate(parts):
++        if part == "*":
++            continue
++        if index >= len(version):
++            # В версии нет этого компонента - совпадение не подтверждено.
++            return False
++        if not part.isdigit():
++            return False
++        if int(part) != int(version[index]):
++            return False
++    return True
++
++
++def load_matrix(raw: Any) -> Dict[str, Any]:
++    """Провалидировать секцию матрицы из конфигурации."""
++    matrix = dict(DEFAULT_MATRIX)
++    if not isinstance(raw, Mapping):
++        return matrix
++
++    entries: List[Dict[str, Any]] = []
++    for item in raw.get("entries") or []:
++        if not isinstance(item, Mapping):
++            continue
++        pattern = str(item.get("pattern") or "").strip()
++        if not pattern:
++            continue
++        level = str(item.get("level") or DEFAULT_LEVEL).strip().lower()
++        if level not in SUPPORT_LEVELS:
++            level = UNVERIFIED
++        entries.append({
++            "pattern": pattern,
++            "level": level,
++            "notes": str(item.get("notes") or ""),
++        })
++    matrix["entries"] = entries
++
++    default_level = str(raw.get("default_level") or DEFAULT_LEVEL).strip().lower()
++    matrix["default_level"] = default_level if default_level in SUPPORT_LEVELS else DEFAULT_LEVEL
++
++    guarded: List[str] = []
++    for item in raw.get("guarded_actions") or []:
++        action = str(item or "").strip()
++        if action and action not in guarded:
++            guarded.append(action)
++    matrix["guarded_actions"] = guarded
++
++    matrix["notes"] = str(raw.get("notes") or "")
++    return matrix
++
++
++def classify_version(version_text: Any, matrix: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
++    """Сопоставить версию КОМПАСа с матрицей."""
++    resolved = load_matrix(matrix or {})
++    parsed = parse_version(version_text)
++    warnings: List[str] = []
++
++    level = str(resolved.get("default_level") or DEFAULT_LEVEL)
++    matched: Optional[Dict[str, Any]] = None
++
++    if parsed is None:
++        warnings.append(
++            "version_not_parsed: версия КОМПАСа не распознана в строке "
++            f"{str(version_text or '<empty>')!r}; принят уровень по умолчанию"
++        )
++    else:
++        for entry in resolved["entries"]:
++            if _match_pattern(parsed, entry["pattern"]):
++                matched = entry
++                level = entry["level"]
++                break
++
++    return {
++        "version_raw": str(version_text or ""),
++        "version_parsed": list(parsed) if parsed else None,
++        "level": level,
++        "matched_pattern": matched["pattern"] if matched else None,
++        "matched_notes": matched["notes"] if matched else "",
++        "verified": level in ALLOWED_LEVELS,
++        "guarded_actions": list(resolved["guarded_actions"]),
++        "entry_count": len(resolved["entries"]),
++        "warnings": warnings,
++        "limits": [
++            "Матрица отражает только то, что в неё внёс оператор. "
++            "Пустая матрица означает «не проверено», а не «работает».",
++            "Уровень certified не делает операцию безопасной: он лишь "
++            "говорит, что её проверяли на этой версии.",
++        ],
++    }
++
++
++def guard_action(
++    action: str,
++    version_text: Any,
++    matrix: Optional[Mapping[str, Any]] = None,
++) -> Dict[str, Any]:
++    """Проверить, разрешено ли действие на этой версии КОМПАСа."""
++    resolved = load_matrix(matrix or {})
++    if action not in resolved["guarded_actions"]:
++        return {"guarded": False, "allowed": True, "action": action}
++
++    verdict = classify_version(version_text, resolved)
++    if verdict["verified"]:
++        return {"guarded": True, "allowed": True, "action": action, "verdict": verdict}
++
++    raise RuntimeError(
++        "kompas_version_not_verified: "
++        f"action={action}; version={verdict['version_raw'] or '<unknown>'}; "
++        f"level={verdict['level']}; "
++        "действие перечислено в kompas.version_matrix.guarded_actions, "
++        "а версия не входит в подтверждённые уровни certified/targeted. "
++        "Проверьте работу на этой версии и внесите её в матрицу, "
++        "либо уберите действие из guarded_actions."
++    )
++
++
++def guard_for_session(root: Any, session: Any, action: str) -> Dict[str, Any]:
++    """Проверка перед вызовом действия. Версия читается только при защите.
++
++    Запрос версии - это COM-обращение, поэтому он происходит лишь тогда,
++    когда действие действительно перечислено в ``guarded_actions``.
++    """
++    from settings import settings_for
++
++    matrix = settings_for(root).version_matrix
++    if action not in load_matrix(matrix)["guarded_actions"]:
++        return {"guarded": False, "allowed": True, "action": action}
++
++    version = getattr(session, "kompas_version", None)
++    if version is None:
++        try:
++            version = str(session.status().get("version") or "")
++        except Exception as exc:
++            raise RuntimeError(
++                f"kompas_version_unavailable_for_guarded_action: {action}: {exc}"
++            ) from None
++        session.kompas_version = version
++
++    return guard_action(action, version, matrix)
+diff --git a/src/winui.py b/src/winui.py
+index 6d8de4f..34ecbd8 100644
+--- a/src/winui.py
++++ b/src/winui.py
+@@ -2,6 +2,8 @@ from __future__ import annotations
+ import ctypes, csv, io, subprocess, time
+ from ctypes import wintypes
+ 
++from dialogs import DIALOG_CLASS
++
+ USER32 = ctypes.windll.user32
+ 
+ 
+@@ -168,6 +170,74 @@ def find_kompas_window(min_width=300, min_height=200):
+     }
+ 
+ 
++def _window_text(hwnd) -> str:
++    handle = wintypes.HWND(int(hwnd))
++    length = USER32.GetWindowTextLengthW(handle)
++    buffer = ctypes.create_unicode_buffer(length + 1)
++    USER32.GetWindowTextW(handle, buffer, length + 1)
++    return buffer.value
++
++
++def _window_class(hwnd) -> str:
++    buffer = ctypes.create_unicode_buffer(256)
++    USER32.GetClassNameW(wintypes.HWND(int(hwnd)), buffer, 256)
++    return buffer.value
++
++
++def enumerate_dialogs(pid: int = 0, dialog_class: str = DIALOG_CLASS):
++    """Перечислить окна-диалоги Win32, принадлежащие процессу КОМПАСа.
++
++    Ограничение по классу окна намеренное: сторож работает только с
++    настоящими диалогами (#32770), а не со всеми окнами процесса, иначе
++    под раздачу попали бы панели и доки самого КОМПАСа.
++    """
++    rows = []
++
++    @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
++    def cb(hwnd, _):
++        owner_pid = wintypes.DWORD()
++        USER32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner_pid))
++        if pid and int(owner_pid.value) != int(pid):
++            return True
++        class_name = _window_class(hwnd)
++        if dialog_class and class_name != dialog_class:
++            return True
++        rows.append({
++            "hwnd": int(hwnd),
++            "pid": int(owner_pid.value),
++            "title": _window_text(hwnd),
++            "class_name": class_name,
++            "visible": bool(USER32.IsWindowVisible(wintypes.HWND(hwnd))),
++            "enabled": bool(USER32.IsWindowEnabled(wintypes.HWND(hwnd))),
++            "has_owner": bool(USER32.GetWindow(wintypes.HWND(hwnd), 4)),  # GW_OWNER
++        })
++        return True
++
++    USER32.EnumWindows(cb, 0)
++    return rows
++
++
++def close_dialog(hwnd: int, wait_seconds: float = 0.4):
++    """Закрыть диалог через WM_CLOSE и подтвердить, что окно действительно ушло."""
++    handle = wintypes.HWND(int(hwnd))
++    if not USER32.IsWindow(handle):
++        raise RuntimeError(f"invalid_window_handle: {hwnd}")
++    WM_CLOSE = 0x0010
++    posted = bool(USER32.PostMessageW(handle, WM_CLOSE, 0, 0))
++    deadline = time.time() + max(0.0, float(wait_seconds))
++    while time.time() < deadline:
++        if not USER32.IsWindow(handle):
++            return {"hwnd": int(hwnd), "closed": True, "method": "WM_CLOSE", "posted": posted}
++        time.sleep(0.05)
++    return {
++        "hwnd": int(hwnd),
++        "closed": False,
++        "method": "WM_CLOSE",
++        "posted": posted,
++        "reason": "window_still_exists_after_WM_CLOSE",
++    }
++
++
+ def bring_to_front(hwnd: int):
+     hwnd = wintypes.HWND(int(hwnd))
+     if USER32.IsIconic(hwnd):
+diff --git a/src/worker.py b/src/worker.py
+index 02f925b..0e41f6f 100644
+--- a/src/worker.py
++++ b/src/worker.py
+@@ -10,6 +10,7 @@ from settings import settings_for
+ from kompas_session import KompasSession
+ from capabilities import registry as legacy_registry
+ from engineering_capabilities import registry as engineering_registry
++from version_matrix import guard_for_session
+ 
+ VERSION = "1.1.14_CAP2"
+ PROTOCOL_VERSION = "1.1.11"
+@@ -246,7 +247,12 @@ def main():
+                 elif action == "capabilities": body = ok(action, {"bridge_version": VERSION, "capabilities": sorted(REGISTRY)})
+                 elif action == "worker_info": body = ok(action, {"bridge_version": VERSION, "root": str(root), "pid": os.getpid(), "settings": settings_for(root).describe()})
+                 elif action not in REGISTRY: body = fail(action, "unknown_action", "No registered capability", {"available": sorted(REGISTRY)})
+-                else: body = REGISTRY[action](session, payload)
++                else:
++                    # Матрица версий: для действий из guarded_actions сверяем
++                    # версию КОМПАСа. Список по умолчанию пуст, поэтому
++                    # накладных расходов на обычных вызовах нет.
++                    guard_for_session(root, session, action)
++                    body = REGISTRY[action](session, payload)
+                 response = {"protocol_version": PROTOCOL_VERSION, "id": req_id, "action": action, "time": now(), "responded_at": now(), **body}
+             except Exception as exc:
+                 # Наружу уходит только устойчивый код, сообщение и подсказка.
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index 5d43548..9e6c7bd 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,29 +6,35 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/6] Python compileall"
++Write-Host "[1/7] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/6] MCP stdio contract"
++Write-Host "[2/7] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/6] MCP file-routing + image attachment contract"
++Write-Host "[3/7] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/6] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Write-Host "[4/7] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 1 tests failed" }
+-Write-Host "[5/6] Wave 2: assembly mates, artifact verification"
++Write-Host "[5/7] Wave 2: assembly mates, artifact verification"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave2.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 2 tests failed" }
+-Write-Host "[6/6] Required files"
+-$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[6/7] Wave 3: modal dialog watchdog, version support matrix"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave3.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 3 tests failed" }
++Write-Host "[7/7] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index 5344650..c8ae358 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 38, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 40, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index b5d5b9b..31d73e8 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_38(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 38)
++    def test_tool_count_is_40(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 40)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git b/tests/test_wave3.py b/tests/test_wave3.py
+new file mode 100644
+index 0000000..93a8c70
+--- /dev/null
++++ b/tests/test_wave3.py
+@@ -0,0 +1,355 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 3»: сторож модальных диалогов и матрица версий КОМПАСа.
++
++Все тесты работают без КОМПАСа, без COM, без окон и без сети. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave3.py" -v
++
++Что проверяется по существу:
++
++* опасные диалоги (сохранение, вопрос, выбор файла) никогда не попадают
++  в список на автозакрытие, а информационные - попадают;
++* лимит закрытий за вызов соблюдается, остальное честно откладывается;
++* версия КОМПАСа разбирается из строки, где есть посторонние цифры
++  в названии продукта;
++* пустая матрица означает «не проверено», а не «поддерживается»;
++* защищённое действие на неподтверждённой версии блокируется;
++* версия запрашивается у КОМПАСа только для защищённых действий.
++"""
++from __future__ import annotations
++
++import json
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import dialogs             # noqa: E402
++import settings            # noqa: E402
++import tools_catalog       # noqa: E402
++import version_matrix      # noqa: E402
++
++
++class TempRootCase(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.TemporaryDirectory(prefix="kompas_wave3_")
++        self.root = Path(self._tmp.name)
++        (self.root / "work").mkdir(parents=True, exist_ok=True)
++        settings.reset_cache()
++        self.addCleanup(settings.reset_cache)
++        self.addCleanup(self._tmp.cleanup)
++
++    def write_config(self, payload: dict) -> None:
++        config_dir = self.root / "config"
++        config_dir.mkdir(parents=True, exist_ok=True)
++        (config_dir / "agent_config.json").write_text(
++            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
++        )
++        settings.reset_cache()
++
++
++class FakeSession:
++    """Сессия без COM: считает обращения к status()."""
++
++    def __init__(self, version="25.0.0.1234"):
++        self.root = None
++        self._version = version
++        self.status_calls = 0
++        self.kompas_version = None
++
++    def status(self):
++        self.status_calls += 1
++        return {"version": self._version}
++
++
++class TestDialogClassification(unittest.TestCase):
++    def test_title_normalisation_strips_product_prefix(self):
++        self.assertEqual(dialogs.normalize_title("КОМПАС-3D Сообщение"), "сообщение")
++        self.assertEqual(dialogs.normalize_title("  KOMPAS-3D   Warning "), "warning")
++        self.assertEqual(dialogs.normalize_title("Ошибка..."), "ошибка")
++
++    def test_informational_dialog_is_closable(self):
++        verdict = dialogs.classify("Сообщение", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "info_message")
++        self.assertEqual(verdict["policy"], dialogs.CLOSE)
++        self.assertTrue(verdict["closable"])
++        self.assertFalse(verdict["blocking"])
++
++    def test_save_prompt_is_never_closable(self):
++        verdict = dialogs.classify("Сохранить изменения?", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "save_changes")
++        self.assertEqual(verdict["policy"], dialogs.REPORT)
++        self.assertFalse(verdict["closable"])
++        self.assertTrue(verdict["blocking"])
++
++    def test_question_dialog_is_never_closable(self):
++        verdict = dialogs.classify("Вопрос", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "question")
++        self.assertFalse(verdict["closable"])
++
++    def test_file_dialog_is_never_closable(self):
++        for title in ("Сохранить как", "Open file", "Выбор файла"):
++            verdict = dialogs.classify(title, dialogs.DIALOG_CLASS)
++            self.assertFalse(verdict["closable"], title)
++            self.assertEqual(verdict["dialog_id"], "file_dialog", title)
++
++    def test_error_dialog_is_reported_not_closed(self):
++        verdict = dialogs.classify("Ошибка", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "error_ack")
++        self.assertFalse(verdict["closable"])
++        self.assertTrue(verdict["blocking"])
++
++    def test_progress_window_is_ignored(self):
++        verdict = dialogs.classify("Ожидание", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["policy"], dialogs.IGNORE)
++        self.assertFalse(verdict["blocking"])
++
++    def test_options_window_is_reported(self):
++        verdict = dialogs.classify("Параметры", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "options")
++        self.assertFalse(verdict["closable"])
++
++    def test_unknown_window_is_reported_by_default(self):
++        verdict = dialogs.classify("Совершенно новое окно", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "unknown")
++        self.assertEqual(verdict["policy"], dialogs.REPORT)
++        self.assertFalse(verdict["closable"])
++
++    def test_non_dialog_window_class_is_ignored(self):
++        verdict = dialogs.classify("Сообщение", "KompassFrame")
++        self.assertEqual(verdict["policy"], dialogs.IGNORE)
++        self.assertFalse(verdict["is_dialog_class"])
++
++    def test_hidden_dialog_is_ignored(self):
++        verdict = dialogs.classify("Сообщение", dialogs.DIALOG_CLASS, visible=False)
++        self.assertEqual(verdict["policy"], dialogs.IGNORE)
++
++    def test_summarize_counts_policies(self):
++        rows = [
++            dialogs.classify("Сообщение", dialogs.DIALOG_CLASS),
++            dialogs.classify("Вопрос", dialogs.DIALOG_CLASS),
++            dialogs.classify("Ожидание", dialogs.DIALOG_CLASS),
++        ]
++        summary = dialogs.summarize(rows)
++        self.assertEqual(summary["window_count"], 3)
++        self.assertEqual(summary["closable_count"], 1)
++        self.assertEqual(summary["blocking_count"], 1)
++
++    def test_dismiss_plan_respects_the_limit(self):
++        rows = [
++            dialogs.classify("Сообщение", dialogs.DIALOG_CLASS)
++            for _ in range(5)
++        ]
++        plan = dialogs.dismiss_plan(rows, apply=True)
++        self.assertEqual(plan["selected_count"], dialogs.MAX_CLOSE_PER_CALL)
++        self.assertEqual(plan["deferred_count"], 5 - dialogs.MAX_CLOSE_PER_CALL)
++
++    def test_titled_variant_of_an_unknown_window_is_not_closable(self):
++        # Правило для информационного окна требует точного заголовка:
++        # "Сообщение 12" - уже неизвестное окно, и закрывать его нельзя.
++        verdict = dialogs.classify("Сообщение 12", dialogs.DIALOG_CLASS)
++        self.assertEqual(verdict["dialog_id"], "unknown")
++        self.assertFalse(verdict["closable"])
++
++    def test_dismiss_plan_skips_everything_not_closable(self):
++        rows = [
++            dialogs.classify("Сохранить изменения?", dialogs.DIALOG_CLASS),
++            dialogs.classify("Вопрос", dialogs.DIALOG_CLASS),
++        ]
++        plan = dialogs.dismiss_plan(rows, apply=True)
++        self.assertEqual(plan["selected_count"], 0)
++        self.assertEqual(plan["skipped_count"], 2)
++
++    def test_policy_description_states_its_limits(self):
++        policy = dialogs.describe_policy()
++        self.assertEqual(policy["default_action"], "scan_only")
++        self.assertTrue(policy["limits"])
++        self.assertGreaterEqual(len(policy["rules"]), 5)
++
++
++class TestVersionMatrix(unittest.TestCase):
++    def test_version_is_parsed_past_product_noise(self):
++        self.assertEqual(version_matrix.parse_version("25.0.0.1234"), (25, 0, 0, 1234))
++        self.assertEqual(version_matrix.parse_version("KOMPAS-3D V25.0"), (25, 0))
++        self.assertEqual(version_matrix.parse_version("V25"), (25,))
++        self.assertEqual(version_matrix.parse_version("версия 24.1"), (24, 1))
++
++    def test_unparsable_version_returns_none(self):
++        self.assertIsNone(version_matrix.parse_version(""))
++        self.assertIsNone(version_matrix.parse_version("KOMPAS-3D"))
++        self.assertIsNone(version_matrix.parse_version("unknown build"))
++
++    def test_empty_matrix_means_unverified_not_supported(self):
++        verdict = version_matrix.classify_version("25.0", {})
++        self.assertEqual(verdict["level"], version_matrix.UNVERIFIED)
++        self.assertFalse(verdict["verified"])
++        self.assertEqual(verdict["entry_count"], 0)
++
++    def test_certified_pattern_matches(self):
++        matrix = {"entries": [{"pattern": "25.*", "level": "certified", "notes": "стенд"}]}
++        verdict = version_matrix.classify_version("25.0.0.1234", matrix)
++        self.assertEqual(verdict["level"], version_matrix.CERTIFIED)
++        self.assertTrue(verdict["verified"])
++        self.assertEqual(verdict["matched_pattern"], "25.*")
++
++    def test_other_version_stays_unverified(self):
++        matrix = {"entries": [{"pattern": "25.*", "level": "certified"}]}
++        verdict = version_matrix.classify_version("24.1", matrix)
++        self.assertEqual(verdict["level"], version_matrix.UNVERIFIED)
++        self.assertFalse(verdict["verified"])
++
++    def test_pattern_without_that_component_does_not_match(self):
++        matrix = {"entries": [{"pattern": "25.0", "level": "certified"}]}
++        verdict = version_matrix.classify_version("25", matrix)
++        self.assertFalse(verdict["verified"])
++
++    def test_unknown_level_falls_back_to_unverified(self):
++        matrix = version_matrix.load_matrix({"entries": [{"pattern": "25.*", "level": "perfect"}]})
++        self.assertEqual(matrix["entries"][0]["level"], version_matrix.UNVERIFIED)
++
++    def test_malformed_matrix_does_not_raise(self):
++        for bad in (None, "text", 42, [], {"entries": "nope"}):
++            matrix = version_matrix.load_matrix(bad)
++            self.assertEqual(matrix["entries"], [])
++            self.assertEqual(matrix["default_level"], version_matrix.UNVERIFIED)
++
++    def test_guarded_actions_are_deduplicated(self):
++        matrix = version_matrix.load_matrix(
++            {"guarded_actions": ["mate.create", "mate.create", "", None, "part.hole"]}
++        )
++        self.assertEqual(matrix["guarded_actions"], ["mate.create", "part.hole"])
++
++    def test_unguarded_action_is_allowed_without_version(self):
++        result = version_matrix.guard_action("mate.create", "", {})
++        self.assertFalse(result["guarded"])
++        self.assertTrue(result["allowed"])
++
++    def test_guarded_action_passes_on_certified_version(self):
++        matrix = {
++            "entries": [{"pattern": "25.*", "level": "certified"}],
++            "guarded_actions": ["mate.create"],
++        }
++        result = version_matrix.guard_action("mate.create", "25.0", matrix)
++        self.assertTrue(result["guarded"])
++        self.assertTrue(result["allowed"])
++
++    def test_guarded_action_is_blocked_on_unverified_version(self):
++        matrix = {"guarded_actions": ["mate.create"]}
++        with self.assertRaises(RuntimeError) as ctx:
++            version_matrix.guard_action("mate.create", "24.1", matrix)
++        message = str(ctx.exception)
++        self.assertIn("kompas_version_not_verified", message)
++        self.assertIn("mate.create", message)
++
++    def test_verdict_states_its_own_limits(self):
++        verdict = version_matrix.classify_version("25.0", {})
++        self.assertTrue(verdict["limits"])
++        self.assertIn("оператор", " ".join(verdict["limits"]))
++
++
++class TestVersionGuardSession(TempRootCase):
++    """Версия запрашивается у КОМПАСа только для защищённых действий."""
++
++    def test_unguarded_action_never_touches_com(self):
++        self.write_config({"kompas": {"version_matrix": {"guarded_actions": ["mate.create"]}}})
++        session = FakeSession()
++        session.root = self.root
++        result = version_matrix.guard_for_session(self.root, session, "part.create")
++        self.assertFalse(result["guarded"])
++        self.assertEqual(session.status_calls, 0)
++
++    def test_guarded_action_reads_version_once_and_caches_it(self):
++        self.write_config({
++            "kompas": {
++                "version_matrix": {
++                    "entries": [{"pattern": "25.*", "level": "certified"}],
++                    "guarded_actions": ["mate.create"],
++                }
++            }
++        })
++        session = FakeSession("25.0.0.1234")
++        session.root = self.root
++        first = version_matrix.guard_for_session(self.root, session, "mate.create")
++        second = version_matrix.guard_for_session(self.root, session, "mate.create")
++        self.assertTrue(first["allowed"])
++        self.assertTrue(second["allowed"])
++        self.assertEqual(session.status_calls, 1, "версия должна кэшироваться на сессии")
++
++    def test_guarded_action_fails_closed_on_unverified_version(self):
++        self.write_config({"kompas": {"version_matrix": {"guarded_actions": ["mate.create"]}}})
++        session = FakeSession("24.1")
++        session.root = self.root
++        with self.assertRaises(RuntimeError) as ctx:
++            version_matrix.guard_for_session(self.root, session, "mate.create")
++        self.assertIn("kompas_version_not_verified", str(ctx.exception))
++
++    def test_settings_read_the_matrix_from_config(self):
++        self.write_config({
++            "kompas": {
++                "version_matrix": {
++                    "entries": [{"pattern": "25.*", "level": "targeted", "notes": "частично"}],
++                    "guarded_actions": ["mate.create"],
++                }
++            }
++        })
++        resolved = settings.settings_for(self.root)
++        self.assertEqual(len(resolved.version_matrix["entries"]), 1)
++        self.assertEqual(resolved.version_matrix["guarded_actions"], ["mate.create"])
++        described = resolved.describe()
++        self.assertEqual(described["version_matrix_entries"], 1)
++        self.assertEqual(described["guarded_action_count"], 1)
++
++    def test_missing_matrix_section_is_harmless(self):
++        self.write_config({"worker_poll_ms": 100})
++        resolved = settings.settings_for(self.root)
++        self.assertEqual(resolved.version_matrix["entries"], [])
++        self.assertEqual(resolved.version_matrix["guarded_actions"], [])
++
++
++class TestCatalogWave3(unittest.TestCase):
++    def test_tool_count_is_40(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 40)
++
++    def test_new_tools_are_present_and_routed(self):
++        self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
++        self.assertIn("kompas_version_check", tools_catalog.TOOL_INDEX)
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_dialogs"][0], "dialogs.watch")
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_version_check"][0], "version.check")
++
++    def test_version_check_is_read_only_and_dialogs_is_not(self):
++        version_annotations = tools_catalog.TOOL_INDEX["kompas_version_check"]["annotations"]
++        dialogs_annotations = tools_catalog.TOOL_INDEX["kompas_dialogs"]["annotations"]
++        self.assertTrue(version_annotations["readOnlyHint"])
++        self.assertFalse(dialogs_annotations["readOnlyHint"])
++        self.assertFalse(dialogs_annotations["destructiveHint"])
++
++    def test_dialogs_defaults_to_scan_only(self):
++        schema = tools_catalog.TOOL_INDEX["kompas_dialogs"]["inputSchema"]
++        self.assertFalse(schema["properties"]["apply"]["default"])
++        self.assertNotIn("required", schema)
++
++    def test_version_json_matches_catalog(self):
++        declared = json.loads((REPO_ROOT / "VERSION.json").read_text(encoding="utf-8-sig"))
++        snapshot = tools_catalog.catalog_snapshot()
++        self.assertEqual(declared["mcp_tool_count"], snapshot["mcp_tool_count"])
++        self.assertEqual(declared["mcp_tools"], snapshot["mcp_tools"])
++
++    def test_worker_actually_calls_the_version_guard(self):
++        source = (REPO_ROOT / "src" / "worker.py").read_text(encoding="utf-8-sig")
++        self.assertIn("guard_for_session", source)
++        self.assertIn("from version_matrix import guard_for_session", source)
++
++    def test_new_modules_import_without_com(self):
++        self.assertFalse(hasattr(dialogs, "win32com"))
++        self.assertFalse(hasattr(version_matrix, "win32com"))
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

@@ -1,0 +1,2331 @@
+diff --git a/.gitignore b/.gitignore
+index 4eba064..585c8c4 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,6 +19,7 @@ runtime/responses/*
+ runtime/processed/*
+ runtime/logs/*
+ runtime/evidence/*
++runtime/artifacts/*
+ 
+ work/*
+ 
+diff --git a/VERSION.json b/VERSION.json
+index 9c2dfc3..f99ca28 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -2,6 +2,8 @@
+   "product": "KOMPAS CODEX ENGINEERING AGENT",
+   "worker_version": "1.1.14_CAP2",
+   "protocol_version": "1.1.11",
++  "mcp_protocol_version": "2025-11-25",
++  "mcp_supported_protocol_versions": ["2025-06-18", "2025-11-25"],
+   "mcp_tool_count": 35,
+   "mcp_tools": [
+     "kompas_status",
+diff --git a/config/agent_config.example.json b/config/agent_config.example.json
+index 1365112..f854524 100644
+--- a/config/agent_config.example.json
++++ b/config/agent_config.example.json
+@@ -6,6 +6,8 @@
+   "worker_poll_ms": 120,
+   "mcp_tool_timeout_sec": 90,
+   "job_timeout_max_sec": 300,
++  "compact_threshold_bytes": 60000,
++  "compact_max_items": 200,
+   "viewport": {
+     "capture_method": "api7_document_frame_imagegrab_with_printwindow_fallback",
+     "crop": {
+diff --git b/docs/WAVE1_CHANGES.md b/docs/WAVE1_CHANGES.md
+new file mode 100644
+index 0000000..fb5ea77
+--- /dev/null
++++ b/docs/WAVE1_CHANGES.md
+@@ -0,0 +1,212 @@
++# Волна 1: фундамент
++
++Изменения первого приоритета: единый каталог инструментов, реально работающий
++конфиг, устойчивые коды ошибок вместо трассировок, компактные ответы с
++артефактами и закрытый произвольный запуск кода.
++
++Всё в этой волне проверяется **без КОМПАСа**: 42 теста в `tests/test_wave1.py`
++плюс существующие контрактные тесты `test_mcp_stdio.py` и
++`test_mcp_bridge_routing.py`.
++
++## Проверка
++
++```powershell
++cd <bridge_root>
++python -m unittest discover -s tests -p "test_wave1.py" -v
++python tests\test_mcp_stdio.py
++python tests\test_mcp_bridge_routing.py
++powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\RUN_STATIC_TESTS.ps1 -Root (Resolve-Path .)
++```
++
++Быстрая проверка протокола вручную:
++
++```powershell
++'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}',
++'{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
++  python .\mcp\kompas_mcp_server.py --root (Resolve-Path .)
++```
++
++## Что сделано
++
++### 1. Единый каталог инструментов (A2)
++
++**Было.** 33 описания инструментов были захардкожены в
++`mcp/kompas_mcp_server_core.py`, а `kompas_open_copy` и
++`kompas_component_translate_xy` дописывала обёртка `mcp/kompas_mcp_server.py` -
++причём поиском подстроки в ответе ядра на `tools/list` и в тексте
++`instructions`. Версия сервера подменялась там же. `VERSION.json` правился руками.
++
++**Стало.** Новый модуль `mcp/tools_catalog.py` - единственный источник
++поверхности. Из него берутся `tools/list`, таблица маршрутизации `ACTION_MAP`,
++список имён для `VERSION.json` и снимок для контрактного теста. Обёртка больше
++ничего не патчит: она только перехватывает два инструмента, у которых есть
++Python-логика на стороне клиента.
++
++Ядро отказывается маршрутизировать инструменты обёртки, поэтому
++рассинхронизация теперь невозможна по построению.
++
++Заодно исправлены семь слишком коротких описаний - описание это и есть основной
++способ, которым модель выбирает инструмент. Например, `kompas_active_document`
++вместо «Read the active KOMPAS document.» теперь объясняет, **когда** его
++вызывать.
++
++### 2. Версия протокола согласуется, а не прошита (A3, частично)
++
++**Было.** `MCP_PROTOCOL_VERSION = "2025-06-18"` и полное игнорирование того,
++что запросил клиент.
++
++**Стало.** `SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", "2025-11-25")` и
++`negotiate_protocol()`: если клиент просит поддерживаемую версию - отвечаем ею,
++иначе отвечаем своей максимальной, и клиент сам решает, продолжать ли.
++
++Версия `2026-07-28` (stateless-ядро, Multi Round-Trip Requests, кэширование
++списков через `ttlMs`/`cacheScope`) в этой волне **не** поддержана осознанно:
++это смена модели транспорта, а не косметика.
++
++### 3. Конфиг управляет политикой безопасности (C1)
++
++**Было.** `load_config()` в `src/config.py` не вызывалась нигде.
++`src/safety.py` жёстко прошивал `C:\KOMPAS_AI_WORKSPACE\00_SOURCE` и т. д.
++`agent_config.example.json` был декорацией.
++
++**Стало.** `src/settings.py` читает, валидирует и кэширует настройки.
++`safety.py` работает через них, публичный интерфейс `safe_write()` /
++`copy_destination()` сохранён, поэтому `capabilities.py` и
++`engineering_capabilities.py` не менялись.
++
++Что настройки теперь реально делают:
++
++* `safety.protected_roots` и `safety.write_roots` определяют политику записи;
++* `safety.jobs_subdir` определяет каталог заданий;
++* `worker_poll_ms`, `mcp_tool_timeout_sec`, `job_timeout_max_sec`,
++  `compact_threshold_bytes`, `compact_max_items` читаются с проверкой диапазона;
++* `viewport.crop` и `view.projection_indices` доступны коду (применение
++  кадрирования - задача волны 3, D6);
++* подстановка `{bridge_root}` в путях работает.
++
++Ошибка в конфиге не роняет мост: некорректная секция откатывается к безопасному
++значению и попадает в `warnings`, которые видны через `ping` воркера.
++Пересечение защищённых и записываемых корней - это дыра в политике, а не
++настройка, поэтому такой корень отбрасывается с предупреждением.
++
++`src/config.py` оставлен как совместимый фасад и помечен устаревшим.
++
++### 4. Коды ошибок вместо трассировок (C6)
++
++**Было.** `src/worker.py` возвращал агенту `traceback.format_exc()` целиком:
++утечка структуры диска плюс мусор в контексте модели вместо ответа на вопрос
++«что не так и что делать».
++
++**Стало.** `src/errors.py`:
++
++* устойчивые коды (`kompas_not_attached`, `path_protected`, `path_not_allowed`,
++  `job_not_allowed`, `active_document_mismatch`, `verification_failed`,
++  `timeout`, `file_not_found`, `permission_denied`, `invalid_argument`,
++  `internal_error`);
++* у каждого кода есть подсказка с императивным «что делать»;
++* редакция текста: известные корни заменяются на `<bridge_root>` и
++  `<user_profile>`, прочие абсолютные пути - на `<path:имя_файла>`. Имя файла
++  сохраняется намеренно: без него сообщение бесполезно, а полный путь - уже
++  утечка;
++* полная трассировка пишется в `runtime/logs/errors.log`.
++
++### 5. Компактные ответы с артефактами (D1)
++
++**Было.** `kompas_component_topology` мог отдать до 5000 граней и 10 000 рёбер
++в контекст модели, с `indent=2` и без ограничения.
++
++**Стало.** `src/compact.py`:
++
++* ответ меньше `compact_threshold_bytes` (по умолчанию 60 КБ) уходит как есть -
++  поведение не меняется;
++* ответ больше порога: длинные списки усекаются до `compact_max_items`,
++  полный дамп пишется в `runtime/artifacts/<id>.json`, в ответ добавляется
++  блок `_compact` со счётчиками, курсом продолжения и путём к артефакту;
++* усечение **никогда** не скрывается - `truncated_lists` и `artifact` всегда
++  на месте, а инструкция сервера прямо говорит модели не считать полученные
++  списки полными;
++* есть `paginate()` с непрозрачным курсором и тест, доказывающий, что
++  постраничный обход возвращает все элементы без потерь.
++
++### 6. Задания: манифест вместо поиска подстроки (C4, частично)
++
++**Было.** Допуск задания проверялся чтением текста скрипта в нижнем регистре и
++поиском подстроки защищённого пути. Обходится сборкой пути из частей, `chr()`
++или переменной окружения. При этом `SKILL.md` сам отправлял агента в
++`kompas_run_job`, когда стабильной поверхности не хватало.
++
++**Стало.** Явный манифест `jobs/allowlist.json`. Что не перечислено - не
++исполняется, независимо от содержимого. Проверка на защищённые пути осталась,
++но стала проверкой **пути**, а не текста файла. Битый или отсутствующий манифест
++означает пустой allow-list, а не «разрешить всё».
++
++Граница этой защиты честно описана в `jobs/README.md`: манифест управляет
++только тем, что исполнит `kompas_run_job`, и не мешает клиентскому инструменту
++записи файлов отредактировать сам манифест. Поэтому `jobs/` - часть доверенной
++кодовой базы, а не пользовательские данные.
++
++## Изменения, заметные оператору
++
++Прочитайте перед обновлением рабочей установки.
++
++1. **`kompas_run_job` теперь требует `jobs/allowlist.json`.** Существующие
++   задания, не внесённые в манифест, будут отклонены. Это осознанный
++   fail-closed: сначала перечислите нужные задания в манифесте.
++2. **В ответах на ошибку больше нет поля `traceback`.** Вместо него
++   `code`, `message`, `hint`. Если клиент разбирал `traceback` - правьте.
++   Полные трассировки: `runtime/logs/errors.log`.
++3. **Большие ответы могут содержать `_compact`, и списки в них неполные.**
++   Артефакты накапливаются в `runtime/artifacts/` - нужна политика очистки
++   (не входит в эту волну).
++4. **Конфиг начал влиять на поведение.** Если `config/agent_config.json`
++   содержит пути, которых нет на этой машине, политика записи изменится
++   соответственно. Проверьте `safety.write_roots` перед первым запуском.
++5. **Версия протокола по умолчанию - `2025-11-25`** вместо `2025-06-18`.
++   Клиент, запросивший `2025-06-18`, по-прежнему получит её.
++
++## Чего в этой волне нет
++
++Осознанно отложено, чтобы волна оставалась проверяемой без КОМПАСа:
++
++* `resources` и `prompts` (A4, A5) - следующий шаг той же волны;
++* Hub вместо файлового транспорта, очередь, отмена, прогресс (A6);
++* сопряжения сборки (B1), чертежи и DXF (B2), спецификация (B3),
++  экспорт STEP (B4) - это волна 2, и именно они закрывают повод ходить
++  в `kompas_run_job`;
++* сторож модальных диалогов (C2) - требует живого КОМПАСа для проверки;
++* версионная матрица КОМПАСа (C5);
++* устойчивые ссылки на объекты (D2), сухой прогон для всех мутирующих
++  инструментов (D4), checkpoint/rollback (D5);
++* самокалибровка кадра скриншота (D6);
++* упаковка, CI, лицензия (E1-E3).
++
++Актуальный список приоритетов - в отчёте `KOMPAS-3D_AI_Bridge_audit_plan.html`.
++
++## Состав изменений
++
++Новые файлы:
++
++| Файл | Назначение |
++|---|---|
++| `mcp/tools_catalog.py` | единый каталог поверхности и маршрутизации |
++| `src/settings.py` | чтение и валидация конфигурации |
++| `src/errors.py` | коды ошибок, подсказки, редакция данных |
++| `src/compact.py` | сжатие ответов, постраничность, артефакты |
++| `jobs/allowlist.json` | манифест допуска заданий |
++| `tests/test_wave1.py` | 42 теста без КОМПАСа |
++| `docs/WAVE1_CHANGES.md` | этот документ |
++
++Изменённые файлы:
++
++| Файл | Что изменилось |
++|---|---|
++| `src/safety.py` | политика из конфига, интерфейс сохранён |
++| `src/config.py` | стал совместимым фасадом над `settings` |
++| `src/jobs.py` | манифест вместо поиска подстроки |
++| `src/worker.py` | коды ошибок, трассировка в лог, настройки в `ping`/`worker_info` |
++| `mcp/kompas_mcp_server_core.py` | импорт каталога, согласование версии, сжатие ответов |
++| `mcp/kompas_mcp_server.py` | убрана инъекция инструментов поиском подстроки |
++| `config/agent_config.example.json` | новые ключи сжатия |
++| `VERSION.json` | версии MCP-протокола |
++| `jobs/README.md` | манифест и границы защиты |
++| `tests/RUN_STATIC_TESTS.ps1` | запуск новых тестов, расширенный список файлов |
+diff --git a/jobs/README.md b/jobs/README.md
+index 9221d49..8fd6d27 100644
+--- a/jobs/README.md
++++ b/jobs/README.md
+@@ -1,13 +1,47 @@
+ # Task-specific COM jobs
+ 
+-This directory is the **only executable job allow-list** for `kompas_run_job`.
++This directory holds the only scripts `kompas_run_job` is allowed to execute.
+ 
+-Keep it small. A future Codex session may create a narrowly scoped `.py` job here
+-when the stable MCP tools cannot express a required KOMPAS API operation. The
+-worker refuses scripts outside this directory, non-Python files, timeouts over
+-300 seconds, and scripts that directly contain protected source-root paths.
++## Allow-list manifest
+ 
+-Rules:
++Execution is controlled by `allowlist.json` in this directory. A script that is
++not listed there is **never** executed, regardless of its content, its name or
++its location inside this folder.
++
++```json
++{
++  "version": 1,
++  "jobs": [
++    "job_template.py",
++    { "name": "bom_export.py", "description": "BOM export", "timeout_sec": 120, "enabled": true }
++  ]
++}
++```
++
++* A bare string is equivalent to `{"enabled": true}`.
++* `timeout_sec` is a per-job default; the caller may request less, never more
++  than `job_timeout_max_sec` from `config/agent_config.json`.
++* `enabled: false` keeps an entry documented but refuses to run it.
++* A missing or malformed manifest means an **empty** allow-list. It never means
++  "allow everything".
++
++## What changed and why
++
++The previous check read the script as text and rejected it if it contained a
++protected source-root path as a substring:
++
++```python
++source = script.read_text(...).lower()
++if any(str(x).lower() in source for x in PROTECTED):
++    raise PermissionError("job_references_protected_path")
++```
++
++That is not a security boundary. The path can be assembled from fragments, from
++`chr()` calls, or from an environment variable, and the check passes. The check
++is now a **path** check: the job's own location must not sit inside a protected
++root. Permission to execute comes from the manifest instead.
++
++## Rules
+ 
+ 1. Start from `job_template.py`.
+ 2. Implement one engineering operation only.
+@@ -16,7 +50,25 @@ Rules:
+    `KOMPAS_BRIDGE/work` or approved output.
+ 5. Return a compact JSON/text result on stdout and exit non-zero on failure.
+ 6. After any modification, run structured API QA plus `kompas_viewport_capture`.
+-7. If the same job becomes common, promote it into a reviewed stable tool.
++7. If the same job becomes common, promote it into a reviewed stable tool
++   (`mcp/tools_catalog.py`) and remove it from this directory.
++
++## Scope of this boundary - read before relying on it
++
++The manifest only governs what `kompas_run_job` will execute. It does not stop a
++coding agent that has its own file-write tools from editing `allowlist.json` and
++then running whatever it just added. The bridge's own write policy
++(`src/safety.py`) permits writes only under `work/` and the approved output
++roots, so no bridge tool can reach this directory - but a client-side file tool
++is outside the bridge's control.
++
++Practical consequences:
++
++* treat `jobs/` and `allowlist.json` as part of the trusted code base, not as
++  user data;
++* review changes to this directory the same way you review changes to `src/`;
++* prefer promoting recurring jobs into stable tools, where the argument schema
++  and the write policy apply.
+ 
+ Historical project jobs from the source bridge are preserved in
+ `legacy/jobs_reference/` in the distribution archive and are **not installed into
+diff --git b/jobs/allowlist.json b/jobs/allowlist.json
+new file mode 100644
+index 0000000..de51914
+--- /dev/null
++++ b/jobs/allowlist.json
+@@ -0,0 +1,12 @@
++{
++  "version": 1,
++  "_comment": "Единственный исполняемый allow-list моста. Задание, не перечисленное здесь, не будет запущено, независимо от содержимого файла. Формат: строка с именем файла либо объект {name, description, timeout_sec, enabled}.",
++  "jobs": [
++    {
++      "name": "job_template.py",
++      "description": "Безопасная проверка работоспособности: печатает окружение моста и не изменяет КОМПАС.",
++      "timeout_sec": 30,
++      "enabled": true
++    }
++  ]
++}
+diff --git a/mcp/kompas_mcp_server.py b/mcp/kompas_mcp_server.py
+index fee1845..d2ce384 100644
+--- a/mcp/kompas_mcp_server.py
++++ b/mcp/kompas_mcp_server.py
+@@ -15,8 +15,10 @@ except Exception: TIMEOUT=15.0
+ CORE=Path(__file__).with_name("kompas_mcp_server_core.py")
+ if not CORE.is_file(): raise SystemExit(f"missing core:{CORE}")
+ CMD=ROOT/"runtime"/"commands"; RSP=ROOT/"runtime"/"responses"; CMD.mkdir(parents=True,exist_ok=True); RSP.mkdir(parents=True,exist_ok=True)
+-TOOL={"name":"kompas_open_copy","description":"Create a disposable working COPY and open it as the active visible writable KOMPAS document. Source is never edited directly. Omit source to use the active document. name must be a filename only.","inputSchema":{"type":"object","properties":{"source":{"type":"string"},"name":{"type":"string"}},"additionalProperties":False}}
+-GEO_TOOL={"name":"kompas_component_translate_xy","description":"COPY-only bounded real geometry translation for one top-level component. Moves component origin in assembly XY by at most 5 mm per call. apply=false is dry-run. apply=true requires exact expected_name. Never saves automatically; perform API and fresh viewport QA before kompas_save.","inputSchema":{"type":"object","required":["selector","dx_mm","dy_mm"],"properties":{"selector":{"type":"integer","minimum":0},"expected_name":{"type":"string","minLength":1},"dx_mm":{"type":"number","minimum":-5,"maximum":5},"dy_mm":{"type":"number","minimum":-5,"maximum":5},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}}
++# Описания kompas_open_copy и kompas_component_translate_xy переехали в единый
++# каталог mcp/tools_catalog.py. Раньше они жили здесь, и обёртка дописывала их
++# в ответ на tools/list поиском подстроки - из-за этого поверхность собиралась
++# из двух источников, а VERSION.json приходилось править руками.
+ def atomic(p,o):
+     t=p.with_suffix(p.suffix+".tmp"); t.write_text(json.dumps(o,ensure_ascii=False,separators=(",",":")),encoding="utf-8"); os.replace(t,p)
+ def call(action,payload,timeout=None):
+@@ -87,13 +89,14 @@ try:
+             continue
+         if o is None:continue
+         if m=="initialize":
+-            z=o.get("result") or {}; z.setdefault("serverInfo",{})["version"]="1.1.14_CAP2"
++            # Версия сервера и каталог инструментов теперь приходят из ядра,
++            # единый источник - mcp/tools_catalog.py. Патчить ответ поиском
++            # подстроки больше не нужно; к инструкции добавляем только правило
++            # про обязательное создание копии перед записью.
++            z=o.get("result") or {}
+             ins=str(z.get("instructions") or "")
+-            if "kompas_open_copy" not in ins:z["instructions"]=ins+" Use kompas_open_copy before any write/edit operation."
+-        elif m=="tools/list":
+-            tools=(o.get("result") or {}).setdefault("tools",[])
+-            if not any(x.get("name")=="kompas_open_copy" for x in tools):tools.append(TOOL)
+-            if not any(x.get("name")=="kompas_component_translate_xy" for x in tools):tools.append(GEO_TOOL)
++            if "kompas_open_copy" not in ins:
++                z["instructions"]=ins+" Use kompas_open_copy before any write/edit operation."
+         send(o)
+ finally:
+     try:core.terminate()
+diff --git a/mcp/kompas_mcp_server_core.py b/mcp/kompas_mcp_server_core.py
+index 8e201e6..4a2b5d7 100644
+--- a/mcp/kompas_mcp_server_core.py
++++ b/mcp/kompas_mcp_server_core.py
+@@ -18,81 +18,20 @@ for _kompas_stdio_name in ('stdin', 'stdout', 'stderr'):
+ import argparse, base64, json, os, sys, time, uuid
+ from pathlib import Path
+ 
+-SERVER_NAME = "kompas-engineering"
+-SERVER_VERSION = "1.1.14_CAP2"
+-MCP_PROTOCOL_VERSION = "2025-06-18"
+-
+-TOOLS = [
+-    {"name":"kompas_status","description":"Read KOMPAS process/version, open documents, active document, and COM health.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_active_document","description":"Read the active KOMPAS document.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_open_agent_copy","description":"Open or activate one exact existing *_AGENT_COPY.m3d/.a3d basename from approved bridge work for read/verification sessions. The tool never saves or mutates the file and verifies the resulting API7 active PathName exactly.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_model_tree","description":"Read recursive native 3D assembly tree. Use before selecting components.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":12,"default":6}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_component_info","description":"Read exact native component properties: name, file, material, mass, bbox, origin and placement matrix. Selector may be top-level index, recursive tree path such as 0/2/1, integer path array, name, marking, or filename fragment.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"oneOf":[{"type":"integer"},{"type":"string"},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_component_topology","description":"Read native structured KOMPAS 3D topology for a selected top-level component: bodies, faces, unique edges and vertices, planar faces, cylindrical faces, body bbox, cylinder radius/diameter and axis where KOMPAS exposes them. Read-only. Initial CAP2-A2 selector is a top-level integer index.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"type":"integer","minimum":0},"body_index":{"type":"integer","minimum":0},"max_faces":{"type":"integer","minimum":1,"maximum":5000,"default":1000},"max_edges":{"type":"integer","minimum":1,"maximum":10000,"default":3000},"max_vertices":{"type":"integer","minimum":1,"maximum":10000,"default":3000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_component_holes","description":"Read holes for a selected top-level KOMPAS 3D component. Prefers native IHole3D features from IModelContainer.Holes3D and may return separately labeled inferred cylindrical void candidates from native topology. Returns diameter, depth, center/axis when reliably associated, and through/blind status when supported. Never promotes uncertain geometry to a native hole. Read-only.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"type":"integer","minimum":0},"include_inferred":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_interference_check","description":"Read-only native KOMPAS 3D interference/contact check. Accepts selector_a+selector_b or selectors[] for pairwise checking. Performs body bbox quick-reject before IBody.CheckIntersectionWithBody. itBody(4) is reported as real interference; optional tangent checks separate contact-only cases. Intersection volume is returned as null because this verified API path does not expose a reliable volume.","inputSchema":{"type":"object","properties":{"selector_a":{"type":"integer","minimum":0},"selector_b":{"type":"integer","minimum":0},"selectors":{"type":"array","minItems":2,"maxItems":32,"items":{"type":"integer","minimum":0}},"check_contact":{"type":"boolean","default":True},"include_body_pairs":{"type":"boolean","default":False},"max_body_pair_details":{"type":"integer","minimum":0,"maximum":200,"default":20}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_part_create","description":"Create one new native KOMPAS .m3d detail in the approved bridge work directory. Filename must be a basename ending in .m3d and contain _AGENT_COPY. Existing files are never overwritten. Uses native API5 ksDocument3D.Create(False, True) + SaveAs, closes the new document, and restores the previously active AGENT_COPY.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_part_add_primitive","description":"Populate one EMPTY existing native *_AGENT_COPY.m3d in approved work with a bounded native primitive. kind=block or plate creates a centered rectangular solid; kind=rect_tube creates a rectangular hollow profile member from nested sketch contours. width=X, height=Y, depth=+Z. Performs transaction backup, exact active-path check, Save->Close->Reopen geometry verification, and restores the previously active AGENT_COPY. Refuses non-empty parts.","inputSchema":{"type":"object","required":["filename","kind","width_mm","height_mm","depth_mm"],"properties":{"filename":{"type":"string","minLength":1},"kind":{"type":"string","enum":["block","plate","rect_tube"]},"width_mm":{"type":"number","exclusiveMinimum":0},"height_mm":{"type":"number","exclusiveMinimum":0},"depth_mm":{"type":"number","exclusiveMinimum":0},"wall_mm":{"type":"number","exclusiveMinimum":0}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_part_add_hole","description":"Add one verified circular hole to an existing native *_AGENT_COPY.m3d in approved work. Current CAP2-A7 work-plane support is XOY. Supports through or blind cut-extrusion holes, center X/Y, diameter, depth for blind mode, and normal/reverse/both direction. Performs transaction backup, exact active-path check, cylinder diameter/center/axis/depth readback, Save->Close->Reopen verification, and restores the prior AGENT_COPY. The hole is native KOMPAS cut-extrusion geometry; native IHole3D feature is not claimed.","inputSchema":{"type":"object","required":["filename","diameter_mm"],"properties":{"filename":{"type":"string","minLength":1},"diameter_mm":{"type":"number","exclusiveMinimum":0},"center_u_mm":{"type":"number","default":0.0},"center_v_mm":{"type":"number","default":0.0},"plane":{"type":"string","enum":["XOY"],"default":"XOY"},"mode":{"type":"string","enum":["through","blind"],"default":"through"},"depth_mm":{"type":"number","exclusiveMinimum":0},"direction":{"type":"string","enum":["normal","reverse","both"],"default":"both"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_assembly_create","description":"Create one new native KOMPAS assembly .a3d in the approved bridge work directory. Filename must be a basename ending in .a3d and contain _AGENT_COPY. Existing files are never overwritten. Uses native API5 ksDocument3D.Create(False, False), verifies IsDetail()==False before and after Save->Close->Reopen, then restores the previously active AGENT_COPY.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_assembly_insert_component","description":"Insert one existing .m3d or .a3d from approved work as an external reference into a closed native *_AGENT_COPY.a3d. Refuses duplicate source paths by default, creates an exact byte transaction snapshot, checks exact active PathName before write and Save, then verifies component count, exact FileName reference, missing refs, Save->Close->Reopen persistence, rollback safety, and original active-document restore.","inputSchema":{"type":"object","required":["assembly_filename","component_filename"],"properties":{"assembly_filename":{"type":"string","minLength":1},"component_filename":{"type":"string","minLength":1},"allow_duplicate":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_component_transform","description":"Set one exact assembly component to an absolute rigid transform represented by origin plus orthonormal X/Y/Z axes. Rejects non-finite values, scale, shear, and reflection; requires determinant +1; snapshots exact assembly bytes; checks exact active PathName before write and Save; then verifies native origin, axes, 4x4 matrix, bbox, source reference, and Save->Close->Reopen persistence.","inputSchema":{"type":"object","required":["assembly_filename","selector","origin","axis_x","axis_y","axis_z"],"properties":{"assembly_filename":{"type":"string","minLength":1},"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"origin":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_x":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_y":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_z":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"mode":{"type":"string","enum":["absolute"],"default":"absolute"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+-    {"name":"kompas_material_read","description":"Read native material name, density, and mass from one existing .m3d under approved work, including nested read-only evidence sources. Opens the exact file, performs no Save, closes it, and restores the prior AGENT_COPY.","inputSchema":{"type":"object","required":["relative_path"],"properties":{"relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_material_set","description":"Set native material on one direct-work *_AGENT_COPY.m3d using API7 IPart7.SetMaterial. The requested material name and positive density must exactly match a separately read native evidence-source .m3d under approved work. Performs byte snapshot rollback, exact active-path checks, before/after name-density-mass readback, Save->Close->Reopen verification, and prior active-document restore.","inputSchema":{"type":"object","required":["filename","material_name","density","evidence_source_relative_path"],"properties":{"filename":{"type":"string","minLength":1},"material_name":{"type":"string","minLength":1},"density":{"type":"number","exclusiveMinimum":0},"evidence_source_relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+-    {"name":"kompas_pmi_read","description":"Read structured native KOMPAS 3D PMI dimensions from API7 ISymbols3DContainer collections. Returns dimension kind/value, model-object association, text position, and text/tolerance fields where the concrete COM object exposes them. Floating ModelTexts are deliberately excluded and never counted as PMI dimensions.","inputSchema":{"type":"object","properties":{"max_dimensions":{"type":"integer","minimum":1,"maximum":2000,"default":500}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_pmi_dimension_create","description":"Create one real native geometry-linked API7 ILineDimension3D between two exact existing vertices on XOY in a closed direct-work *_AGENT_COPY.m3d. Uses native Object1/Object2 links and text position, transaction snapshot rollback, exact-path checks, and Save->Close->Reopen validation of count, validity, geometry links, and nominal value. Coordinate/baseline, diameter, and radius families are deliberately not simulated.","inputSchema":{"type":"object","required":["filename","point1","point2","text_position"],"properties":{"filename":{"type":"string","minLength":1},"point1":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"point2":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"text_position":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"plane":{"type":"string","enum":["XOY"],"default":"XOY"},"name":{"type":"string","minLength":1,"maxLength":80,"default":"CAP2_LINEAR_DIMENSION"},"point_tolerance":{"type":"number","exclusiveMinimum":0,"maximum":1,"default":0.001}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_component_properties_read","description":"Read native API7 IPart7 occurrence properties: designation/Marking, name, material, mass, density, source file, Standard, CreateSpcObjects, group/fixed/local/billet states. Quantity, role, and purchased/manufactured are returned null with explicit availability notes when not exposed; no semantic inference is made.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_component_properties_set","description":"Set only proven native writable API7 IPart7 occurrence fields Name and Marking/designation in a closed direct-work *_AGENT_COPY.a3d. Requires at least one value; preserves external source reference and bytes; snapshots assembly; verifies before/requested/after and Save->Close->Reopen persistence; restores the prior active AGENT_COPY.","inputSchema":{"type":"object","required":["assembly_filename","selector"],"properties":{"assembly_filename":{"type":"string","minLength":1},"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"designation":{"type":"string","minLength":1,"maxLength":200},"name":{"type":"string","minLength":1,"maxLength":200}},"anyOf":[{"required":["designation"]},{"required":["name"]}],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+-    {"name":"kompas_bom_read","description":"Read an assembly BOM from the real recursive API7 IPart7 occurrence tree. Membership uses native CreateSpcObjects plus InheritExclude semantics; rows are grouped by exact source/designation/name/material and quantity is the exact eligible occurrence count. Native A3D SpecificationDescriptions metadata is reported separately. No filename inventory or floating text is substituted.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_component_pattern_linear","description":"Create a real native API7 assembly component linear pattern through IFeaturePatterns.Add(ksObjectPartsLinearPattern) and ILinearPattern. Uses one existing source occurrence, a signed global X/Y/Z direction, positive spacing, and count 2..20; transactionally verifies native exemplar count, exact placements, source reference/hash, tree persistence, and Save->Close->Reopen.","inputSchema":{"type":"object","required":["assembly_filename","source_selector","direction","spacing","count"],"properties":{"assembly_filename":{"type":"string","minLength":1},"source_selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"direction":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"spacing":{"type":"number","exclusiveMinimum":0},"count":{"type":"integer","minimum":2,"maximum":20},"name":{"type":"string","minLength":1,"maxLength":100,"default":"CAP2_LINEAR_COMPONENT_PATTERN"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+-    {"name":"kompas_model_bbox","description":"Read exact native top-model bounding box from KOMPAS API.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_fit_view","description":"Fit the active 3D model in the KOMPAS viewport using API5 ZoomPrevNextOrAll(2).","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_rotate_view","description":"Native bounded KOMPAS 3D viewport rotation through API5 vp_None plus ksPlacement.SetAxes. Each step is 6 degrees. The tool performs structured axis readback and verified KOMPAS HWND screenshots before and after, and fails unless the viewport visibly changes. No model geometry is changed and no Save is performed.","inputSchema":{"type":"object","properties":{"horizontal_steps":{"type":"integer","minimum":-12,"maximum":12,"default":0},"vertical_steps":{"type":"integer","minimum":-12,"maximum":12,"default":0}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_component_visibility","description":"Temporary visual visibility control for a component or subassembly, including nested tree paths. Operations: hide, show, isolate, show_all, restore. Use restore before saving unless changed visibility is intentionally part of the deliverable.","inputSchema":{"type":"object","required":["operation"],"properties":{"operation":{"type":"string","enum":["hide","show","isolate","show_all","restore"]},"selector":{"oneOf":[{"type":"integer"},{"type":"string"},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_viewport_capture","description":"Capture a fresh PNG of the active KOMPAS document frame. The bridge obtains the native HWND through API7 DocumentFrames, prefers visible screen pixels for the GPU/OpenGL viewport, and keeps PrintWindow as a fallback. The MCP response includes the image itself so Codex inspects current CAD state, not a stale screenshot.","inputSchema":{"type":"object","properties":{"viewport_only":{"type":"boolean","default":True},"label":{"type":"string"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_save","description":"Save the active document. Safety layer rejects writes outside bridge work or approved output roots and rejects protected source roots.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
+-    {"name":"kompas_close","description":"Close the active document without saving through the existing bridge close action.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_reopen","description":"Close and reopen the same active file. Set save=true only for a safe COPY/output path.","inputSchema":{"type":"object","properties":{"save":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-    {"name":"kompas_references_qa","description":"Read native assembly references recursively and report missing references. Optional package_root also flags dependencies outside the portable package.","inputSchema":{"type":"object","properties":{"package_root":{"type":"string"},"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+-    {"name":"kompas_run_job","description":"Run an existing task-specific Python COM job only from KOMPAS_BRIDGE/jobs with a bounded timeout. Use only when the stable tool surface does not cover an engineering operation, then verify through API plus a fresh viewport capture.","inputSchema":{"type":"object","required":["script"],"properties":{"script":{"type":"string"},"timeout_sec":{"type":"integer","minimum":1,"maximum":300,"default":60}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+-]
+-
+-ACTION_MAP = {
+-    "kompas_status": ("kompas.status", lambda a: {}),
+-    "kompas_active_document": ("document.active", lambda a: {}),
+-    "kompas_open_agent_copy": ("document.open_agent_copy", lambda a: a),
+-    "kompas_model_tree": ("model.tree", lambda a: a),
+-    "kompas_component_info": ("component.info", lambda a: a),
+-    "kompas_component_topology": ("component.topology", lambda a: a),
+-    "kompas_component_holes": ("component.holes", lambda a: a),
+-    "kompas_interference_check": ("interference.check", lambda a: a),
+-    "kompas_part_create": ("part.create", lambda a: a),
+-    "kompas_part_add_primitive": ("part.primitive", lambda a: a),
+-    "kompas_part_add_hole": ("part.hole", lambda a: a),
+-    "kompas_assembly_create": ("assembly.create", lambda a: a),
+-    "kompas_assembly_insert_component": ("assembly.insert_component", lambda a: a),
+-    "kompas_component_transform": ("component.transform", lambda a: a),
+-    "kompas_material_read": ("material.read", lambda a: a),
+-    "kompas_material_set": ("material.set", lambda a: a),
+-    "kompas_pmi_read": ("pmi.read", lambda a: a),
+-    "kompas_pmi_dimension_create": ("pmi.dimension_create", lambda a: a),
+-    "kompas_component_properties_read": ("component.properties_read", lambda a: a),
+-    "kompas_component_properties_set": ("component.properties_set", lambda a: a),
+-    "kompas_bom_read": ("bom.read", lambda a: a),
+-    "kompas_component_pattern_linear": ("component.pattern_linear", lambda a: a),
+-    "kompas_model_bbox": ("model.bbox", lambda a: {}),
+-    "kompas_set_view": ("view.set", lambda a: a),
+-    "kompas_fit_view": ("view.fit", lambda a: {}),
+-    "kompas_rotate_view": ("view.rotate", lambda a: a),
+-    "kompas_component_visibility": ("view.visibility", lambda a: a),
+-    "kompas_viewport_capture": ("viewport.capture", lambda a: a),
+-    "kompas_save": ("document.save", lambda a: {}),
+-    "kompas_close": ("document.close", lambda a: {}),
+-    "kompas_reopen": ("document.reopen", lambda a: a),
+-    "kompas_references_qa": ("qa.references", lambda a: a),
+-    "kompas_run_job": ("run_job", lambda a: a),
+-}
++# Каталог инструментов и таблица маршрутизации вынесены в единый декларативный
++# модуль tools_catalog.py. Раньше 33 описания жили прямо здесь, а ещё 2 дописывала
++# обёртка kompas_mcp_server.py поиском подстроки в ответе на tools/list - то есть
++# поверхность собиралась из двух источников и могла разъехаться молча.
++from tools_catalog import (  # noqa: E402
++    ACTION_MAP,
++    MCP_PROTOCOL_VERSION,
++    SERVER_NAME,
++    SERVER_VERSION,
++    TOOLS,
++    WRAPPER_SIDE_TOOLS,
++    negotiate_protocol,
++)
++
+ 
+ class BridgeClient:
+     def __init__(self, root: Path, timeout=90):
+@@ -121,9 +60,41 @@ def emit(obj):
+     sys.stdout.flush()
+ 
+ 
+-def tool_result(name, response):
++def _load_src_layer(bridge_root):
++    """Ленивая загрузка слоёв из src/: mcp/ и src/ - разные каталоги.
++
++    Если каталог src/ недоступен, сервер продолжает работать без ужимания
++    ответов и без чтения настроек: это деградация, а не отказ.
++    """
++    src = Path(bridge_root) / "src"
++    if str(src) not in sys.path:
++        sys.path.insert(0, str(src))
++    try:
++        from compact import compact_payload
++        from settings import settings_for
++    except Exception:
++        return None
++    return settings_for, compact_payload
++
++
++def tool_result(name, response, *, bridge_root=None, request_id=""):
+     is_error = not bool(response.get("ok"))
+-    content = [{"type":"text", "text":json.dumps(response, ensure_ascii=False, indent=2)}]
++    payload = response
++    if not is_error and bridge_root is not None and "result" in response:
++        loaded = _load_src_layer(bridge_root)
++        if loaded is not None:
++            settings_for, compact_payload = loaded
++            policy = settings_for(bridge_root)
++            compacted, meta = compact_payload(
++                response["result"],
++                bridge_root=bridge_root,
++                request_id=request_id,
++                threshold=policy.compact_threshold_bytes,
++                max_items=policy.compact_max_items,
++            )
++            if meta is not None:
++                payload = dict(response, result=compacted)
++    content = [{"type":"text", "text":json.dumps(payload, ensure_ascii=False, indent=2)}]
+     if name == "kompas_viewport_capture" and not is_error:
+         try:
+             path = Path(response["result"]["path"])
+@@ -132,8 +103,8 @@ def tool_result(name, response):
+         except Exception as exc:
+             content.append({"type":"text", "text":f"Image attachment failed: {exc}"})
+     out = {"content": content, "isError": is_error}
+-    if "result" in response:
+-        out["structuredContent"] = response["result"]
++    if "result" in payload:
++        out["structuredContent"] = payload["result"]
+     return out
+ 
+ 
+@@ -143,14 +114,18 @@ def main():
+     instructions = (
+         "Use KOMPAS structured tools for exact CAD data and edits; use fresh viewport captures for visual QA. "
+         "Before saving, restore temporary visibility. Never infer material, mass, geometry, or references from screenshots. "
+-        "For unsupported engineering operations use kompas_run_job, then verify with API data plus a fresh viewport capture."
++        "Large responses are compacted: if a result contains _compact, the lists are incomplete - read the artifact file it names "
++        "or continue with next_cursor instead of treating the received lists as complete. "
++        "kompas_run_job executes only jobs listed in jobs/allowlist.json; if the operation you need is not there, say so explicitly "
++        "rather than looking for another way to run code."
+     )
+     for line in sys.stdin:
+         try:
+             msg = json.loads(line)
+             method = msg.get("method"); req_id = msg.get("id")
+             if method == "initialize":
+-                emit({"jsonrpc":"2.0","id":req_id,"result":{"protocolVersion":MCP_PROTOCOL_VERSION,"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":SERVER_NAME,"version":SERVER_VERSION},"instructions":instructions}})
++                requested = (msg.get("params") or {}).get("protocolVersion")
++                emit({"jsonrpc":"2.0","id":req_id,"result":{"protocolVersion":negotiate_protocol(requested),"capabilities":{"tools":{"listChanged":False}},"serverInfo":{"name":SERVER_NAME,"version":SERVER_VERSION},"instructions":instructions}})
+             elif method == "notifications/initialized":
+                 continue
+             elif method == "ping":
+@@ -159,12 +134,14 @@ def main():
+                 emit({"jsonrpc":"2.0","id":req_id,"result":{"tools":TOOLS}})
+             elif method == "tools/call":
+                 params = msg.get("params") or {}; name = params.get("name"); arguments = params.get("arguments") or {}
++                if name in WRAPPER_SIDE_TOOLS:
++                    emit({"jsonrpc":"2.0","id":req_id,"error":{"code":-32602,"message":f"Tool {name} is served by the wrapper layer and must not be routed through the core"}}); continue
+                 if name not in ACTION_MAP:
+                     emit({"jsonrpc":"2.0","id":req_id,"error":{"code":-32602,"message":f"Unknown tool: {name}"}}); continue
+                 action, transform = ACTION_MAP[name]
+                 try:
+                     response = client.call(action, transform(arguments))
+-                    emit({"jsonrpc":"2.0","id":req_id,"result":tool_result(name, response)})
++                    emit({"jsonrpc":"2.0","id":req_id,"result":tool_result(name, response, bridge_root=args.root, request_id=str(req_id or ""))})
+                 except Exception as exc:
+                     emit({"jsonrpc":"2.0","id":req_id,"result":{"content":[{"type":"text","text":f"{type(exc).__name__}: {exc}"}],"isError":True}})
+             elif req_id is not None:
+diff --git b/mcp/tools_catalog.py b/mcp/tools_catalog.py
+new file mode 100644
+index 0000000..e4c64b0
+--- /dev/null
++++ b/mcp/tools_catalog.py
+@@ -0,0 +1,181 @@
++#!/usr/bin/env python3
++"""Единый декларативный каталог MCP-инструментов моста KOMPAS-3D.
++
++Зачем этот файл существует
++--------------------------
++Раньше каталог инструментов жил в двух местах одновременно: 33 описания были
++захардкожены в ``kompas_mcp_server_core.py``, а ``kompas_open_copy`` и
++``kompas_component_translate_xy`` дописывала обёртка ``kompas_mcp_server.py``,
++причём делала это поиском подстроки в ответе ядра на ``tools/list`` и в тексте
++``instructions``. Любое изменение формулировки в ядре тихо ломало инъекцию,
++а ``VERSION.json`` приходилось править руками.
++
++Теперь описание поверхности — единственный источник правды. Из него берутся:
++
++* ответ на ``tools/list``;
++* таблица маршрутизации ``ACTION_MAP`` (имя инструмента -> действие реестра);
++* список имён для ``VERSION.json`` и контрактного теста-снапшота.
++
++Инварианты, которые проверяет ``tests/test_wave1.py``:
++
++* все имена уникальны;
++* у каждого инструмента есть ``name``, ``description`` и ``inputSchema``;
++* каждому инструменту, маршрутизируемому воркером, соответствует запись
++  в ``ACTION_MAP``;
++* инструменты, обслуживаемые Python-слоем, помечены ``WRAPPER_SIDE_TOOLS``
++  и не имеют записи в ``ACTION_MAP``;
++* ``VERSION.json`` совпадает с каталогом по составу и количеству.
++"""
++from __future__ import annotations
++
++from typing import Any, Callable, Dict, List, Tuple
++
++SERVER_NAME = "kompas-engineering"
++
++# Версия сборки моста. Держать в синхроне с VERSION.json (проверяется тестом).
++SERVER_VERSION = "1.1.14_CAP2"
++
++# Версии протокола MCP, которые этот сервер умеет обслуживать.
++# 2025-06-18 - версия, на которой проект был выпущен (structured output,
++#              elicitation, resource links).
++# 2025-11-25 - актуальная стабильная (иконки, incremental consent,
++#              URL-mode elicitation, экспериментальные Tasks).
++# Порядок важен: последняя запись считается версией по умолчанию.
++SUPPORTED_PROTOCOL_VERSIONS: Tuple[str, ...] = ("2025-06-18", "2025-11-25")
++MCP_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[-1]
++
++
++def negotiate_protocol(client_version: str | None) -> str:
++    """Выбрать версию протокола для ответа на ``initialize``.
++
++    Раньше сервер всегда отвечал захардкоженной строкой и игнорировал то,
++    что запросил клиент. По спецификации сервер обязан ответить либо
++    запрошенной версией, если он её поддерживает, либо своей максимальной -
++    и тогда клиент сам решает, продолжать ли работу.
++    """
++    if client_version and client_version in SUPPORTED_PROTOCOL_VERSIONS:
++        return client_version
++    return MCP_PROTOCOL_VERSION
++
++
++# ---------------------------------------------------------------------------
++# Описания инструментов (схемы не менялись - перенесены дословно)
++# ---------------------------------------------------------------------------
++TOOLS = [
++    {"name":"kompas_status","description":"Read KOMPAS process/version, open documents, active document, and COM health. Use it as the first call in a session and again after any failure to re-establish ground truth instead of assuming the previous state still holds.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_active_document","description":"Read which document is currently active in KOMPAS: exact path, name and document type. Call this before any edit to confirm you are about to modify the document you intend to modify, and again after any operation that may have switched documents.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_open_agent_copy","description":"Open or activate one exact existing *_AGENT_COPY.m3d/.a3d basename from approved bridge work for read/verification sessions. The tool never saves or mutates the file and verifies the resulting API7 active PathName exactly.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_model_tree","description":"Read the recursive native 3D assembly tree. Call it before selecting components so every later selector is based on the real structure rather than on an assumed layout.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":12,"default":6}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_component_info","description":"Read exact native component properties: name, file, material, mass, bbox, origin and placement matrix. Selector may be top-level index, recursive tree path such as 0/2/1, integer path array, name, marking, or filename fragment.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"oneOf":[{"type":"integer"},{"type":"string"},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_component_topology","description":"Read native structured KOMPAS 3D topology for a selected top-level component: bodies, faces, unique edges and vertices, planar faces, cylindrical faces, body bbox, cylinder radius/diameter and axis where KOMPAS exposes them. Read-only. Initial CAP2-A2 selector is a top-level integer index.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"type":"integer","minimum":0},"body_index":{"type":"integer","minimum":0},"max_faces":{"type":"integer","minimum":1,"maximum":5000,"default":1000},"max_edges":{"type":"integer","minimum":1,"maximum":10000,"default":3000},"max_vertices":{"type":"integer","minimum":1,"maximum":10000,"default":3000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_component_holes","description":"Read holes for a selected top-level KOMPAS 3D component. Prefers native IHole3D features from IModelContainer.Holes3D and may return separately labeled inferred cylindrical void candidates from native topology. Returns diameter, depth, center/axis when reliably associated, and through/blind status when supported. Never promotes uncertain geometry to a native hole. Read-only.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"type":"integer","minimum":0},"include_inferred":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_interference_check","description":"Read-only native KOMPAS 3D interference/contact check. Accepts selector_a+selector_b or selectors[] for pairwise checking. Performs body bbox quick-reject before IBody.CheckIntersectionWithBody. itBody(4) is reported as real interference; optional tangent checks separate contact-only cases. Intersection volume is returned as null because this verified API path does not expose a reliable volume.","inputSchema":{"type":"object","properties":{"selector_a":{"type":"integer","minimum":0},"selector_b":{"type":"integer","minimum":0},"selectors":{"type":"array","minItems":2,"maxItems":32,"items":{"type":"integer","minimum":0}},"check_contact":{"type":"boolean","default":True},"include_body_pairs":{"type":"boolean","default":False},"max_body_pair_details":{"type":"integer","minimum":0,"maximum":200,"default":20}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_part_create","description":"Create one new native KOMPAS .m3d detail in the approved bridge work directory. Filename must be a basename ending in .m3d and contain _AGENT_COPY. Existing files are never overwritten. Uses native API5 ksDocument3D.Create(False, True) + SaveAs, closes the new document, and restores the previously active AGENT_COPY.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_part_add_primitive","description":"Populate one EMPTY existing native *_AGENT_COPY.m3d in approved work with a bounded native primitive. kind=block or plate creates a centered rectangular solid; kind=rect_tube creates a rectangular hollow profile member from nested sketch contours. width=X, height=Y, depth=+Z. Performs transaction backup, exact active-path check, Save->Close->Reopen geometry verification, and restores the previously active AGENT_COPY. Refuses non-empty parts.","inputSchema":{"type":"object","required":["filename","kind","width_mm","height_mm","depth_mm"],"properties":{"filename":{"type":"string","minLength":1},"kind":{"type":"string","enum":["block","plate","rect_tube"]},"width_mm":{"type":"number","exclusiveMinimum":0},"height_mm":{"type":"number","exclusiveMinimum":0},"depth_mm":{"type":"number","exclusiveMinimum":0},"wall_mm":{"type":"number","exclusiveMinimum":0}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_part_add_hole","description":"Add one verified circular hole to an existing native *_AGENT_COPY.m3d in approved work. Current CAP2-A7 work-plane support is XOY. Supports through or blind cut-extrusion holes, center X/Y, diameter, depth for blind mode, and normal/reverse/both direction. Performs transaction backup, exact active-path check, cylinder diameter/center/axis/depth readback, Save->Close->Reopen verification, and restores the prior AGENT_COPY. The hole is native KOMPAS cut-extrusion geometry; native IHole3D feature is not claimed.","inputSchema":{"type":"object","required":["filename","diameter_mm"],"properties":{"filename":{"type":"string","minLength":1},"diameter_mm":{"type":"number","exclusiveMinimum":0},"center_u_mm":{"type":"number","default":0.0},"center_v_mm":{"type":"number","default":0.0},"plane":{"type":"string","enum":["XOY"],"default":"XOY"},"mode":{"type":"string","enum":["through","blind"],"default":"through"},"depth_mm":{"type":"number","exclusiveMinimum":0},"direction":{"type":"string","enum":["normal","reverse","both"],"default":"both"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_assembly_create","description":"Create one new native KOMPAS assembly .a3d in the approved bridge work directory. Filename must be a basename ending in .a3d and contain _AGENT_COPY. Existing files are never overwritten. Uses native API5 ksDocument3D.Create(False, False), verifies IsDetail()==False before and after Save->Close->Reopen, then restores the previously active AGENT_COPY.","inputSchema":{"type":"object","required":["filename"],"properties":{"filename":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_assembly_insert_component","description":"Insert one existing .m3d or .a3d from approved work as an external reference into a closed native *_AGENT_COPY.a3d. Refuses duplicate source paths by default, creates an exact byte transaction snapshot, checks exact active PathName before write and Save, then verifies component count, exact FileName reference, missing refs, Save->Close->Reopen persistence, rollback safety, and original active-document restore.","inputSchema":{"type":"object","required":["assembly_filename","component_filename"],"properties":{"assembly_filename":{"type":"string","minLength":1},"component_filename":{"type":"string","minLength":1},"allow_duplicate":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_component_transform","description":"Set one exact assembly component to an absolute rigid transform represented by origin plus orthonormal X/Y/Z axes. Rejects non-finite values, scale, shear, and reflection; requires determinant +1; snapshots exact assembly bytes; checks exact active PathName before write and Save; then verifies native origin, axes, 4x4 matrix, bbox, source reference, and Save->Close->Reopen persistence.","inputSchema":{"type":"object","required":["assembly_filename","selector","origin","axis_x","axis_y","axis_z"],"properties":{"assembly_filename":{"type":"string","minLength":1},"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"origin":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_x":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_y":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"axis_z":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"mode":{"type":"string","enum":["absolute"],"default":"absolute"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
++    {"name":"kompas_material_read","description":"Read native material name, density, and mass from one existing .m3d under approved work, including nested read-only evidence sources. Opens the exact file, performs no Save, closes it, and restores the prior AGENT_COPY.","inputSchema":{"type":"object","required":["relative_path"],"properties":{"relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_material_set","description":"Set native material on one direct-work *_AGENT_COPY.m3d using API7 IPart7.SetMaterial. The requested material name and positive density must exactly match a separately read native evidence-source .m3d under approved work. Performs byte snapshot rollback, exact active-path checks, before/after name-density-mass readback, Save->Close->Reopen verification, and prior active-document restore.","inputSchema":{"type":"object","required":["filename","material_name","density","evidence_source_relative_path"],"properties":{"filename":{"type":"string","minLength":1},"material_name":{"type":"string","minLength":1},"density":{"type":"number","exclusiveMinimum":0},"evidence_source_relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
++    {"name":"kompas_pmi_read","description":"Read structured native KOMPAS 3D PMI dimensions from API7 ISymbols3DContainer collections. Returns dimension kind/value, model-object association, text position, and text/tolerance fields where the concrete COM object exposes them. Floating ModelTexts are deliberately excluded and never counted as PMI dimensions.","inputSchema":{"type":"object","properties":{"max_dimensions":{"type":"integer","minimum":1,"maximum":2000,"default":500}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_pmi_dimension_create","description":"Create one real native geometry-linked API7 ILineDimension3D between two exact existing vertices on XOY in a closed direct-work *_AGENT_COPY.m3d. Uses native Object1/Object2 links and text position, transaction snapshot rollback, exact-path checks, and Save->Close->Reopen validation of count, validity, geometry links, and nominal value. Coordinate/baseline, diameter, and radius families are deliberately not simulated.","inputSchema":{"type":"object","required":["filename","point1","point2","text_position"],"properties":{"filename":{"type":"string","minLength":1},"point1":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"point2":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"text_position":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"plane":{"type":"string","enum":["XOY"],"default":"XOY"},"name":{"type":"string","minLength":1,"maxLength":80,"default":"CAP2_LINEAR_DIMENSION"},"point_tolerance":{"type":"number","exclusiveMinimum":0,"maximum":1,"default":0.001}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_component_properties_read","description":"Read native API7 IPart7 occurrence properties: designation/Marking, name, material, mass, density, source file, Standard, CreateSpcObjects, group/fixed/local/billet states. Quantity, role, and purchased/manufactured are returned null with explicit availability notes when not exposed; no semantic inference is made.","inputSchema":{"type":"object","required":["selector"],"properties":{"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_component_properties_set","description":"Set only proven native writable API7 IPart7 occurrence fields Name and Marking/designation in a closed direct-work *_AGENT_COPY.a3d. Requires at least one value; preserves external source reference and bytes; snapshots assembly; verifies before/requested/after and Save->Close->Reopen persistence; restores the prior active AGENT_COPY.","inputSchema":{"type":"object","required":["assembly_filename","selector"],"properties":{"assembly_filename":{"type":"string","minLength":1},"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"designation":{"type":"string","minLength":1,"maxLength":200},"name":{"type":"string","minLength":1,"maxLength":200}},"anyOf":[{"required":["designation"]},{"required":["name"]}],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
++    {"name":"kompas_bom_read","description":"Read an assembly BOM from the real recursive API7 IPart7 occurrence tree. Membership uses native CreateSpcObjects plus InheritExclude semantics; rows are grouped by exact source/designation/name/material and quantity is the exact eligible occurrence count. Native A3D SpecificationDescriptions metadata is reported separately. No filename inventory or floating text is substituted.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_component_pattern_linear","description":"Create a real native API7 assembly component linear pattern through IFeaturePatterns.Add(ksObjectPartsLinearPattern) and ILinearPattern. Uses one existing source occurrence, a signed global X/Y/Z direction, positive spacing, and count 2..20; transactionally verifies native exemplar count, exact placements, source reference/hash, tree persistence, and Save->Close->Reopen.","inputSchema":{"type":"object","required":["assembly_filename","source_selector","direction","spacing","count"],"properties":{"assembly_filename":{"type":"string","minLength":1},"source_selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"direction":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"spacing":{"type":"number","exclusiveMinimum":0},"count":{"type":"integer","minimum":2,"maximum":20},"name":{"type":"string","minLength":1,"maxLength":100,"default":"CAP2_LINEAR_COMPONENT_PATTERN"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_model_bbox","description":"Read the exact native bounding box of the active top-level model. Use it to sanity-check overall size before and after geometry edits. It is a whole-model measure and is not a substitute for the per-component bounding box returned by kompas_component_info.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_fit_view","description":"Fit the active 3D model in the KOMPAS viewport using API5 ZoomPrevNextOrAll(2). Call it before kompas_viewport_capture when the model may be out of frame or off-screen. It changes only the camera, never geometry, and performs no Save.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_rotate_view","description":"Native bounded KOMPAS 3D viewport rotation through API5 vp_None plus ksPlacement.SetAxes. Each step is 6 degrees. The tool performs structured axis readback and verified KOMPAS HWND screenshots before and after, and fails unless the viewport visibly changes. No model geometry is changed and no Save is performed.","inputSchema":{"type":"object","properties":{"horizontal_steps":{"type":"integer","minimum":-12,"maximum":12,"default":0},"vertical_steps":{"type":"integer","minimum":-12,"maximum":12,"default":0}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_component_visibility","description":"Temporary visual visibility control for a component or subassembly, including nested tree paths. Operations: hide, show, isolate, show_all, restore. Use restore before saving unless changed visibility is intentionally part of the deliverable.","inputSchema":{"type":"object","required":["operation"],"properties":{"operation":{"type":"string","enum":["hide","show","isolate","show_all","restore"]},"selector":{"oneOf":[{"type":"integer"},{"type":"string"},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_viewport_capture","description":"Capture a fresh PNG of the active KOMPAS document frame. The bridge obtains the native HWND through API7 DocumentFrames, prefers visible screen pixels for the GPU/OpenGL viewport, and keeps PrintWindow as a fallback. The MCP response includes the image itself so Codex inspects current CAD state, not a stale screenshot.","inputSchema":{"type":"object","properties":{"viewport_only":{"type":"boolean","default":True},"label":{"type":"string"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_save","description":"Save the active document. Safety layer rejects writes outside bridge work or approved output roots and rejects protected source roots.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++    {"name":"kompas_close","description":"Close the active document without saving. The exact closed path is remembered, so a later kompas_reopen reopens precisely that file; there is deliberately no fallback to the original source document. Use it to release the file for the reopen-verification step of a write operation.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_reopen","description":"Close and reopen the same active file, verifying that the reopened document is exactly the file that was closed. Set save=true only for a safe COPY or an approved output path; reopening a protected source is refused. Use it as the persistence-verification step before declaring a write successful.","inputSchema":{"type":"object","properties":{"save":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_references_qa","description":"Read native assembly references recursively and report missing references. Optional package_root also flags dependencies outside the portable package.","inputSchema":{"type":"object","properties":{"package_root":{"type":"string"},"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_run_job","description":"Run an existing task-specific Python COM job only from KOMPAS_BRIDGE/jobs with a bounded timeout. Use only when the stable tool surface does not cover an engineering operation, then verify through API plus a fresh viewport capture.","inputSchema":{"type":"object","required":["script"],"properties":{"script":{"type":"string"},"timeout_sec":{"type":"integer","minimum":1,"maximum":300,"default":60}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++]
++
++# Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
++# которой не место в воркере (создание копии, проверка активного документа,
++# сухой прогон). Ядро такие имена не маршрутизирует.
++WRAPPER_SIDE_TOOLS: Tuple[str, ...] = ['kompas_open_copy', 'kompas_component_translate_xy']
++
++TOOLS.extend([
++    {"name":"kompas_open_copy","description":"Create a disposable working COPY and open it as the active visible writable KOMPAS document. Source is never edited directly. Omit source to use the active document. name must be a filename only.","inputSchema":{"type":"object","properties":{"source":{"type":"string"},"name":{"type":"string"}},"additionalProperties":False}},
++    {"name":"kompas_component_translate_xy","description":"COPY-only bounded real geometry translation for one top-level component. Moves component origin in assembly XY by at most 5 mm per call. apply=false is dry-run. apply=true requires exact expected_name. Never saves automatically; perform API and fresh viewport QA before kompas_save.","inputSchema":{"type":"object","required":["selector","dx_mm","dy_mm"],"properties":{"selector":{"type":"integer","minimum":0},"expected_name":{"type":"string","minLength":1},"dx_mm":{"type":"number","minimum":-5,"maximum":5},"dy_mm":{"type":"number","minimum":-5,"maximum":5},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++])
++
++
++# ---------------------------------------------------------------------------
++# Маршрутизация: имя инструмента -> (действие реестра воркера, преобразователь)
++# ---------------------------------------------------------------------------
++ACTION_MAP = {
++    "kompas_status": ("kompas.status", lambda a: {}),
++    "kompas_active_document": ("document.active", lambda a: {}),
++    "kompas_open_agent_copy": ("document.open_agent_copy", lambda a: a),
++    "kompas_model_tree": ("model.tree", lambda a: a),
++    "kompas_component_info": ("component.info", lambda a: a),
++    "kompas_component_topology": ("component.topology", lambda a: a),
++    "kompas_component_holes": ("component.holes", lambda a: a),
++    "kompas_interference_check": ("interference.check", lambda a: a),
++    "kompas_part_create": ("part.create", lambda a: a),
++    "kompas_part_add_primitive": ("part.primitive", lambda a: a),
++    "kompas_part_add_hole": ("part.hole", lambda a: a),
++    "kompas_assembly_create": ("assembly.create", lambda a: a),
++    "kompas_assembly_insert_component": ("assembly.insert_component", lambda a: a),
++    "kompas_component_transform": ("component.transform", lambda a: a),
++    "kompas_material_read": ("material.read", lambda a: a),
++    "kompas_material_set": ("material.set", lambda a: a),
++    "kompas_pmi_read": ("pmi.read", lambda a: a),
++    "kompas_pmi_dimension_create": ("pmi.dimension_create", lambda a: a),
++    "kompas_component_properties_read": ("component.properties_read", lambda a: a),
++    "kompas_component_properties_set": ("component.properties_set", lambda a: a),
++    "kompas_bom_read": ("bom.read", lambda a: a),
++    "kompas_component_pattern_linear": ("component.pattern_linear", lambda a: a),
++    "kompas_model_bbox": ("model.bbox", lambda a: {}),
++    "kompas_set_view": ("view.set", lambda a: a),
++    "kompas_fit_view": ("view.fit", lambda a: {}),
++    "kompas_rotate_view": ("view.rotate", lambda a: a),
++    "kompas_component_visibility": ("view.visibility", lambda a: a),
++    "kompas_viewport_capture": ("viewport.capture", lambda a: a),
++    "kompas_save": ("document.save", lambda a: {}),
++    "kompas_close": ("document.close", lambda a: {}),
++    "kompas_reopen": ("document.reopen", lambda a: a),
++    "kompas_references_qa": ("qa.references", lambda a: a),
++    "kompas_run_job": ("run_job", lambda a: a),
++}
++
++
++TOOL_INDEX: Dict[str, Dict[str, Any]] = {t["name"]: t for t in TOOLS}
++
++WRAPPER_SIDE_ACTIONS: Dict[str, str] = {
++    "kompas_open_copy": "document.open_copy",
++    "kompas_component_translate_xy": "component.translate_xy",
++}
++
++
++def tool_names() -> List[str]:
++    """Имена инструментов в стабильном порядке каталога."""
++    return [t["name"] for t in TOOLS]
++
++
++def catalog_snapshot() -> Dict[str, Any]:
++    """Компактный снимок поверхности для контрактного теста и VERSION.json."""
++    return {
++        "server_name": SERVER_NAME,
++        "server_version": SERVER_VERSION,
++        "protocol_version": MCP_PROTOCOL_VERSION,
++        "supported_protocol_versions": list(SUPPORTED_PROTOCOL_VERSIONS),
++        "mcp_tool_count": len(TOOLS),
++        "mcp_tools": tool_names(),
++    }
++
++
++def routing_table() -> Dict[str, Tuple[str, Callable[[Dict[str, Any]], Dict[str, Any]]]]:
++    """Полная таблица маршрутизации, включая инструменты обёртки."""
++    table: Dict[str, Tuple[str, Callable[[Dict[str, Any]], Dict[str, Any]]]] = dict(ACTION_MAP)
++    for name, action in WRAPPER_SIDE_ACTIONS.items():
++        table[name] = (action, lambda a: a)
++    return table
+diff --git b/src/compact.py b/src/compact.py
+new file mode 100644
+index 0000000..c1d0f05
+--- /dev/null
++++ b/src/compact.py
+@@ -0,0 +1,163 @@
++"""Компактные ответы и постраничная выдача больших структур.
++
++Зачем этот модуль существует
++---------------------------
++``kompas_component_topology`` по умолчанию может вернуть до 5000 граней,
++10 000 рёбер и 10 000 вершин; ``kompas_model_tree`` - дерево до глубины 12;
++``kompas_pmi_read`` - до 2000 размеров. Всё это сериализовалось с ``indent=2``
++и целиком уходило в контекст модели. Один вызов «посмотреть топологию сборки»
++был способен съесть контекстное окно, после чего агент начинал терять задачу.
++
++Теперь работает так:
++
++* ответ меньше порога - уходит как есть, поведение не меняется;
++* ответ больше порога - длинные списки усекаются, полный дамп пишется
++  в ``runtime/artifacts/<id>.json``, а в ответ добавляется блок ``_compact``
++  с числами и путём к артефакту, чтобы агент мог прочитать детали по требованию.
++
++Усечение никогда не скрывает факт усечения: счётчики и путь к артефакту всегда
++на месте. Это важно - агент не должен принимать частичные данные за полные.
++"""
++from __future__ import annotations
++
++import base64
++import json
++import os
++from pathlib import Path
++from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple
++
++CURSOR_PREFIX = "c:"
++ARTIFACT_SUBDIR = ("runtime", "artifacts")
++
++
++def encode_cursor(offset: int) -> str:
++    """Непрозрачный курсор продолжения выдачи."""
++    raw = f"{max(0, int(offset))}".encode("ascii")
++    return CURSOR_PREFIX + base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
++
++
++def decode_cursor(cursor: Optional[str]) -> int:
++    """Разобрать курсор. Невалидный курсор трактуется как начало выдачи."""
++    if not cursor:
++        return 0
++    text = str(cursor)
++    if not text.startswith(CURSOR_PREFIX):
++        return 0
++    payload = text[len(CURSOR_PREFIX):]
++    padding = "=" * (-len(payload) % 4)
++    try:
++        value = int(base64.urlsafe_b64decode(payload + padding).decode("ascii"))
++    except Exception:
++        return 0
++    return max(0, value)
++
++
++def paginate(items: Sequence[Any], limit: int = 200, cursor: Optional[str] = None) -> Dict[str, Any]:
++    """Отдать одну страницу списка вместе со счётчиками и курсором продолжения."""
++    safe_limit = max(1, int(limit))
++    total = len(items)
++    start = decode_cursor(cursor)
++    if start >= total:
++        return {
++            "items": [],
++            "returned": 0,
++            "total": total,
++            "offset": start,
++            "next_cursor": None,
++            "truncated": False,
++        }
++    page = list(items[start:start + safe_limit])
++    next_offset = start + len(page)
++    has_more = next_offset < total
++    return {
++        "items": page,
++        "returned": len(page),
++        "total": total,
++        "offset": start,
++        "next_cursor": encode_cursor(next_offset) if has_more else None,
++        "truncated": has_more,
++    }
++
++
++def serialized_size(payload: Any) -> int:
++    """Размер ответа в байтах UTF-8. Ошибка сериализации трактуется как «огромный»."""
++    try:
++        return len(json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"))
++    except Exception:
++        return 10 ** 9
++
++
++def artifact_dir(bridge_root: Any) -> Path:
++    path = Path(str(bridge_root)).joinpath(*ARTIFACT_SUBDIR)
++    path.mkdir(parents=True, exist_ok=True)
++    return path
++
++
++def _truncate_list(value: List[Any], max_items: int) -> Tuple[List[Any], bool]:
++    if len(value) <= max_items:
++        return value, False
++    return value[:max_items], True
++
++
++def compact_payload(
++    result: Any,
++    *,
++    bridge_root: Any,
++    request_id: str,
++    threshold: int = 60_000,
++    max_items: int = 200,
++) -> Tuple[Any, Optional[Dict[str, Any]]]:
++    """Ужать ответ инструмента, если он превышает порог.
++
++    Возвращает ``(ответ, метаданные)``. Метаданные ``None``, если ужимать не нужно.
++    """
++    size = serialized_size(result)
++    if size <= threshold or not isinstance(result, Mapping):
++        return result, None
++
++    compacted: Dict[str, Any] = {}
++    truncated: Dict[str, Dict[str, Any]] = {}
++
++    for key, value in result.items():
++        if isinstance(value, list) and value and isinstance(value[0], (dict, list, str, int, float)):
++            page, was_truncated = _truncate_list(value, max_items)
++            compacted[key] = page
++            if was_truncated:
++                truncated[key] = {
++                    "returned": len(page),
++                    "total": len(value),
++                    "next_cursor": encode_cursor(len(page)),
++                }
++        else:
++            compacted[key] = value
++
++    target = artifact_dir(bridge_root) / f"{request_id}.json"
++    tmp = target.with_suffix(target.suffix + ".tmp")
++    try:
++        tmp.write_text(
++            json.dumps(result, ensure_ascii=False, indent=2, default=str),
++            encoding="utf-8",
++        )
++        os.replace(tmp, target)
++        artifact_path: Optional[str] = str(target)
++    except OSError:
++        artifact_path = None
++
++    meta: Dict[str, Any] = {
++        "reason": "response_exceeds_threshold",
++        "original_bytes": size,
++        "threshold_bytes": threshold,
++        "truncated_lists": truncated,
++        "artifact": artifact_path,
++        "hint": (
++            "Полный ответ записан в артефакт. Прочитайте файл целиком, если нужны "
++            "все элементы; для постраничного чтения передайте next_cursor из "
++            "truncated_lists. Не считайте полученные списки полными."
++            if artifact_path else
++            "Полный ответ превысил порог и не поместился в артефакт. Запросите данные "
++            "меньшими порциями. Не считайте полученные списки полными."
++        ),
++    }
++    if truncated:
++        compacted["_compact"] = meta
++    return compacted, meta
+diff --git a/src/config.py b/src/config.py
+index 417fdff..6d32766 100644
+--- a/src/config.py
++++ b/src/config.py
+@@ -1,11 +1,33 @@
++"""Устаревшая обёртка над :mod:`settings`.
++
++Исторически здесь жила ``load_config()``, которая читала
++``config/agent_config.json`` и возвращала сырой словарь. Функция не вызывалась
++нигде в проекте, а политика безопасности была захардкожена в ``safety.py`` -
++то есть конфиг существовал, но ни на что не влиял.
++
++Настройки теперь читаются, валидируются и кэшируются в :mod:`settings`.
++Модуль оставлен как совместимый фасад для внешнего кода и тестов, которые
++могли импортировать ``load_config``: он возвращает тот же сырой словарь,
++что и раньше, но с раскрытым плейсхолдером ``{bridge_root}``.
++"""
+ from __future__ import annotations
+-import json
++
+ from pathlib import Path
++from typing import Any, Dict
++
++from settings import read_settings
+ 
+ 
+-def load_config(root: Path) -> dict:
+-    root = Path(root)
+-    path = root / "config" / "agent_config.json"
++def load_config(root: Path) -> Dict[str, Any]:
++    """Сырое содержимое конфига. Для новой логики используйте settings.settings_for()."""
++    import json
++
++    path = Path(root) / "config" / "agent_config.json"
+     if not path.is_file():
+         return {}
+-    return json.loads(path.read_text(encoding="utf-8"))
++    return json.loads(path.read_text(encoding="utf-8-sig"))
++
++
++def resolved_settings(root: Path):
++    """Провалидированные настройки - то, что реально применяет мост."""
++    return read_settings(root)
+diff --git b/src/errors.py b/src/errors.py
+new file mode 100644
+index 0000000..ff98c5c
+--- /dev/null
++++ b/src/errors.py
+@@ -0,0 +1,250 @@
++"""Классификация ошибок моста: устойчивые коды, подсказки, редакция данных.
++
++Зачем этот модуль существует
++---------------------------
++Воркер возвращал агенту ``traceback.format_exc()`` целиком (``src/worker.py``).
++Это плохо по двум причинам:
++
++1. наружу утекала структура файловой системы и имена пользователей;
++2. вместо ответа на вопрос «что не так и что делать» модель получала 40 строк
++   внутренностей, которые ещё и занимали контекст.
++
++Теперь наружу уходит только устойчивый код, короткое сообщение и подсказка,
++а полная трассировка пишется в ``runtime/logs/errors.log``.
++"""
++from __future__ import annotations
++
++import os
++import re
++import traceback
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import Any, Dict, Mapping, Optional, Tuple
++
++MAX_MESSAGE_CHARS = 400
++MAX_HINT_CHARS = 300
++
++# Код -> подсказка «что делать». Подсказка - часть контракта: агент читает её
++# и меняет поведение, поэтому формулировки должны быть императивными.
++CODE_HINTS: Mapping[str, str] = {
++    "kompas_not_attached": (
++        "Откройте ровно один экземпляр КОМПАС-3D в той же пользовательской сессии "
++        "и с тем же уровнем прав, что и мост, убедитесь, что модель активна, "
++        "закройте модальные окна и повторите вызов."
++    ),
++    "path_protected": (
++        "Это защищённый корень исходников. Работайте на копии *_AGENT_COPY "
++        "внутри каталога work или в разрешённом каталоге вывода."
++    ),
++    "path_not_allowed": (
++        "Путь вне разрешённых корней записи. Создайте документ в work "
++        "или добавьте нужный корень в config/agent_config.json -> safety.write_roots."
++    ),
++    "job_not_allowed": (
++        "Задание не прошло проверку допуска. Задание должно лежать в каталоге jobs, "
++        "иметь расширение .py и быть перечисленным в jobs/allowlist.json."
++    ),
++    "active_document_mismatch": (
++        "Активный документ не тот, который ожидался. Перечитайте kompas_active_document "
++        "и kompas_status, затем активируйте нужный документ перед повторной операцией."
++    ),
++    "verification_failed": (
++        "Операция не прошла проверку после сохранения и повторного открытия. "
++        "Модель не изменена - откат выполнен. Перечитайте состояние через "
++        "kompas_status и kompas_model_tree перед повтором."
++    ),
++    "timeout": (
++        "Воркер не ответил в отведённое время. Проверьте, не висит ли модальное окно "
++        "в КОМПАСе, не выполняется ли длинное перестроение, и не запущен ли уже "
++        "другой длительный запрос к тому же мосту."
++    ),
++    "file_not_found": (
++        "Файл не найден. Проверьте имя и расположение, а также что документ "
++        "действительно сохранён на диск."
++    ),
++    "permission_denied": (
++        "Недостаточно прав на файловую операцию. Убедитесь, что файл не открыт "
++        "в КОМПАСе монопольно и не заблокирован антивирусом."
++    ),
++    "invalid_argument": (
++        "Аргумент не прошёл валидацию. Сверьтесь со схемой инструмента "
++        "и передайте значения в указанных единицах."
++    ),
++    "internal_error": (
++        "Внутренняя ошибка моста. Полная трассировка записана в runtime/logs/errors.log - "
++        "передайте её разработчику."
++    ),
++}
++
++# Порядок важен: сначала самые специфичные признаки.
++_CLASSIFY_RULES: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
++    ("kompas_not_attached", (
++        "kompas_active_instance_not_found",
++        "kompas_com_attach_failed",
++        "kompas_api5_active_instance_not_found",
++        "second kompas instance",
++    )),
++    ("job_not_allowed", (
++        "job_must_be_existing_python_file",
++        "job_not_in_allowlist",
++        "job_references_protected_path",
++        "job_failed",
++        "job_timeout",
++    )),
++    ("path_protected", ("protected_path",)),
++    ("path_not_allowed", ("write_outside_allowed_roots", "outside_allowed_roots")),
++    ("active_document_mismatch", (
++        "reopen_postcondition_failed",
++        "active_path_mismatch",
++        "active_document_mismatch",
++        "copy_not_active",
++        "no_active_document",
++        "reopen_target",
++    )),
++    ("verification_failed", (
++        "verification_failed",
++        "postcondition",
++        "readback",
++        "geometry_verification",
++        "did not match",
++    )),
++    ("timeout", ("bridge_timeout", "timed out", "timeout")),
++    ("file_not_found", ("not found", "not_found", "no such file")),
++    ("permission_denied", ("permission", "access is denied", "winerror 5")),
++    ("invalid_argument", (
++        "invalid",
++        "must be",
++        "required",
++        "out of range",
++        "exceeds",
++        "unsupported",
++    )),
++)
++
++
++class BridgeError(Exception):
++    """Ошибка с устойчивым кодом, пригодным для чтения агентом."""
++
++    def __init__(self, code: str, message: str, *, hint: Optional[str] = None,
++                 details: Optional[Mapping[str, Any]] = None) -> None:
++        super().__init__(message)
++        self.code = code
++        self.message = message
++        self.hint = hint or CODE_HINTS.get(code, CODE_HINTS["internal_error"])
++        self.details: Dict[str, Any] = dict(details or {})
++
++    def to_body(self) -> Dict[str, Any]:
++        body: Dict[str, Any] = {
++            "code": self.code,
++            "message": _clip(self.message, MAX_MESSAGE_CHARS),
++            "hint": _clip(self.hint, MAX_HINT_CHARS),
++        }
++        if self.details:
++            body["details"] = self.details
++        return body
++
++
++def _clip(text: Any, limit: int) -> str:
++    value = str(text or "").strip()
++    if len(value) <= limit:
++        return value
++    return value[: limit - 1].rstrip() + "…"
++
++
++def classify(exc: BaseException) -> Tuple[str, str, str]:
++    """Определить (код, сообщение, подсказка) по исключению."""
++    if isinstance(exc, BridgeError):
++        return exc.code, exc.message, exc.hint
++
++    raw = f"{type(exc).__name__}: {exc}"
++    lowered = raw.lower()
++
++    code = "internal_error"
++    if isinstance(exc, PermissionError):
++        code = "permission_denied"
++    elif isinstance(exc, FileNotFoundError):
++        code = "file_not_found"
++    elif isinstance(exc, (TimeoutError,)):
++        code = "timeout"
++    elif isinstance(exc, (ValueError, TypeError, KeyError, IndexError)):
++        code = "invalid_argument"
++
++    for candidate, needles in _CLASSIFY_RULES:
++        if any(needle in lowered for needle in needles):
++            code = candidate
++            break
++
++    return code, raw, CODE_HINTS.get(code, CODE_HINTS["internal_error"])
++
++
++def _user_profile_token() -> Optional[Path]:
++    for env in ("USERPROFILE", "HOME"):
++        value = os.environ.get(env)
++        if value:
++            try:
++                return Path(value).resolve()
++            except OSError:
++                continue
++    return None
++
++
++_WIN_ABS_PATH = re.compile(r"[A-Za-z]:[\\/][^\s\"'<>|,;)\]]*")
++
++
++def redact(text: Any, bridge_root: Any = None, *, max_chars: int = MAX_MESSAGE_CHARS) -> str:
++    """Убрать из текста абсолютные пути, имена пользователей и лишнюю длину.
++
++    Известные корни заменяются на говорящие токены, остальные абсолютные пути -
++    на ``<path:basename>``: имя файла сохраняется, потому что без него сообщение
++    становится бесполезным, а полный путь - это уже утечка.
++    """
++    value = str(text or "")
++
++    known: list[Tuple[Path, str]] = []
++    if bridge_root is not None:
++        try:
++            known.append((Path(str(bridge_root)).resolve(), "<bridge_root>"))
++        except OSError:
++            pass
++    profile = _user_profile_token()
++    if profile is not None:
++        known.append((profile, "<user_profile>"))
++    known.sort(key=lambda item: len(str(item[0])), reverse=True)
++
++    for path, token in known:
++        for form in {str(path), str(path).replace("\\", "/")}:
++            value = re.sub(re.escape(form), token, value, flags=re.IGNORECASE)
++
++    def _replace(match: "re.Match[str]") -> str:
++        found = match.group(0)
++        name = re.split(r"[\\/]", found.rstrip("\\/"))[-1]
++        return f"<path:{name}>" if name else "<path>"
++
++    value = _WIN_ABS_PATH.sub(_replace, value)
++    return _clip(value, max_chars)
++
++
++def error_body(action: str, exc: BaseException, bridge_root: Any = None) -> Dict[str, Any]:
++    """Тело ответа воркера при ошибке. Трассировки здесь нет и не должно быть."""
++    code, message, hint = classify(exc)
++    return {
++        "code": code,
++        "message": redact(message, bridge_root),
++        "hint": redact(hint, bridge_root, max_chars=MAX_HINT_CHARS),
++        "action": action,
++    }
++
++
++def log_traceback(bridge_root: Any, action: str, exc: BaseException) -> Optional[Path]:
++    """Записать полную трассировку в runtime/logs/errors.log. Не бросает исключений."""
++    try:
++        log_dir = Path(str(bridge_root)) / "runtime" / "logs"
++        log_dir.mkdir(parents=True, exist_ok=True)
++        path = log_dir / "errors.log"
++        stamp = datetime.now(timezone.utc).astimezone().isoformat()
++        with path.open("a", encoding="utf-8") as handle:
++            handle.write(f"\n===== {stamp} | action={action} =====\n")
++            handle.write("".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
++        return path
++    except Exception:
++        return None
+diff --git a/src/jobs.py b/src/jobs.py
+index 6bda838..921387f 100644
+--- a/src/jobs.py
++++ b/src/jobs.py
+@@ -1,28 +1,178 @@
+-"""Bounded task-specific jobs, restricted to bridge-owned files."""
++"""Ограниченные задания: единственный исполняемый allow-list моста.
++
++Что изменилось и почему
++-----------------------
++Раньше допуск задания проверялся так: прочитать текст скрипта в нижнем регистре
++и убедиться, что в нём нет подстроки с защищённым путём::
++
++    source = script.read_text(...).lower()
++    if any(str(x).lower() in source for x in PROTECTED):
++        raise PermissionError("job_references_protected_path")
++
++Это не граница безопасности. Путь собирается из частей, из ``chr()``, из
++переменной окружения - и проверка проходит. При этом сам ``kompas_run_job``
++был штатным путём: ``SKILL.md`` прямо отправлял туда агента, когда стабильной
++поверхности не хватало.
++
++Теперь работает явный манифест: ``jobs/allowlist.json``. Что не перечислено -
++не исполняется, независимо от содержимого. Проверка на защищённые пути осталась,
++но как проверка пути, а не содержимого файла.
++
++Формат ``jobs/allowlist.json``::
++
++    {
++      "version": 1,
++      "jobs": [
++        "job_template.py",
++        {"name": "bom_export.py", "description": "Выгрузка спецификации",
++         "timeout_sec": 120, "enabled": true}
++      ]
++    }
++"""
+ from __future__ import annotations
+-import os, subprocess, sys
++
++import json
++import os
++import subprocess
++import sys
+ from pathlib import Path
++from typing import Any, Dict, List, Tuple
++
+ from protocol import ok
+-from safety import PROTECTED
++from settings import settings_for
+ 
++ALLOWLIST_NAME = "allowlist.json"
+ 
+-def run_job(session, payload):
+-    root = session.root.resolve()
+-    jobs = (root / "jobs").resolve(); jobs.mkdir(exist_ok=True)
+-    requested = Path(str(payload["script"]))
+-    script = (jobs / requested.name).resolve() if not requested.is_absolute() else requested.resolve()
+-    if not script.is_relative_to(jobs) or script.suffix.lower() != ".py" or not script.is_file():
+-        raise PermissionError("job_must_be_existing_python_file_under_KOMPAS_BRIDGE/jobs")
+-    source = script.read_text(encoding="utf-8", errors="ignore").lower()
+-    if any(str(x).lower() in source for x in PROTECTED):
+-        raise PermissionError("job_references_protected_path")
+-    timeout = min(max(int(payload.get("timeout_sec", 60)), 1), 300)
+-    env = dict(os.environ, KOMPAS_BRIDGE_ROOT=str(root), KOMPAS_BRIDGE_WORK=str(root / "work"))
++
++def allowlist_path(root: Any) -> Path:
++    return settings_for(root).jobs_dir / ALLOWLIST_NAME
++
++
++def load_allowlist(root: Any) -> Dict[str, Dict[str, Any]]:
++    """Прочитать манифест допуска. Возвращает имя файла -> параметры.
++
++    Отсутствующий или битый манифест - это пустой allow-list, а не «разрешить всё».
++    """
++    path = allowlist_path(root)
++    if not path.is_file():
++        return {}
++    try:
++        parsed = json.loads(path.read_text(encoding="utf-8-sig"))
++    except (OSError, ValueError):
++        return {}
++
++    entries = parsed.get("jobs") if isinstance(parsed, dict) else parsed
++    if not isinstance(entries, list):
++        return {}
++
++    allowed: Dict[str, Dict[str, Any]] = {}
++    for entry in entries:
++        if isinstance(entry, str) and entry.strip():
++            allowed[Path(entry.strip()).name] = {"enabled": True}
++        elif isinstance(entry, dict):
++            name = str(entry.get("name") or "").strip()
++            if name:
++                allowed[Path(name).name] = {
++                    "enabled": bool(entry.get("enabled", True)),
++                    "description": str(entry.get("description") or ""),
++                    "timeout_sec": entry.get("timeout_sec"),
++                }
++    return allowed
++
++
++def allowed_jobs(root: Any) -> List[Dict[str, Any]]:
++    """Список допущенных заданий - для чтения агентом и для документации."""
++    jobs_dir = settings_for(root).jobs_dir
++    out: List[Dict[str, Any]] = []
++    for name, meta in sorted(load_allowlist(root).items()):
++        out.append({
++            "name": name,
++            "exists": (jobs_dir / name).is_file(),
++            "enabled": bool(meta.get("enabled", True)),
++            "description": meta.get("description", ""),
++            "timeout_sec": meta.get("timeout_sec"),
++        })
++    return out
++
++
++def _resolve_script(root: Path, payload: Dict[str, Any]) -> Tuple[Path, Dict[str, Any]]:
++    jobs_dir = settings_for(root).jobs_dir.resolve()
++    requested = Path(str(payload.get("script") or "")).name
++    if not requested:
++        raise PermissionError("job_must_be_existing_python_file_under_jobs: пустое имя")
++
++    script = (jobs_dir / requested).resolve()
++    if not script.is_relative_to(jobs_dir) or script.suffix.lower() != ".py" or not script.is_file():
++        raise PermissionError(f"job_must_be_existing_python_file_under_jobs: {requested}")
++
++    entry = load_allowlist(root).get(script.name)
++    if entry is None:
++        raise PermissionError(f"job_not_in_allowlist: {script.name}")
++    if not entry.get("enabled", True):
++        raise PermissionError(f"job_not_in_allowlist: {script.name} (disabled)")
++
++    # Проверка пути, а не текста: само расположение задания не должно оказаться
++    # внутри защищённого корня исходников.
++    if settings_for(root).is_protected(script):
++        raise PermissionError(f"job_references_protected_path: {script.name}")
++
++    return script, entry
++
++
++def run_job(session, payload: Dict[str, Any]) -> Dict[str, Any]:
++    root = Path(session.root).resolve()
++    policy = settings_for(root)
++    policy.jobs_dir.mkdir(parents=True, exist_ok=True)
++
++    script, entry = _resolve_script(root, payload or {})
++
++    requested_timeout = (payload or {}).get("timeout_sec", entry.get("timeout_sec") or 60)
++    try:
++        timeout = int(requested_timeout)
++    except (TypeError, ValueError):
++        timeout = 60
++    timeout = min(max(timeout, 1), int(policy.job_timeout_max_sec))
++
++    env = dict(
++        os.environ,
++        KOMPAS_BRIDGE_ROOT=str(root),
++        KOMPAS_BRIDGE_WORK=str(policy.work_dir),
++    )
+     try:
+-        cp = subprocess.run([sys.executable, str(script)], cwd=str(root), env=env, capture_output=True, text=True, timeout=timeout)
+-        body = {"script": str(script), "exit_code": cp.returncode, "stdout": cp.stdout[-12000:], "stderr": cp.stderr[-12000:]}
+-        if cp.returncode != 0:
+-            return {"ok": False, "error": {"code": "job_failed", "message": f"job exit code {cp.returncode}", "details": body}}
+-        return ok("run_job", body)
++        completed = subprocess.run(
++            [sys.executable, str(script)],
++            cwd=str(root),
++            env=env,
++            capture_output=True,
++            text=True,
++            timeout=timeout,
++        )
+     except subprocess.TimeoutExpired as exc:
+-        return {"ok": False, "error": {"code": "job_timeout", "message": f"job exceeded {timeout}s", "details": {"stdout": (exc.stdout or "")[-4000:], "stderr": (exc.stderr or "")[-4000:]}}}
++        return {
++            "ok": False,
++            "error": {
++                "code": "job_timeout",
++                "message": f"job exceeded {timeout}s",
++                "details": {
++                    "stdout": (exc.stdout or "")[-4000:],
++                    "stderr": (exc.stderr or "")[-4000:],
++                },
++            },
++        }
++
++    body = {
++        "script": script.name,
++        "exit_code": completed.returncode,
++        "stdout": completed.stdout[-12000:],
++        "stderr": completed.stderr[-12000:],
++    }
++    if completed.returncode != 0:
++        return {
++            "ok": False,
++            "error": {
++                "code": "job_failed",
++                "message": f"job exit code {completed.returncode}",
++                "details": body,
++            },
++        }
++    return ok("run_job", body)
+diff --git a/src/safety.py b/src/safety.py
+index 66cd374..f9dfbf5 100644
+--- a/src/safety.py
++++ b/src/safety.py
+@@ -1,29 +1,76 @@
++"""Политика записи: что можно писать, что нельзя трогать вообще.
++
++Что изменилось
++--------------
++Раньше этот модуль жёстко прошивал абсолютные пути
++(``C:\\KOMPAS_AI_WORKSPACE\\00_SOURCE`` и т. д.) и полностью игнорировал
++``config/agent_config.json``, хотя те же самые ключи там объявлены. Теперь
++источник политики - :mod:`settings`, а захардкоженные значения остались только
++как безопасные значения по умолчанию для случая, когда конфига нет.
++
++Публичный интерфейс сохранён: ``safe_write(path, root)`` и
++``copy_destination(source, root, name)`` вызываются из ``capabilities.py``
++и ``engineering_capabilities.py`` без изменений.
++"""
+ from __future__ import annotations
++
+ from pathlib import Path
++from typing import Any, Optional
++
++from settings import Settings, settings_for
++
++# Совместимость: ``jobs.py`` исторически импортирует ``PROTECTED``.
++# Значение сохраняется, но больше не является источником истины.
++PROTECTED = tuple(settings_for(Path(__file__).resolve().parents[1]).protected_roots)
++
++
++def _norm(path: Any) -> Path:
++    return Path(str(path)).expanduser().resolve()
++
++
++def _settings(root: Any, settings: Optional[Settings] = None) -> Settings:
++    return settings if settings is not None else settings_for(root)
++
++
++def assert_not_protected(path: Any, root: Any = None, settings: Optional[Settings] = None) -> Path:
++    """Запретить любую запись в защищённые корни исходников."""
++    target = _norm(path)
++    policy = _settings(root, settings)
++    if policy.is_protected(target):
++        raise PermissionError(f"protected_path: {target}")
++    return target
++
++
++def assert_writable(path: Any, root: Any, settings: Optional[Settings] = None) -> Path:
++    """Разрешить запись только внутрь work или разрешённых корней вывода."""
++    target = _norm(path)
++    policy = _settings(root, settings)
++    if policy.is_protected(target):
++        raise PermissionError(f"protected_path: {target}")
++    if not policy.is_writable(target):
++        raise PermissionError(f"write_outside_allowed_roots: {target}")
++    return target
++
+ 
+-PROTECTED = [
+-    Path(r"C:\KOMPAS_AI_WORKSPACE\00_SOURCE"),
+-    Path(r"C:\KOMPAS_AI_WORKSPACE\01_CURRENT_CDW"),
+-    Path(r"C:\KOMPAS_AI_WORKSPACE\02_3D_V9_STABLE"),
+-]
++# Историческое имя: оставлено, потому что используется в существующем коде.
++def safe_write(path: Any, root: Any, settings: Optional[Settings] = None) -> Path:
++    return assert_writable(path, root, settings)
+ 
+ 
+-def _norm(path) -> Path:
+-    return Path(path).resolve()
++def work_dir(root: Any, settings: Optional[Settings] = None) -> Path:
++    policy = _settings(root, settings)
++    path = policy.work_dir
++    path.mkdir(parents=True, exist_ok=True)
++    return path
+ 
+ 
+-def safe_write(path, root):
+-    p = _norm(path)
+-    work = _norm(Path(root) / "work")
+-    output = _norm(Path(r"C:\KOMPAS_AI_WORKSPACE\90_OUTPUT"))
+-    for protected in PROTECTED:
+-        if p.is_relative_to(_norm(protected)):
+-            raise PermissionError(f"protected_path: {p}")
+-    if not (p.is_relative_to(work) or p.is_relative_to(output)):
+-        raise PermissionError(f"write_outside_allowed_roots: {p}")
+-    return p
++def copy_destination(source: Any, root: Any, name: Optional[str] = None,
++                     settings: Optional[Settings] = None) -> Path:
++    """Куда положить рабочую копию исходного документа."""
++    target = work_dir(root, settings) / (name or Path(str(source)).name)
++    return assert_writable(target, root, settings)
+ 
+ 
+-def copy_destination(source, root, name=None):
+-    p = Path(root) / "work" / (name or Path(source).name)
+-    return safe_write(p, root)
++def policy_summary(root: Any, settings: Optional[Settings] = None) -> dict:
++    """Описание политики для kompas_status - без перечисления всех путей."""
++    return _settings(root, settings).describe()
+diff --git b/src/settings.py b/src/settings.py
+new file mode 100644
+index 0000000..714526c
+--- /dev/null
++++ b/src/settings.py
+@@ -0,0 +1,237 @@
++"""Единая конфигурация моста KOMPAS-3D.
++
++Зачем этот модуль существует
++---------------------------
++В проекте был ``config/agent_config.example.json`` с ключами ``protected_roots``,
++``write_roots``, ``viewport.crop`` и ``view.projection_indices`` - и функция
++``load_config()`` в ``src/config.py``. Но ``load_config()`` не вызывалась нигде,
++а ``src/safety.py`` жёстко прошивал те же пути абсолютными строками. В результате
++конфиг был декорацией: перенос на другую машину или смена структуры каталогов
++требовали правки исходников.
++
++Здесь настройки читаются один раз, валидируются и кэшируются по корню моста.
++Любая некорректная секция не роняет мост, а откатывается к безопасному значению
++по умолчанию и попадает в список ``warnings`` - его видно через ``kompas_status``.
++"""
++from __future__ import annotations
++
++import json
++from dataclasses import dataclass, field
++from pathlib import Path
++from typing import Any, Dict, List, Mapping, Sequence, Tuple
++
++CONFIG_RELPATH = Path("config") / "agent_config.json"
++
++# Значения по умолчанию повторяют то, что раньше было захардкожено в safety.py,
++# поэтому поведение на существующих установках не меняется.
++DEFAULT_PROTECTED_ROOTS: Tuple[str, ...] = (
++    r"C:\KOMPAS_AI_WORKSPACE\00_SOURCE",
++    r"C:\KOMPAS_AI_WORKSPACE\01_CURRENT_CDW",
++    r"C:\KOMPAS_AI_WORKSPACE\02_3D_V9_STABLE",
++)
++DEFAULT_OUTPUT_ROOTS: Tuple[str, ...] = (r"C:\KOMPAS_AI_WORKSPACE\90_OUTPUT",)
++DEFAULT_WRITE_SUBDIR = "work"
++DEFAULT_JOBS_SUBDIR = "jobs"
++
++DEFAULT_CROP: Mapping[str, int] = {"left": 345, "top": 160, "right": 8, "bottom": 10}
++DEFAULT_PROJECTIONS: Mapping[str, int] = {
++    "front": 1, "rear": 2, "top": 3, "bottom": 4,
++    "left": 5, "right": 6, "iso": 7, "dimetric": 8,
++}
++
++KOMPAS_PROGID = "KOMPAS.Application.7"
++API5_PROGID = "KOMPAS.Application.5"
++
++
++def _norm(path: Any) -> Path:
++    """Нормализовать путь для сравнения (без требования существования)."""
++    return Path(str(path)).expanduser().resolve()
++
++
++def _expand(value: Any, bridge_root: Path) -> str:
++    """Подставить {bridge_root} в строку из конфига."""
++    text = str(value)
++    return text.replace("{bridge_root}", str(bridge_root))
++
++
++def _as_path_tuple(values: Any, bridge_root: Path) -> Tuple[Path, ...]:
++    if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
++        return ()
++    out: List[Path] = []
++    for item in values:
++        if not isinstance(item, (str, bytes)) or not str(item).strip():
++            continue
++        out.append(_norm(_expand(item, bridge_root)))
++    return tuple(out)
++
++
++def _as_int(mapping: Any, keys: Sequence[str], defaults: Mapping[str, int]) -> Dict[str, int]:
++    out = dict(defaults)
++    if not isinstance(mapping, Mapping):
++        return out
++    for key in keys:
++        try:
++            out[key] = int(mapping[key])
++        except (KeyError, TypeError, ValueError):
++            continue
++    return out
++
++
++@dataclass(frozen=True)
++class Settings:
++    """Разрешённые настройки моста, готовые к использованию."""
++
++    bridge_root: Path
++    config_path: Path
++    config_loaded: bool
++    protected_roots: Tuple[Path, ...]
++    write_roots: Tuple[Path, ...]
++    jobs_dir: Path
++    kompas_progid: str = KOMPAS_PROGID
++    api5_progid: str = API5_PROGID
++    worker_poll_ms: int = 120
++    mcp_tool_timeout_sec: int = 90
++    job_timeout_max_sec: int = 300
++    max_rotation_steps_per_call: int = 12
++    allow_keyboard_rotation_fallback: bool = True
++    viewport_crop: Mapping[str, int] = field(default_factory=lambda: dict(DEFAULT_CROP))
++    projection_indices: Mapping[str, int] = field(default_factory=lambda: dict(DEFAULT_PROJECTIONS))
++    # Порог, после которого ответ инструмента ужимается, а полный дамп
++    # уходит в артефакт. Раньше порога не было вообще и в контекст модели
++    # мог уехать ответ на несколько сотен килобайт.
++    compact_threshold_bytes: int = 60_000
++    compact_max_items: int = 200
++    warnings: Tuple[str, ...] = ()
++
++    # -- удобные производные ------------------------------------------------
++    @property
++    def work_dir(self) -> Path:
++        return self.bridge_root / DEFAULT_WRITE_SUBDIR
++
++    def is_protected(self, path: Any) -> bool:
++        target = _norm(path)
++        return any(target == root or target.is_relative_to(root) for root in self.protected_roots)
++
++    def is_writable(self, path: Any) -> bool:
++        target = _norm(path)
++        allowed = (self.work_dir,) + self.write_roots
++        return any(target == root or target.is_relative_to(root) for root in allowed)
++
++    def describe(self) -> Dict[str, Any]:
++        """Компактное описание для kompas_status: без утечки лишних путей."""
++        return {
++            "config_loaded": self.config_loaded,
++            "protected_root_count": len(self.protected_roots),
++            "write_root_count": 1 + len(self.write_roots),
++            "jobs_dir": str(self.jobs_dir),
++            "mcp_tool_timeout_sec": self.mcp_tool_timeout_sec,
++            "job_timeout_max_sec": self.job_timeout_max_sec,
++            "compact_threshold_bytes": self.compact_threshold_bytes,
++            "warnings": list(self.warnings),
++        }
++
++
++def read_settings(bridge_root: Any) -> Settings:
++    """Прочитать и провалидировать настройки. Никогда не бросает исключение."""
++    root = _norm(bridge_root)
++    config_path = root / CONFIG_RELPATH
++    warnings: List[str] = []
++    raw: Dict[str, Any] = {}
++
++    if config_path.is_file():
++        try:
++            parsed = json.loads(config_path.read_text(encoding="utf-8-sig"))
++            if isinstance(parsed, Mapping):
++                raw = dict(parsed)
++            else:
++                warnings.append("config_not_an_object: используется конфигурация по умолчанию")
++        except (OSError, ValueError) as exc:
++            warnings.append(f"config_unreadable: {type(exc).__name__}; используется конфигурация по умолчанию")
++    else:
++        warnings.append("config_missing: используется конфигурация по умолчанию")
++
++    safety = raw.get("safety") if isinstance(raw.get("safety"), Mapping) else {}
++    viewport = raw.get("viewport") if isinstance(raw.get("viewport"), Mapping) else {}
++    view = raw.get("view") if isinstance(raw.get("view"), Mapping) else {}
++
++    protected = _as_path_tuple(safety.get("protected_roots"), root) or tuple(
++        _norm(_expand(p, root)) for p in DEFAULT_PROTECTED_ROOTS
++    )
++
++    declared_write = _as_path_tuple(safety.get("write_roots"), root)
++    # Корень work добавляется всегда: без него мост не сможет работать вообще,
++    # а объявлять его в конфиге руками - лишний способ выстрелить себе в ногу.
++    work = root / DEFAULT_WRITE_SUBDIR
++    write_roots: List[Path] = []
++    for candidate in (work,) + declared_write:
++        if candidate not in write_roots:
++            write_roots.append(candidate)
++    if not declared_write:
++        write_roots.extend(_norm(_expand(p, root)) for p in DEFAULT_OUTPUT_ROOTS)
++
++    # Пересечение защищённых и записываемых корней - это дыра в политике,
++    # а не настройка. Защищённый корень всегда побеждает.
++    overlap = [str(p) for p in write_roots if any(p == q or p.is_relative_to(q) for q in protected)]
++    if overlap:
++        warnings.append("write_root_inside_protected_root: " + "; ".join(overlap))
++        write_roots = [p for p in write_roots if not any(p == q or p.is_relative_to(q) for q in protected)]
++
++    jobs_subdir = str(safety.get("jobs_subdir") or DEFAULT_JOBS_SUBDIR).strip() or DEFAULT_JOBS_SUBDIR
++
++    def _int(key: str, default: int, lo: int, hi: int) -> int:
++        try:
++            value = int(raw[key])
++        except (KeyError, TypeError, ValueError):
++            return default
++        if not lo <= value <= hi:
++            warnings.append(f"{key}_out_of_range: {value} вне [{lo}, {hi}], взято {default}")
++            return default
++        return value
++
++    crop = _as_int(viewport.get("crop"), ("left", "top", "right", "bottom"), DEFAULT_CROP)
++    projections = _as_int(view.get("projection_indices"), tuple(DEFAULT_PROJECTIONS), DEFAULT_PROJECTIONS)
++
++    try:
++        rotation_steps = int(view.get("max_rotation_steps_per_call", 12))
++    except (TypeError, ValueError):
++        rotation_steps = 12
++    if not 1 <= rotation_steps <= 60:
++        warnings.append(f"max_rotation_steps_per_call_out_of_range: {rotation_steps}, взято 12")
++        rotation_steps = 12
++
++    return Settings(
++        bridge_root=root,
++        config_path=config_path,
++        config_loaded=bool(raw),
++        protected_roots=protected,
++        write_roots=tuple(write_roots),
++        jobs_dir=root / jobs_subdir,
++        worker_poll_ms=_int("worker_poll_ms", 120, 10, 5_000),
++        mcp_tool_timeout_sec=_int("mcp_tool_timeout_sec", 90, 5, 3_600),
++        job_timeout_max_sec=_int("job_timeout_max_sec", 300, 1, 3_600),
++        max_rotation_steps_per_call=rotation_steps,
++        allow_keyboard_rotation_fallback=bool(view.get("allow_keyboard_rotation_fallback", True)),
++        viewport_crop=crop,
++        projection_indices=projections,
++        compact_threshold_bytes=_int("compact_threshold_bytes", 60_000, 1_000, 10_000_000),
++        compact_max_items=_int("compact_max_items", 200, 1, 100_000),
++        warnings=tuple(warnings),
++    )
++
++
++_CACHE: Dict[str, Settings] = {}
++
++
++def settings_for(bridge_root: Any) -> Settings:
++    """Кэшированный доступ к настройкам по корню моста."""
++    key = str(_norm(bridge_root))
++    cached = _CACHE.get(key)
++    if cached is None:
++        cached = read_settings(bridge_root)
++        _CACHE[key] = cached
++    return cached
++
++
++def reset_cache() -> None:
++    """Сбросить кэш (нужно тестам и перезагрузке конфига на ходу)."""
++    _CACHE.clear()
+diff --git a/src/worker.py b/src/worker.py
+index cc9eac3..02f925b 100644
+--- a/src/worker.py
++++ b/src/worker.py
+@@ -1,10 +1,12 @@
+ #!/usr/bin/env python3
+ """File-routed, versioned KOMPAS Automation bridge."""
+ from __future__ import annotations
+-import argparse, json, os, sys, threading, time, traceback
++import argparse, json, os, sys, threading, time
+ from pathlib import Path
+ from datetime import datetime, timezone
+ from protocol import ok, fail, atomic_json
++from errors import error_body, log_traceback
++from settings import settings_for
+ from kompas_session import KompasSession
+ from capabilities import registry as legacy_registry
+ from engineering_capabilities import registry as engineering_registry
+@@ -240,14 +242,19 @@ def main():
+             try:
+                 req = json.loads(path.read_text(encoding="utf-8")); req_id = str(req.get("id") or req_id)
+                 action = str(req.get("action", "")).strip(); payload = req.get("payload") or {}
+-                if action == "ping": body = ok(action, {"worker": "kompas-engineering-bridge", "bridge_version": VERSION, "pid": os.getpid(), "python": sys.version})
++                if action == "ping": body = ok(action, {"worker": "kompas-engineering-bridge", "bridge_version": VERSION, "pid": os.getpid(), "python": sys.version, "settings_warnings": list(settings_for(root).warnings)})
+                 elif action == "capabilities": body = ok(action, {"bridge_version": VERSION, "capabilities": sorted(REGISTRY)})
+-                elif action == "worker_info": body = ok(action, {"bridge_version": VERSION, "root": str(root), "pid": os.getpid()})
++                elif action == "worker_info": body = ok(action, {"bridge_version": VERSION, "root": str(root), "pid": os.getpid(), "settings": settings_for(root).describe()})
+                 elif action not in REGISTRY: body = fail(action, "unknown_action", "No registered capability", {"available": sorted(REGISTRY)})
+                 else: body = REGISTRY[action](session, payload)
+                 response = {"protocol_version": PROTOCOL_VERSION, "id": req_id, "action": action, "time": now(), "responded_at": now(), **body}
+             except Exception as exc:
+-                response = {"protocol_version": PROTOCOL_VERSION, "id": req_id, "action": req.get("action", ""), "ok": False, "time": now(), "responded_at": now(), "error": {"code": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()}}
++                # Наружу уходит только устойчивый код, сообщение и подсказка.
++                # Полная трассировка остаётся в runtime/logs/errors.log: раньше она
++                # уезжала прямо в контекст модели и раскрывала структуру диска.
++                failed_action = str(req.get("action", ""))
++                log_traceback(root, failed_action, exc)
++                response = {"protocol_version": PROTOCOL_VERSION, "id": req_id, "action": failed_action, "ok": False, "time": now(), "responded_at": now(), "error": error_body(failed_action, exc, root)}
+             atomic_json(rsp/f"{req_id}.json", response)
+             try: os.replace(path, done/path.name)
+             except Exception: path.unlink(missing_ok=True)
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index 75ed69b..692af53 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,17 +6,23 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/4] Python compileall"
++Write-Host "[1/5] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/4] MCP stdio contract"
++Write-Host "[2/5] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/4] MCP file-routing + image attachment contract"
++Write-Host "[3/5] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/4] Required files"
+-$required = @("src\worker.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[4/5] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 1 tests failed" }
++Write-Host "[5/5] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git b/tests/test_wave1.py b/tests/test_wave1.py
+new file mode 100644
+index 0000000..b0bdec7
+--- /dev/null
++++ b/tests/test_wave1.py
+@@ -0,0 +1,459 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 1»: каталог инструментов, конфигурация, ошибки, сжатие, задания.
++
++Все тесты работают без КОМПАСа, без COM и без сети - их можно запускать в CI
++на любой машине. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave1.py" -v
++
++Что проверяется по существу (а не «код не упал»):
++
++* каталог инструментов - единственный источник поверхности, и VERSION.json
++  не может с ним разъехаться;
++* политика записи управляется конфигом, а не захардкоженными путями;
++* наружу при ошибке не уходит ни трассировка, ни абсолютные пути;
++* большой ответ инструмента не уезжает в контекст целиком, но и не теряется
++  молча - есть счётчики, курсор и артефакт;
++* задание, которого нет в манифесте, не исполняется ни при каких условиях.
++"""
++from __future__ import annotations
++
++import json
++import os
++import sys
++import tempfile
++import time
++import unittest
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import compact            # noqa: E402
++import errors             # noqa: E402
++import jobs               # noqa: E402
++import safety             # noqa: E402
++import settings           # noqa: E402
++import tools_catalog      # noqa: E402
++
++
++class TempRootCase(unittest.TestCase):
++    """Общая обвязка: временный корень моста с конфигом."""
++
++    def setUp(self) -> None:
++        self._tmp = tempfile.TemporaryDirectory(prefix="kompas_wave1_")
++        self.root = Path(self._tmp.name).resolve()
++        settings.reset_cache()
++
++    def tearDown(self) -> None:
++        settings.reset_cache()
++        self._tmp.cleanup()
++
++    def write_config(self, payload) -> Path:
++        config_dir = self.root / "config"
++        config_dir.mkdir(parents=True, exist_ok=True)
++        path = config_dir / "agent_config.json"
++        if isinstance(payload, str):
++            path.write_text(payload, encoding="utf-8")
++        else:
++            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
++        settings.reset_cache()
++        return path
++
++
++# ---------------------------------------------------------------------------
++# 1. Единый каталог инструментов
++# ---------------------------------------------------------------------------
++class TestToolsCatalog(unittest.TestCase):
++    def test_surface_is_complete_and_unique(self):
++        names = tools_catalog.tool_names()
++        self.assertEqual(len(names), 35, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
++
++    def test_every_tool_is_described_for_the_model(self):
++        for tool in tools_catalog.TOOLS:
++            with self.subTest(tool=tool.get("name")):
++                self.assertTrue(str(tool.get("name", "")).startswith("kompas_"))
++                self.assertGreaterEqual(len(str(tool.get("description", ""))), 40,
++                                        "описание должно объяснять назначение, а не называть инструмент")
++                schema = tool.get("inputSchema")
++                self.assertIsInstance(schema, dict)
++                self.assertEqual(schema.get("type"), "object")
++                self.assertIn("properties", schema)
++
++    def test_routing_covers_every_tool_exactly_once(self):
++        routing = tools_catalog.routing_table()
++        self.assertEqual(set(routing), set(tools_catalog.tool_names()))
++
++    def test_wrapper_tools_are_not_routed_by_worker(self):
++        for name in tools_catalog.WRAPPER_SIDE_TOOLS:
++            self.assertIn(name, tools_catalog.TOOL_INDEX)
++            self.assertNotIn(name, tools_catalog.ACTION_MAP,
++                             "инструменты обёртки не должны маршрутизироваться воркером")
++            self.assertIn(name, tools_catalog.WRAPPER_SIDE_ACTIONS)
++
++    def test_version_json_matches_catalog(self):
++        declared = json.loads((REPO_ROOT / "VERSION.json").read_text(encoding="utf-8"))
++        snapshot = tools_catalog.catalog_snapshot()
++        self.assertEqual(declared["mcp_tool_count"], snapshot["mcp_tool_count"])
++        self.assertEqual(declared["mcp_tools"], snapshot["mcp_tools"],
++                         "VERSION.json и каталог разъехались")
++        self.assertEqual(declared["mcp_protocol_version"], tools_catalog.MCP_PROTOCOL_VERSION)
++        self.assertEqual(declared["mcp_supported_protocol_versions"],
++                         list(tools_catalog.SUPPORTED_PROTOCOL_VERSIONS))
++
++    def test_protocol_negotiation(self):
++        self.assertEqual(tools_catalog.negotiate_protocol("2025-06-18"), "2025-06-18",
++                         "поддерживаемую версию клиента нужно уважать")
++        self.assertEqual(tools_catalog.negotiate_protocol("2025-11-25"), "2025-11-25")
++        self.assertEqual(tools_catalog.negotiate_protocol("1999-01-01"),
++                         tools_catalog.MCP_PROTOCOL_VERSION,
++                         "на неизвестную версию отвечаем своей максимальной")
++        self.assertEqual(tools_catalog.negotiate_protocol(None), tools_catalog.MCP_PROTOCOL_VERSION)
++
++    def test_annotations_are_present_where_they_matter(self):
++        read_only = [t for t in tools_catalog.TOOLS
++                     if (t.get("annotations") or {}).get("readOnlyHint") is True]
++        self.assertGreater(len(read_only), 10, "чтение должно быть явно помечено readOnlyHint")
++        writers = [t for t in tools_catalog.TOOLS
++                   if (t.get("annotations") or {}).get("readOnlyHint") is False]
++        self.assertGreater(len(writers), 5, "изменяющие инструменты должны быть помечены явно")
++
++
++# ---------------------------------------------------------------------------
++# 2. Конфигурация
++# ---------------------------------------------------------------------------
++class TestSettings(TempRootCase):
++    def test_defaults_when_config_missing(self):
++        policy = settings.read_settings(self.root)
++        self.assertFalse(policy.config_loaded)
++        self.assertTrue(any(w.startswith("config_missing") for w in policy.warnings))
++        self.assertEqual(len(policy.protected_roots), 3)
++        self.assertEqual(policy.mcp_tool_timeout_sec, 90)
++
++    def test_malformed_config_falls_back_instead_of_crashing(self):
++        self.write_config("{ это не json")
++        policy = settings.read_settings(self.root)
++        self.assertFalse(policy.config_loaded)
++        self.assertTrue(any(w.startswith("config_unreadable") for w in policy.warnings))
++        self.assertEqual(len(policy.protected_roots), 3)
++
++    def test_bridge_root_placeholder_is_expanded(self):
++        self.write_config({
++            "safety": {
++                "protected_roots": [str(self.root / "src")],
++                "write_roots": ["{bridge_root}\\out"],
++            }
++        })
++        policy = settings.read_settings(self.root)
++        self.assertIn((self.root / "src").resolve(), policy.protected_roots)
++        self.assertIn((self.root / "out").resolve(), policy.write_roots)
++        self.assertIn((self.root / "work").resolve(), policy.write_roots,
++                      "рабочий каталог work должен быть доступен всегда")
++
++    def test_write_root_inside_protected_is_dropped(self):
++        self.write_config({
++            "safety": {
++                "protected_roots": [str(self.root / "src")],
++                "write_roots": [str(self.root / "src" / "out")],
++            }
++        })
++        policy = settings.read_settings(self.root)
++        self.assertTrue(any(w.startswith("write_root_inside_protected_root") for w in policy.warnings))
++        self.assertFalse(policy.is_writable(self.root / "src" / "out"))
++        self.assertTrue(policy.is_protected(self.root / "src" / "out"))
++
++    def test_out_of_range_number_is_reported_and_defaulted(self):
++        self.write_config({"mcp_tool_timeout_sec": 99999})
++        policy = settings.read_settings(self.root)
++        self.assertEqual(policy.mcp_tool_timeout_sec, 90)
++        self.assertTrue(any("out_of_range" in w for w in policy.warnings))
++
++    def test_compaction_settings_are_configurable(self):
++        self.write_config({"compact_threshold_bytes": 5000, "compact_max_items": 7})
++        policy = settings.read_settings(self.root)
++        self.assertEqual(policy.compact_threshold_bytes, 5000)
++        self.assertEqual(policy.compact_max_items, 7)
++
++    def test_settings_are_cached_per_root(self):
++        first = settings.settings_for(self.root)
++        self.assertIs(first, settings.settings_for(self.root))
++        settings.reset_cache()
++        self.assertIsNot(first, settings.settings_for(self.root))
++
++
++# ---------------------------------------------------------------------------
++# 3. Политика записи
++# ---------------------------------------------------------------------------
++class TestSafetyPolicy(TempRootCase):
++    def test_protected_root_is_never_writable(self):
++        source = self.root / "src"
++        self.write_config({"safety": {"protected_roots": [str(source)]}})
++        with self.assertRaises(PermissionError) as ctx:
++            safety.safe_write(source / "part.m3d", self.root)
++        self.assertIn("protected_path", str(ctx.exception))
++
++    def test_bridge_code_directory_is_not_writable_by_default(self):
++        # Каталоги кода самого моста (src, mcp, jobs) не должны быть доступны
++        # агенту на запись: иначе он сможет подменить собственную логику
++        # или дописать себя в манифест заданий.
++        for name in ("src", "mcp", "jobs"):
++            with self.subTest(directory=name):
++                with self.assertRaises(PermissionError) as ctx:
++                    safety.safe_write(self.root / name / "injected.py", self.root)
++                self.assertIn("write_outside_allowed_roots", str(ctx.exception))
++
++    def test_work_directory_is_writable(self):
++        target = self.root / "work" / "detail_AGENT_COPY.m3d"
++        self.assertEqual(safety.safe_write(target, self.root), target.resolve())
++
++    def test_outside_root_is_rejected(self):
++        with self.assertRaises(PermissionError) as ctx:
++            safety.safe_write(self.root / "somewhere" / "x.m3d", self.root)
++        self.assertIn("write_outside_allowed_roots", str(ctx.exception))
++
++    def test_config_controls_the_policy(self):
++        extra = self.root / "extra_out"
++        self.write_config({"safety": {"write_roots": [str(extra)]}})
++        self.assertEqual(safety.safe_write(extra / "a.step", self.root), (extra / "a.step").resolve())
++
++    def test_copy_destination_lands_in_work(self):
++        dest = safety.copy_destination(self.root / "src" / "frame.a3d", self.root)
++        self.assertEqual(dest.parent, (self.root / "work").resolve())
++        self.assertEqual(dest.name, "frame.a3d")
++
++    def test_protected_module_constant_still_importable(self):
++        # jobs.py исторически импортирует PROTECTED - контракт сохранён.
++        self.assertTrue(len(safety.PROTECTED) >= 1)
++
++
++# ---------------------------------------------------------------------------
++# 4. Ошибки
++# ---------------------------------------------------------------------------
++class TestErrors(unittest.TestCase):
++    def test_known_failures_map_to_stable_codes(self):
++        cases = [
++            (RuntimeError("kompas_active_instance_not_found: ..."), "kompas_not_attached"),
++            (PermissionError("protected_path: C:\\X\\Y"), "path_protected"),
++            (PermissionError("write_outside_allowed_roots: C:\\X"), "path_not_allowed"),
++            (PermissionError("job_not_in_allowlist: a.py"), "job_not_allowed"),
++            (RuntimeError("reopen_postcondition_failed: target=..."), "active_document_mismatch"),
++            (TimeoutError("bridge_timeout action=x"), "timeout"),
++            (FileNotFoundError("file not found: a.m3d"), "file_not_found"),
++            (ValueError("width_mm must be positive"), "invalid_argument"),
++            (RuntimeError("что-то совсем неожиданное"), "internal_error"),
++        ]
++        for exc, expected in cases:
++            with self.subTest(exc=type(exc).__name__, expected=expected):
++                code, _, hint = errors.classify(exc)
++                self.assertEqual(code, expected)
++                self.assertTrue(hint, "у каждого кода должна быть подсказка")
++
++    def test_error_body_never_leaks_traceback(self):
++        root = Path(r"C:\KOMPAS_AI_BRIDGE")
++        try:
++            raise RuntimeError(f"boom in {root}\\src\\worker.py")
++        except RuntimeError as exc:
++            body = errors.error_body("part.create", exc, root)
++        self.assertNotIn("traceback", json.dumps(body).lower())
++        self.assertNotIn("Traceback (most recent call last)", json.dumps(body))
++        self.assertIn(body["code"], errors.CODE_HINTS)
++
++    def test_redaction_hides_absolute_paths_but_keeps_file_names(self):
++        root = Path(r"C:\KOMPAS_AI_BRIDGE")
++        text = r"failed at C:\KOMPAS_AI_BRIDGE\src\worker.py and C:\Other\place\model.m3d"
++        cleaned = errors.redact(text, root)
++        self.assertIn("<bridge_root>", cleaned)
++        self.assertNotIn(r"C:\Other\place", cleaned)
++        self.assertIn("model.m3d", cleaned, "имя файла нужно сохранить - без него сообщение бесполезно")
++
++    def test_redaction_clips_long_messages(self):
++        cleaned = errors.redact("x" * 5000, None)
++        self.assertLessEqual(len(cleaned), errors.MAX_MESSAGE_CHARS)
++
++    def test_traceback_goes_to_log_file(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            try:
++                raise RuntimeError("detailed failure")
++            except RuntimeError as exc:
++                path = errors.log_traceback(Path(tmp), "part.create", exc)
++            self.assertIsNotNone(path)
++            content = Path(path).read_text(encoding="utf-8")
++            self.assertIn("detailed failure", content)
++            self.assertIn("action=part.create", content)
++
++
++# ---------------------------------------------------------------------------
++# 5. Компактные ответы
++# ---------------------------------------------------------------------------
++class TestCompact(TempRootCase):
++    def test_cursor_roundtrip(self):
++        for offset in (0, 1, 42, 9999):
++            self.assertEqual(compact.decode_cursor(compact.encode_cursor(offset)), offset)
++
++    def test_invalid_cursor_restarts_from_beginning(self):
++        for bad in ("", None, "мусор", "c:!!!", "x:5"):
++            self.assertEqual(compact.decode_cursor(bad), 0)
++
++    def test_pagination_walks_the_whole_list(self):
++        items = list(range(250))
++        seen, cursor, pages = [], None, 0
++        while True:
++            page = compact.paginate(items, limit=100, cursor=cursor)
++            seen.extend(page["items"])
++            pages += 1
++            if not page["next_cursor"]:
++                break
++            cursor = page["next_cursor"]
++        self.assertEqual(seen, items, "постраничный обход обязан вернуть все элементы без потерь")
++        self.assertEqual(pages, 3)
++        self.assertEqual(page["total"], 250)
++        self.assertFalse(page["truncated"])
++
++    def test_pagination_beyond_end_is_empty_not_error(self):
++        page = compact.paginate([1, 2, 3], limit=10, cursor=compact.encode_cursor(99))
++        self.assertEqual(page["items"], [])
++        self.assertFalse(page["truncated"])
++
++    def test_small_payload_is_not_touched(self):
++        payload = {"bodies": [{"index": i} for i in range(3)]}
++        result, meta = compact.compact_payload(
++            payload, bridge_root=self.root, request_id="r1", threshold=60_000, max_items=200)
++        self.assertIsNone(meta)
++        self.assertIs(result, payload, "маленький ответ должен уходить как есть")
++        self.assertFalse((self.root / "runtime" / "artifacts").exists())
++
++    def test_large_payload_is_truncated_and_preserved_in_artifact(self):
++        payload = {"faces": [{"index": i, "area": i * 1.5} for i in range(4000)]}
++        result, meta = compact.compact_payload(
++            payload, bridge_root=self.root, request_id="req42", threshold=1000, max_items=50)
++
++        self.assertIsNotNone(meta)
++        self.assertEqual(len(result["faces"]), 50, "в контекст уходит только страница")
++        self.assertIn("_compact", result, "факт усечения нельзя скрывать")
++        self.assertEqual(result["_compact"]["truncated_lists"]["faces"]["total"], 4000)
++        self.assertGreater(result["_compact"]["original_bytes"], 1000)
++
++        artifact = Path(result["_compact"]["artifact"])
++        self.assertTrue(artifact.is_file())
++        saved = json.loads(artifact.read_text(encoding="utf-8"))
++        self.assertEqual(len(saved["faces"]), 4000, "полный дамп должен быть доступен агенту")
++        self.assertLess(compact.serialized_size(result), compact.serialized_size(payload))
++
++    def test_scalar_fields_survive_compaction(self):
++        payload = {"count": 4000, "faces": [{"i": i} for i in range(3000)], "bbox": [1, 2, 3]}
++        result, _ = compact.compact_payload(
++            payload, bridge_root=self.root, request_id="r2", threshold=500, max_items=10)
++        self.assertEqual(result["count"], 4000)
++        self.assertEqual(result["bbox"], [1, 2, 3])
++
++
++# ---------------------------------------------------------------------------
++# 6. Задания
++# ---------------------------------------------------------------------------
++class FakeSession:
++    def __init__(self, root: Path) -> None:
++        self.root = root
++
++
++class TestJobsAllowlist(TempRootCase):
++    def _jobs_dir(self) -> Path:
++        path = self.root / "jobs"
++        path.mkdir(parents=True, exist_ok=True)
++        return path
++
++    def _script(self, name: str, body: str) -> Path:
++        path = self._jobs_dir() / name
++        path.write_text(body, encoding="utf-8")
++        return path
++
++    def _allowlist(self, entries) -> None:
++        (self._jobs_dir() / "allowlist.json").write_text(
++            json.dumps({"version": 1, "jobs": entries}, ensure_ascii=False), encoding="utf-8")
++
++    def test_missing_manifest_denies_everything(self):
++        self._script("hello.py", "print('hi')")
++        with self.assertRaises(PermissionError) as ctx:
++            jobs.run_job(FakeSession(self.root), {"script": "hello.py"})
++        self.assertIn("job_not_in_allowlist", str(ctx.exception))
++
++    def test_unlisted_script_is_refused_even_if_it_exists(self):
++        self._script("sneaky.py", "import os\nprint(os.environ['USERPROFILE'])")
++        self._allowlist(["other.py"])
++        with self.assertRaises(PermissionError) as ctx:
++            jobs.run_job(FakeSession(self.root), {"script": "sneaky.py"})
++        self.assertIn("job_not_in_allowlist", str(ctx.exception))
++
++    def test_disabled_entry_is_refused(self):
++        self._script("off.py", "print('hi')")
++        self._allowlist([{"name": "off.py", "enabled": False}])
++        with self.assertRaises(PermissionError) as ctx:
++            jobs.run_job(FakeSession(self.root), {"script": "off.py"})
++        self.assertIn("disabled", str(ctx.exception))
++
++    def test_path_outside_jobs_directory_is_refused(self):
++        outside = self.root / "elsewhere.py"
++        outside.write_text("print('hi')", encoding="utf-8")
++        self._allowlist(["elsewhere.py"])
++        with self.assertRaises(PermissionError) as ctx:
++            jobs.run_job(FakeSession(self.root), {"script": str(outside)})
++        self.assertIn("job_must_be_existing_python_file", str(ctx.exception))
++
++    def test_non_python_file_is_refused(self):
++        (self._jobs_dir() / "run.cmd").write_text("echo hi", encoding="utf-8")
++        self._allowlist(["run.cmd"])
++        with self.assertRaises(PermissionError):
++            jobs.run_job(FakeSession(self.root), {"script": "run.cmd"})
++
++    def test_allowlisted_job_runs_and_reports_environment(self):
++        self._script("hello.py", (
++            "import json, os\n"
++            "print(json.dumps({'root': os.environ.get('KOMPAS_BRIDGE_ROOT'),\n"
++            "                  'work': os.environ.get('KOMPAS_BRIDGE_WORK')}))\n"
++        ))
++        self._allowlist([{"name": "hello.py", "description": "smoke", "timeout_sec": 30}])
++
++        response = jobs.run_job(FakeSession(self.root), {"script": "hello.py"})
++        self.assertTrue(response["ok"])
++        body = response["result"]
++        self.assertEqual(body["exit_code"], 0)
++        self.assertEqual(body["script"], "hello.py")
++        payload = json.loads(body["stdout"])
++        self.assertEqual(Path(payload["root"]), self.root)
++        self.assertEqual(Path(payload["work"]), (self.root / "work").resolve())
++
++    def test_failing_job_reports_structured_error(self):
++        self._script("boom.py", "import sys\nsys.exit(3)\n")
++        self._allowlist(["boom.py"])
++        response = jobs.run_job(FakeSession(self.root), {"script": "boom.py"})
++        self.assertFalse(response["ok"])
++        self.assertEqual(response["error"]["code"], "job_failed")
++        self.assertEqual(response["error"]["details"]["exit_code"], 3)
++
++    def test_timeout_is_clamped_by_configuration(self):
++        self.write_config({"job_timeout_max_sec": 2})
++        self._script("slow.py", "import time\ntime.sleep(30)\n")
++        self._allowlist(["slow.py"])
++
++        started = time.monotonic()
++        response = jobs.run_job(FakeSession(self.root), {"script": "slow.py", "timeout_sec": 9999})
++        elapsed = time.monotonic() - started
++
++        self.assertFalse(response["ok"])
++        self.assertEqual(response["error"]["code"], "job_timeout")
++        self.assertLess(elapsed, 15, "запрос на 9999 секунд должен быть обрезан настройкой")
++
++    def test_allowed_jobs_listing_reflects_reality(self):
++        self._script("present.py", "print('hi')")
++        self._allowlist(["present.py", "absent.py"])
++        listed = {entry["name"]: entry for entry in jobs.allowed_jobs(self.root)}
++        self.assertTrue(listed["present.py"]["exists"])
++        self.assertFalse(listed["absent.py"]["exists"])
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

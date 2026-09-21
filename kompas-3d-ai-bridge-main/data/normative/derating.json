@@ -1,0 +1,546 @@
+{
+ "rows": [
+  {
+   "ambient_c": 10.0,
+   "factor": 1.22,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 10.0,
+   "factor": 1.15,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 10.0,
+   "factor": 1.26,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 10.0,
+   "factor": 1.14,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 15.0,
+   "factor": 1.17,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 15.0,
+   "factor": 1.12,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 15.0,
+   "factor": 1.2,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 15.0,
+   "factor": 1.11,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 20.0,
+   "factor": 1.12,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 20.0,
+   "factor": 1.08,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 20.0,
+   "factor": 1.14,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 20.0,
+   "factor": 1.07,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 25.0,
+   "factor": 1.06,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 25.0,
+   "factor": 1.04,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 25.0,
+   "factor": 1.07,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 25.0,
+   "factor": 1.04,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 35.0,
+   "factor": 0.94,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 35.0,
+   "factor": 0.96,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 35.0,
+   "factor": 0.93,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 35.0,
+   "factor": 0.96,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 40.0,
+   "factor": 0.87,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 40.0,
+   "factor": 0.91,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 40.0,
+   "factor": 0.85,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 40.0,
+   "factor": 0.92,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 45.0,
+   "factor": 0.79,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 45.0,
+   "factor": 0.87,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 45.0,
+   "factor": 0.87,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 45.0,
+   "factor": 0.88,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 50.0,
+   "factor": 0.71,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 50.0,
+   "factor": 0.82,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 50.0,
+   "factor": 0.67,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 50.0,
+   "factor": 0.84,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 55.0,
+   "factor": 0.61,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 55.0,
+   "factor": 0.76,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 55.0,
+   "factor": 0.57,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 55.0,
+   "factor": 0.8,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 60.0,
+   "factor": 0.5,
+   "gost_table": "В.52.14",
+   "insulation": "pvc",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 60.0,
+   "factor": 0.71,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 60.0,
+   "factor": 0.45,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_70",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 60.0,
+   "factor": 0.75,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 65.0,
+   "factor": 0.65,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 65.0,
+   "factor": 0.7,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 70.0,
+   "factor": 0.58,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 70.0,
+   "factor": 0.65,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 75.0,
+   "factor": 0.5,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 75.0,
+   "factor": 0.6,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 80.0,
+   "factor": 0.41,
+   "gost_table": "В.52.14",
+   "insulation": "xlpe",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 80.0,
+   "factor": 0.54,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 85.0,
+   "factor": 0.47,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 90.0,
+   "factor": 0.4,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "ambient_c": 95.0,
+   "factor": 0.32,
+   "gost_table": "В.52.14",
+   "insulation": "mineral_105",
+   "kind": "ambient_temperature"
+  },
+  {
+   "circuits": 1,
+   "factor": 1.0,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 2,
+   "factor": 0.8,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 3,
+   "factor": 0.7,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 4,
+   "factor": 0.65,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 5,
+   "factor": 0.6,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 6,
+   "factor": 0.57,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 7,
+   "factor": 0.54,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 8,
+   "factor": 0.52,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 9,
+   "factor": 0.5,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 12,
+   "factor": 0.45,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 16,
+   "factor": 0.41,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 20,
+   "factor": 0.38,
+   "gost_table": "В.52.17",
+   "install": "Группами в воздухе, на поверхности, замоноличено или в оболочке",
+   "item": 1,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 1,
+   "factor": 1.0,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 2,
+   "factor": 0.85,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 3,
+   "factor": 0.79,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 4,
+   "factor": 0.75,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 5,
+   "factor": 0.73,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 6,
+   "factor": 0.72,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 7,
+   "factor": 0.72,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 8,
+   "factor": 0.71,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  },
+  {
+   "circuits": 9,
+   "factor": 0.7,
+   "gost_table": "В.52.17",
+   "install": "Отдельные линии на стенах, полу или на непер-форированных лотках",
+   "item": 2,
+   "kind": "grouping"
+  }
+ ],
+ "source": {
+  "conditions": "В.52.14 — для кабелей в воздухе при температуре, отличной от 30 °С. В.52.17 — для групп однотипных одинаково нагруженных кабелей.",
+  "document": "ГОСТ Р 50571.5.52-2011/МЭК 60364-5-52:2009",
+  "legal": "Числовые значения из открытой публикации стандарта (files.stroyinf.ru).",
+  "note": "В публикации часть значений В.52.14 выделена как соответствующие ПУЭ; полужирное выделение при разборе не сохраняется, поэтому принадлежность значения к ПУЭ или к МЭК не распознана — для ответственных расчётов сверяйте по официальному тексту.",
+  "publisher": "ФГУП «СТАНДАРТИНФОРМ», публикация files.stroyinf.ru",
+  "retrieved": "2026-09-21",
+  "row_count": 72,
+  "table": "derating",
+  "tables": [
+   "В.52.14",
+   "В.52.17"
+  ],
+  "title": "Поправочные коэффициенты на температуру окружающей среды и на группировку",
+  "url": "https://files.stroyinf.ru/Data2/1/4293792/4293792410.htm"
+ },
+ "table": "derating"
+}

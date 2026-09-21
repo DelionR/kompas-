@@ -1,0 +1,3346 @@
+diff --git a/VERSION.json b/VERSION.json
+index e2c125c..2938bdf 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 54,
++  "mcp_tool_count": 56,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -61,6 +61,8 @@
+     "kompas_cabinet_materialize_apply",
+     "kompas_cabinet_bom_reconcile",
+     "kompas_cabinet_calc",
++    "kompas_cabinet_catalog_search",
++    "kompas_docs_search",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+   ],
+diff --git b/data/cabinet_catalog.example.json b/data/cabinet_catalog.example.json
+new file mode 100644
+index 0000000..8db3aaf
+--- /dev/null
++++ b/data/cabinet_catalog.example.json
+@@ -0,0 +1,1911 @@
++{
++ "example": true,
++ "source": "IEK (www.iek.ru), открытые карточки изделий. Выборка серий ВА47-29 и ВД1-63 от 2026-09-20.",
++ "note": "Реальные паспортные данные с сайта производителя, но только две серии и только часть ряда: это выборка для проверки механизма подбора, а не каталог для проектирования. Производитель мог изменить ряд или размеры — перед проектом берите официальный каталог. rail_offset_mm не публикуется производителем и оставлен пустым: раскладка применит соглашение (центр по высоте).",
++ "legal": "Числовые паспортные данные из открытых карточек изделий. Использовать как пример; для коммерческого применения брать выгрузку производителя.",
++ "kinds": [
++  "breaker",
++  "rcd",
++  "contactor"
++ ],
++ "items": [
++  {
++   "id": "MVA20-1-001-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-001-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 1А 4,5кА",
++   "poles": 1,
++   "rating_a": 1.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_1a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-002-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-002-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 2А 4,5кА",
++   "poles": 1,
++   "rating_a": 2.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_2a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-003-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-003-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 3А 4,5кА",
++   "poles": 1,
++   "rating_a": 3.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_3a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-004-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-004-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 4А 4,5кА",
++   "poles": 1,
++   "rating_a": 4.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_4a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-006-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-006-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 6А 4,5кА",
++   "poles": 1,
++   "rating_a": 6.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-006-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-006-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 6А 4,5кА",
++   "poles": 1,
++   "rating_a": 6.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-010-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-010-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 10А 4,5кА",
++   "poles": 1,
++   "rating_a": 10.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-010-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-010-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 10А 4,5кА",
++   "poles": 1,
++   "rating_a": 10.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-013-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-013-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 13А 4,5кА",
++   "poles": 1,
++   "rating_a": 13.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_13a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-016-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-016-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 16А 4,5кА",
++   "poles": 1,
++   "rating_a": 16.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-016-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-016-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 16А 4,5кА",
++   "poles": 1,
++   "rating_a": 16.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-020-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-020-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 20А 4,5кА",
++   "poles": 1,
++   "rating_a": 20.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_20a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-025-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-025-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 25А 4,5кА",
++   "poles": 1,
++   "rating_a": 25.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-025-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-025-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 25А 4,5кА",
++   "poles": 1,
++   "rating_a": 25.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-032-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-032-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 32А 4,5кА",
++   "poles": 1,
++   "rating_a": 32.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-040-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-040-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 40А 4,5кА",
++   "poles": 1,
++   "rating_a": 40.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-050-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-050-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 50А 4,5кА",
++   "poles": 1,
++   "rating_a": 50.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-063-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-063-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 63А 4,5кА",
++   "poles": 1,
++   "rating_a": 63.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_63a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-002-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-002-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 2А 4,5кА",
++   "poles": 2,
++   "rating_a": 2.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_2a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-004-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-004-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 4А 4,5кА",
++   "poles": 2,
++   "rating_a": 4.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_4a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-006-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-006-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 6А 4,5кА",
++   "poles": 2,
++   "rating_a": 6.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-010-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-010-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 10А 4,5кА",
++   "poles": 2,
++   "rating_a": 10.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-016-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-016-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 16А 4,5кА",
++   "poles": 2,
++   "rating_a": 16.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-020-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-020-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 20А 4,5кА",
++   "poles": 2,
++   "rating_a": 20.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_20a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-025-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-025-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 25А 4,5кА",
++   "poles": 2,
++   "rating_a": 25.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-032-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-032-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 32А 4,5кА",
++   "poles": 2,
++   "rating_a": 32.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-040-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-040-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 40А 4,5кА",
++   "poles": 2,
++   "rating_a": 40.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-050-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-050-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 50А 4,5кА",
++   "poles": 2,
++   "rating_a": 50.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-063-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-063-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 63А 4,5кА",
++   "poles": 2,
++   "rating_a": 63.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_63a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-002-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-002-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 2А 4,5кА",
++   "poles": 3,
++   "rating_a": 2.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_2a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-003-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-003-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 3А 4,5кА",
++   "poles": 3,
++   "rating_a": 3.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_3a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-006-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-006-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 6А 4,5кА",
++   "poles": 3,
++   "rating_a": 6.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-010-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-010-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 10А 4,5кА",
++   "poles": 3,
++   "rating_a": 10.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-010-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-010-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 10А 4,5кА",
++   "poles": 3,
++   "rating_a": 10.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-016-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-016-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 16А 4,5кА",
++   "poles": 3,
++   "rating_a": 16.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-016-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-016-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 16А 4,5кА",
++   "poles": 3,
++   "rating_a": 16.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-020-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-020-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 20А 4,5кА",
++   "poles": 3,
++   "rating_a": 20.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_20a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-025-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-025-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 25А 4,5кА",
++   "poles": 3,
++   "rating_a": 25.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-025-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-025-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 25А 4,5кА",
++   "poles": 3,
++   "rating_a": 25.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-032-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-032-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 32А 4,5кА",
++   "poles": 3,
++   "rating_a": 32.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-032-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-032-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 32А 4,5кА",
++   "poles": 3,
++   "rating_a": 32.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-040-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-040-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 40А 4,5кА",
++   "poles": 3,
++   "rating_a": 40.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-040-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-040-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 40А 4,5кА",
++   "poles": 3,
++   "rating_a": 40.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-050-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-050-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 50А 4,5кА",
++   "poles": 3,
++   "rating_a": 50.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-063-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-063-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 63А 4,5кА",
++   "poles": 3,
++   "rating_a": 63.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_63a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-063-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-063-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 63А 4,5кА",
++   "poles": 3,
++   "rating_a": 63.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_63a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-016-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-016-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 16А 4,5кА",
++   "poles": 4,
++   "rating_a": 16.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-025-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-025-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 25А 4,5кА",
++   "poles": 4,
++   "rating_a": 25.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-032-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-032-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 32А 4,5кА",
++   "poles": 4,
++   "rating_a": 32.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-040-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-040-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 40А 4,5кА",
++   "poles": 4,
++   "rating_a": 40.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-050-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-050-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 50А 4,5кА",
++   "poles": 4,
++   "rating_a": 50.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-4-063-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-4-063-C",
++   "label": "Автоматический выключатель ВА47-29 4P C 63А 4,5кА",
++   "poles": 4,
++   "rating_a": 63.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 72.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_4p_c_63a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-001-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-001-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 1А 4,5кА",
++   "poles": 1,
++   "rating_a": 1.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_1a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-002-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-002-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 2А 4,5кА",
++   "poles": 1,
++   "rating_a": 2.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_2a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-003-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-003-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 3А 4,5кА",
++   "poles": 1,
++   "rating_a": 3.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_3a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-004-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-004-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 4А 4,5кА",
++   "poles": 1,
++   "rating_a": 4.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_4a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-005-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-005-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 5А 4,5кА",
++   "poles": 1,
++   "rating_a": 5.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_5a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-006-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-006-D",
++   "label": "Автоматический выключатель ВА47-29 1P D 6А 4,5кА",
++   "poles": 1,
++   "rating_a": 6.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_d_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-008-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-008-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 8А 4,5кА",
++   "poles": 1,
++   "rating_a": 8.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_8a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-010-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-010-D",
++   "label": "Автоматический выключатель ВА47-29 1P D 10А 4,5кА",
++   "poles": 1,
++   "rating_a": 10.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_d_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-020-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-020-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 20А 4,5кА",
++   "poles": 1,
++   "rating_a": 20.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_20a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-032-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-032-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 32А 4,5кА",
++   "poles": 1,
++   "rating_a": 32.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-040-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-040-B",
++   "label": "Автоматический выключатель ВА47-29 1P B 40А 4,5кА",
++   "poles": 1,
++   "rating_a": 40.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_b_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-D05-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-D05-C",
++   "label": "Автоматический выключатель ВА47-29 1P C 0,5А 4,5кА",
++   "poles": 1,
++   "rating_a": 0.5,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_c_0_5a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-001-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-001-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 1А 4,5кА",
++   "poles": 2,
++   "rating_a": 1.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_1a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-003-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-003-C",
++   "label": "Автоматический выключатель ВА47-29 2P C 3А 4,5кА",
++   "poles": 2,
++   "rating_a": 3.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_c_3a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-006-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-006-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 6А 4,5кА",
++   "poles": 2,
++   "rating_a": 6.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_6a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-010-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-010-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 10А 4,5кА",
++   "poles": 2,
++   "rating_a": 10.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_10a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-016-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-016-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 16А 4,5кА",
++   "poles": 2,
++   "rating_a": 16.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-025-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-025-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 25А 4,5кА",
++   "poles": 2,
++   "rating_a": 25.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-025-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-025-D",
++   "label": "Автоматический выключатель ВА47-29 2P D 25А 4,5кА",
++   "poles": 2,
++   "rating_a": 25.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_d_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-032-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-032-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 32А 4,5кА",
++   "poles": 2,
++   "rating_a": 32.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_32a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-040-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-040-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 40А 4,5кА",
++   "poles": 2,
++   "rating_a": 40.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_40a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-050-B",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-050-B",
++   "label": "Автоматический выключатель ВА47-29 2P B 50А 4,5кА",
++   "poles": 2,
++   "rating_a": 50.0,
++   "trip_curve": "B",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_b/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_b_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-2-050-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-2-050-D",
++   "label": "Автоматический выключатель ВА47-29 2P D 50А 4,5кА",
++   "poles": 2,
++   "rating_a": 50.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 36.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_2p_d_50a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-001-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-001-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 1А 4,5кА",
++   "poles": 3,
++   "rating_a": 1.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_1a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-002-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-002-D",
++   "label": "Автоматический выключатель ВА47-29 3P D 2А 4,5кА",
++   "poles": 3,
++   "rating_a": 2.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_d_2a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-3-004-C",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-3-004-C",
++   "label": "Автоматический выключатель ВА47-29 3P C 4А 4,5кА",
++   "poles": 3,
++   "rating_a": 4.0,
++   "trip_curve": "C",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 54.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_c/karat_avtomaticheskiy_vyklyuchatel_va47_29_3p_c_4a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MDV11-2-032-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-032-030",
++   "label": "ВД1-63 2Р 32А 30мА тип А",
++   "poles": 2,
++   "rating_a": 32.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_32a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-040-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-040-030",
++   "label": "ВД1-63 2Р 40А 30мА тип А",
++   "poles": 2,
++   "rating_a": 40.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_40a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-016-010",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-016-010",
++   "label": "ВД1-63 2Р 16А 10мА тип А",
++   "poles": 2,
++   "rating_a": 16.0,
++   "leakage_ma": 10.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_16a_10ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-016-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-016-030",
++   "label": "ВД1-63 2Р 16А 30мА тип А",
++   "poles": 2,
++   "rating_a": 16.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_16a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-025-010",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-025-010",
++   "label": "ВД1-63 2Р 25А 10мА тип А",
++   "poles": 2,
++   "rating_a": 25.0,
++   "leakage_ma": 10.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_25a_10ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-025-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-025-030",
++   "label": "ВД1-63 2Р 25А 30мА тип А",
++   "poles": 2,
++   "rating_a": 25.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_25a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-050-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-050-030",
++   "label": "ВД1-63 2Р 50А 30мА тип А",
++   "poles": 2,
++   "rating_a": 50.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_50a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-063-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-063-030",
++   "label": "ВД1-63 2Р 63А 30мА тип А",
++   "poles": 2,
++   "rating_a": 63.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_63a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-2-063-100",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-2-063-100",
++   "label": "ВД1-63 2Р 63А 100мА тип А",
++   "poles": 2,
++   "rating_a": 63.0,
++   "leakage_ma": 100.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 42.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_2r_63a_100ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-016-010",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-016-010",
++   "label": "ВД1-63 4Р 16А 10мА тип А",
++   "poles": 4,
++   "rating_a": 16.0,
++   "leakage_ma": 10.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_16a_10ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-016-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-016-030",
++   "label": "ВД1-63 4Р 16А 30мА тип А",
++   "poles": 4,
++   "rating_a": 16.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_16a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-025-010",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-025-010",
++   "label": "ВД1-63 4Р 25А 10мА тип А",
++   "poles": 4,
++   "rating_a": 25.0,
++   "leakage_ma": 10.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_25a_10ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-025-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-025-030",
++   "label": "ВД1-63 4Р 25А 30мА тип А",
++   "poles": 4,
++   "rating_a": 25.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_25a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-032-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-032-030",
++   "label": "ВД1-63 4Р 32А 30мА тип А",
++   "poles": 4,
++   "rating_a": 32.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_32a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-040-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-040-030",
++   "label": "ВД1-63 4Р 40А 30мА тип А",
++   "poles": 4,
++   "rating_a": 40.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_40a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-050-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-050-030",
++   "label": "ВД1-63 4Р 50А 30мА тип А",
++   "poles": 4,
++   "rating_a": 50.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_50a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-050-100",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-050-100",
++   "label": "ВД1-63 4Р 50А 100мА тип А",
++   "poles": 4,
++   "rating_a": 50.0,
++   "leakage_ma": 100.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_50a_100ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-063-030",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-063-030",
++   "label": "ВД1-63 4Р 63А 30мА тип А",
++   "poles": 4,
++   "rating_a": 63.0,
++   "leakage_ma": 30.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_63a_30ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "MDV11-4-063-100",
++   "kind": "rcd",
++   "manufacturer": "IEK",
++   "series": "ВД1-63",
++   "designation": "MDV11-4-063-100",
++   "label": "ВД1-63 4Р 63А 100мА тип А",
++   "poles": 4,
++   "rating_a": 63.0,
++   "leakage_ma": 100.0,
++   "rcd_type": "A",
++   "mount": "din",
++   "width_mm": 77.0,
++   "height_mm": 80.0,
++   "depth_mm": 87.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/ustroystva_differentsialnoy_zashchity_karat/vyklyuchateli_differentsialnye_vd_uzo/vyklyuchateli_differentsialnye_vd1_63_uzo_tip_a/vyklyuchatel_differentsialnyy_uzo_vd1_63_4r_63a_100ma_tip_a_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки"
++  },
++  {
++   "id": "AR-KMR10-025-31-230",
++   "kind": "contactor",
++   "manufacturer": "IEK",
++   "series": "ARMAT KMR",
++   "designation": "AR-KMR10-025-31-230",
++   "label": "Контактор модульный KMR 25А 230В AC 3НО+1НЗ",
++   "poles": 3,
++   "rating_a": 25.0,
++   "mount": "din",
++   "width_mm": null,
++   "height_mm": null,
++   "depth_mm": null,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_armat/dopolnitelnye_ustroystva_armat/kontaktory_modulnye_kmr/armat_kontaktor_modulnyy_kmr_25a_230v_ac_3no_1nz_iek",
++   "source": "IEK, карточка изделия на iek.ru. Ширина в карточке указана 2 модуля, а габарит упаковки 50 мм: расхождение не разрешено, поэтому размер оставлен незаполненным"
++  },
++  {
++   "id": "MVA20-1-016-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-016-D",
++   "label": "Автоматический выключатель ВА47-29 1P D 16А 4.5кА",
++   "poles": 1,
++   "rating_a": 16.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_d_16a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  },
++  {
++   "id": "MVA20-1-025-D",
++   "kind": "breaker",
++   "manufacturer": "IEK",
++   "series": "KARAT ВА47-29",
++   "designation": "MVA20-1-025-D",
++   "label": "Автоматический выключатель ВА47-29 1P D 25А 4.5кА",
++   "poles": 1,
++   "rating_a": 25.0,
++   "trip_curve": "D",
++   "breaking_ka": 4.5,
++   "mount": "din",
++   "width_mm": 18.0,
++   "height_mm": 80.0,
++   "depth_mm": 75.0,
++   "rail_offset_mm": null,
++   "url": "https://www.iek.ru/products/catalog/modulnoe_oborudovanie/modulnoe_oborudovanie_karat/modulnye_avtomaticheskie_vyklyuchateli_karat/modulnye_avtomaticheskie_vyklyuchateli_va47_29/modulnye_avtomaticheskie_vyklyuchateli_va47_29_khar_ka_d/karat_avtomaticheskiy_vyklyuchatel_va47_29_1p_d_25a_4_5ka_iek",
++   "source": "IEK, карточка изделия на iek.ru; габарит — логистические параметры индивидуальной упаковки, сверено с числом модульных расстояний (18 мм/модуль)"
++  }
++ ]
++}
+\ No newline at end of file
+diff --git b/docs/WAVE12_CHANGES.md b/docs/WAVE12_CHANGES.md
+new file mode 100644
+index 0000000..2f8abd7
+--- /dev/null
++++ b/docs/WAVE12_CHANGES.md
+@@ -0,0 +1,162 @@
++# Волна 12 — каталог оборудования и поиск по документам
++
++**Поверхность:** 54 → 56 (`kompas_cabinet_catalog_search`, `kompas_docs_search`).
++**Тесты:** 455 → 501 (46 новых, `tests/test_wave12.py`).
++
++Волна закрывает два пробела, найденных сравнением с конкурентами
++(`mcp_servers_comparison.md`): подбор изделий по параметрам, заявленный у
++`sans-calc-mcp`, и поиск по документам со ссылкой на источник, реализованный у
++`SwitchScope`.
++
++## 1. `kompas_cabinet_catalog_search` — подбор оборудования
++
++`src/cabinet_catalog.py`. Поиск по каталогу: автоматы, УЗО, контакторы,
++клеммы, шины, блоки питания. Фильтры:
++
++| Поле | Смысл |
++|---|---|
++| `kind` | тип изделия |
++| `poles` | число полюсов (одно или список) |
++| `rating_min_a` / `rating_max_a` | диапазон номинала |
++| `trip_curve` | время-токовая кривая: B, C, D |
++| `breaking_ka_min` | отключающая способность не ниже |
++| `leakage_ma`, `rcd_type` | ток утечки и тип УЗО |
++| `mount` | `din` / `panel` |
++| `width_max_mm`, `height_max_mm`, `depth_max_mm` | ограничение по габариту |
++| `manufacturer`, `series`, `text` | точное совпадение и подстрока |
++
++### Зачем это связывает слои
++
++Каждая найденная позиция возвращается с полем `layout` — готовой записью
++библиотеки раскладки:
++
++```json
++{"lib_key": "brk-3p-c25", "name": "Автомат 3P, кривая C, 25 А",
++ "width_mm": 52.5, "height_mm": 85.0, "rail_offset_mm": 45.0, "depth_mm": 68.0}
++```
++
++Её можно передать прямо в `kompas_cabinet_layout_build` — тест
++`test_selected_item_feeds_layout_build` проверяет, что габарит доходит до
++координат: `y + rail_offset = ось рейки`. Параметры позиции (номинал,
++отключающая способность) — вход для `kompas_cabinet_calc`.
++
++Так замыкается цепочка **подбор → габарит → раскладка → расчёт**, которой не
++было: раскладка требовала габарит, а габарит брался из головы.
++
++### Откуда данные
++
++**Из модуля — ниоткуда.** Каталог приносит вызывающая сторона: полем `catalog`
++или файлом в `catalog_path`. Чтение файлов допускается только внутри корня
++проекта и текущего каталога; путь наружу отклоняется.
++
++В репозитории лежит `data/cabinet_catalog.example.json` — **100 реальных
++позиций IEK**, снятых с открытых карточек изделий на `www.iek.ru`
++(2026-09-20): 79 автоматических выключателей KARAT ВА47-29 (1P–4P, кривые
++B/C/D, 1–63 А, 4,5 кА), 19 УЗО ВД1-63 тип А (2P/4P, 10/30/100 мА), 1 контактор
++ARMAT KMR. У каждой позиции — артикул, серия, ссылка на карточку и строка
++источника.
++
++#### Что показала проверка на реальных данных
++
++Две вещи, из-за которых синтетическая заглушка была не просто неточной, а
++вредной.
++
++**1. Реальный модуль — 18 мм, а не 17,5.** У IEK ширина растёт как
++18 / 36 / 54 / 72 мм на 1P–4P; это подтверждено дважды — габаритом индивидуальной
++упаковки в карточке и числом модульных расстояний. УЗО ещё шире: 2P — 42 мм,
++4P — 77 мм (шаг не кратен, поэтому брать «модуль × полюса» нельзя).
++
++На плите 600 мм в ряд входит **26** однополюсных автоматов. Заглушка на 17,5 мм
++обещала **27** — лишний слот, который в щит не влезет. Разница в полмиллиметра
++на изделии даёт целый фантомный модуль на ряду. Тест
++`test_row_capacity_with_real_width` фиксирует 26.
++
++**2. Подбор по току КЗ отказывает там, где «на глаз» всё подходило.**
++Трансформатор 630 кВА с uк 5,5 % даёт на вводе **17,4 кА**, а вся серия ВА47-29
++имеет отключающую способность 4,5 кА — подбор возвращает `selected: null`.
++Если учесть линию (40 м кабеля 4 мм²), ток падает до **1,17 кА**, и тогда
++находится MVA20-3-040-C. Оба исхода зафиксированы тестами
++`test_breaker_is_refused_when_fault_current_exceeds_capacity` и
++`test_line_impedance_brings_fault_current_down`.
++
++#### Что в примере осталось незаполненным и почему
++
++- **`rail_offset_mm` — пусто.** Производитель не публикует смещение оси
++  DIN-рейки; раскладка применит соглашение (центр по высоте). Заполнять его
++  «примерно 45 мм» значило бы подменить отсутствующее правдоподобным.
++- **Контактор ARMAT KMR — без габарита.** В карточке сказано «2 модуля», но
++  габарит упаковки 50 мм, а не 36. Расхождение не разрешено, поэтому размер
++  оставлен пустым и позиция уходит в `unverified` — тест
++  `test_contactor_without_dimensions_is_not_placed`.
++
++Файл по-прежнему помечен `"example": true`: это выборка двух серий, а не
++каталог для проектирования — ряд мог измениться, а юридически для коммерческого
++применения нужна выгрузка производителя (поле `legal` в файле).
++
++Позиция без обязательного габарита не подставляет «среднее по рынку»: поле
++`layout` остаётся пустым, причина пишется в `unverified_reason`, а с флагом
++`need_geometry` позиция уходит в `unverified` и вердикт становится
++`computed_with_gaps`.
++
++## 2. `kompas_docs_search` — поиск по документам
++
++`src/docs_search.py` + `src/docs_tools.py`. Полнотекстовый поиск по файлам
++проекта. Каждое совпадение — это цитата с адресом:
++
++```json
++{"file": "docs\\WAVE11_CHANGES.md", "line": 35,
++ "text": "## Ключевое решение: отказ вместо экстраполяции"}
++```
++
++Дисциплина та же, что у `SwitchScope`: отвечать можно только тем, что лежит в
++файле, и отвечать с указанием, где именно. Отличие честно названо — поиск
++**полнотекстовый, не семантический**: все слова запроса должны встретиться в
++строке, поэтому неточная формулировка даёт пустой результат, а не
++правдоподобный ответ. Векторной базы нет, интернет не используется.
++
++Ограничения: чтение только внутри корня проекта и текущего каталога; предел
++`max_files` (4000) сообщается через `truncated`, чтобы пустой результат при
++усечении не читался как «в проекте такого нет»; бинарные файлы пропускаются.
++
++## Что оператор заметит
++
++- Оба инструмента только на чтение, КОМПАС не нужен: их можно использовать
++  отдельно от моста.
++- Ответ каталога содержит `provenance` с источником; если источник не указан,
++  ответ об этом сообщает.
++- Новые файлы: `src/cabinet_catalog.py`, `src/docs_search.py`,
++  `src/docs_tools.py`, `data/cabinet_catalog.example.json`.
++
++## Честные ограничения
++
++- Пример каталога — **не** каталог изготовителя. Перед использованием в проекте
++  его нужно заменить выгрузкой производителя; производитель и артикул остаются
++  за пользователем.
++- Поиск по документам даёт цитату, а не проверенную выдержку из действующей
++  редакции нормы. Сверка с редакцией остаётся за инженером.
++- Фильтр по производителю и серии работает только если эти поля заполнены в
++  каталоге; в примере они пусты, поэтому фильтр по ним даёт пустой результат.
++
++## Дефекты и ложные ожидания
++
++Реальных дефектов в коде прогон не выявил. Три падения были на неверных
++ожиданиях в тестах:
++
++1. элемент раскладки не хранит `width_mm` — габарит лежит в библиотеке, а
++   элемент хранит координаты. Тест теперь проверяет главное: `y +
++   rail_offset = ось рейки`, то есть габарит из каталога действительно дошёл до
++   расстановки;
++2. контекст вокруг строки на краю файла короче трёх строк — совпадение перенесено
++   в середину файла;
++3. `build_layout` возвращает библиотеку списком, а не словарём.
++
++## Пример вызова
++
++```json
++{"kind": "breaker", "poles": 3, "trip_curve": "C",
++ "rating_min_a": 25, "breaking_ka_min": 6, "limit": 4}
++```
++
++Ответ: четыре позиции 25–50 А, ширина 52.5 мм, `example: true`,
++`provenance.source` — «Типовые модульные габариты по DIN 43880. Не каталог
++изготовителя.»
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index 731ec9c..9710f54 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -114,6 +114,8 @@ TOOLS = [
+     {"name":"kompas_cabinet_materialize_apply","description":"Execute a materialisation plan against a live KOMPAS assembly. Requires apply=true; without it the plan is returned and nothing is executed. Steps are run in order, component indices are resolved from the response of the preceding insert, and a failure on a critical step stops execution instead of continuing on half-built geometry. Steps marked automated=false (checkpoint, verification, viewport capture) have a different call contract and are returned under deferred for the operator. Writes to the assembly.","inputSchema":{"type":"object","required":["apply"],"properties":{"apply":{"type":"boolean"},"plan":{"type":"object"},"assembly_filename":{"type":"string","minLength":1},"body":{"type":"string","enum":["primitive","fragment"]},"layout":{"type":"object"},"mount":{"type":"object"},"options":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+     {"name":"kompas_cabinet_bom_reconcile","description":"Reconcile the expected cabinet composition against the bill of materials read from KOMPAS. Matching is by part file name, not by positional designation, because under the first_only marking policy a set of 24 terminals carries a single designation in the BOM. Reports missing items, quantity mismatches, unexpected items and designation gaps; a gap is annotated with its cause instead of being counted as an assembly error. Pure comparison over supplied data - the tool does not read KOMPAS itself.","inputSchema":{"type":"object","properties":{"layout":{"type":"object"},"bom":{"type":"object"},"marking_policy":{"type":"string","enum":["first_only","all"]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_calc","description":"Electrical calculation for a low-voltage cabinet, computed by the engine rather than by the model. kind=current derives current from power, voltage and cos phi. kind=voltage_drop computes drop from length, section and conductor resistivity. kind=fault_current computes short-circuit current from source impedance, short-circuit power or transformer nameplate plus line impedance. kind=derating multiplies correction factors. kind=max_demand, cable_size, breaker_select and selectivity require normative tables supplied in the tables field: demand factors, cable ampacity, breaker catalogue and time-current curves. Tables are not built in - when a required table is missing the call is refused instead of being answered with a plausible guess, and any criterion that cannot be checked is reported under not_checked rather than assumed to pass. Each accepted table carries a source string which is echoed in provenance so the result can be traced back to the norm. Pure arithmetic, no COM, no KOMPAS.","inputSchema":{"type":"object","required":["kind"],"properties":{"kind":{"type":"string","enum":["current","max_demand","voltage_drop","fault_current","derating","cable_size","breaker_select","selectivity"]},"tables":{"type":"object","description":"Normative tables: ampacity, breakers, trip_curves, demand_factors. Each is a list of rows or {rows, source}."},"power_w":{"type":"number"},"power_kw":{"type":"number"},"voltage_v":{"type":"number","exclusiveMinimum":0},"cos_phi":{"type":"number","exclusiveMinimum":0,"maximum":1},"phases":{"type":"integer","enum":[1,3]},"efficiency":{"type":"number","exclusiveMinimum":0,"maximum":1},"current_a":{"type":"number"},"length_m":{"type":"number","exclusiveMinimum":0},"section_mm2":{"type":"number","exclusiveMinimum":0},"material":{"type":"string","enum":["copper","aluminium"]},"resistivity_ohm_mm2_per_m":{"type":"number","exclusiveMinimum":0},"reactance_ohm":{"type":"number","minimum":0},"drop_limit_percent":{"type":"number","exclusiveMinimum":0},"derating_product":{"type":"number","exclusiveMinimum":0},"factors":{"type":"array","items":{"type":"object"}},"allowable_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_ka":{"type":"number","exclusiveMinimum":0},"poles":{"type":"integer"},"trip_curve":{"type":"string"},"transformer":{"type":"object"},"source_impedance_ohm":{"type":"number","exclusiveMinimum":0},"source_short_circuit_mva":{"type":"number","exclusiveMinimum":0},"zero_sequence_impedance_ohm":{"type":"number","exclusiveMinimum":0},"loads":{"type":"array","items":{"type":"object"}},"upstream":{"type":"object"},"downstream":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_catalog_search","description":"Search a cabinet equipment catalogue for breakers, RCDs, contactors, relays, terminals, busbars and power supplies by parameters: kind, poles, rating range, trip curve, breaking capacity, leakage current, mount type and overall dimensions. Every returned item carries its source string, and every item with known dimensions also carries a ready-made layout entry (width_mm, height_mm, rail_offset_mm) so a pick can go straight into kompas_cabinet_layout_build or into kompas_cabinet_calc. No catalogue data is built in: the catalogue is supplied in the catalog field or loaded from catalog_path inside the project root. The bundled data/cabinet_catalog.example.json is a placeholder of typical DIN 43880 modular dimensions with no manufacturers or article numbers, and any answer built on it is flagged example=True. Items missing required dimensions go to unverified instead of being filled with a typical value. Pure search, no COM, no KOMPAS.","inputSchema":{"type":"object","properties":{"catalog":{"description":"Catalogue inline: list of rows or {items, source, example}."},"catalog_path":{"type":"string","description":"Path to a JSON catalogue inside the project root."},"query":{"type":"object","description":"Filters: kind, poles, rating_min_a, rating_max_a, trip_curve, breaking_ka_min, leakage_ma, rcd_type, mount, width_max_mm, height_max_mm, depth_max_mm, manufacturer, series, text."},"kind":{"type":"string"},"poles":{},"rating_min_a":{"type":"number"},"rating_max_a":{"type":"number"},"trip_curve":{"type":"string"},"breaking_ka_min":{"type":"number"},"leakage_ma":{"type":"number"},"rcd_type":{"type":"string"},"mount":{"type":"string"},"width_max_mm":{"type":"number"},"height_max_mm":{"type":"number"},"text":{"type":"string"},"limit":{"type":"integer"},"need_geometry":{"type":"boolean","description":"Move items without dimensions to unverified."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_docs_search","description":"Full-text search over the project documentation and normative documents on disk, returning a citation for every hit: file, line number and the fragment itself. Every answer is traceable to a real file, so it can be verified instead of trusted. Search is substring-based, not semantic: all query words must appear on the line, so an imprecise query returns nothing rather than a plausible answer. Reading is limited to the project root and the current directory; a path outside them is refused. Scanning stops at max_files and reports truncated, so an empty result under truncation does not mean the subject is absent. Binary and unreadable files are skipped. No network access and no COM.","inputSchema":{"type":"object","required":["query"],"properties":{"query":{"description":"Search string, or a list of strings; all words must match."},"root":{"type":"string","description":"Directory to scan; defaults to the project root."},"extensions":{"type":"array","items":{"type":"string"}},"context_lines":{"type":"integer","minimum":0},"max_results":{"type":"integer","minimum":0},"max_files":{"type":"integer","minimum":1},"case_sensitive":{"type":"boolean"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+ # Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
+@@ -183,6 +185,8 @@ ACTION_MAP = {
+     "kompas_cabinet_materialize_apply": ("cabinet.materialize_apply", lambda a: a),
+     "kompas_cabinet_bom_reconcile": ("cabinet.bom_reconcile", lambda a: a),
+     "kompas_cabinet_calc": ("cabinet.calc", lambda a: a),
++    "kompas_cabinet_catalog_search": ("cabinet.catalog_search", lambda a: a),
++    "kompas_docs_search": ("docs.search", lambda a: a),
+ }
+ 
+ 
+diff --git b/src/cabinet_catalog.py b/src/cabinet_catalog.py
+new file mode 100644
+index 0000000..9f9bd04
+--- /dev/null
++++ b/src/cabinet_catalog.py
+@@ -0,0 +1,376 @@
++"""Каталог щитового оборудования: подбор по параметрам со ссылкой на источник.
++
++Щитовой домен волн 7–11 умел проверять состав, считать раскладку, материализовать
++её и рассчитывать режимы — но не мог ответить на первый вопрос проектировщика:
++«а что именно поставить?» Раскладка требовала габарит, расчёт требовал каталог,
++а каталога не было ни у моста, ни у конкурентов в открытом виде: `sans-calc-mcp`
++заявляет `breaker_select`, но не выпущен; `SwitchScope` ищет по документам, а не
++по изделиям.
++
++Этот модуль закрывает разрыв и связывает три слоя:
++
++    каталог -> габарит -> раскладка (cabinet_layout_build)
++    каталог -> параметры -> расчёт (cabinet_calc)
++
++ Поэтому каждая найденная позиция возвращается сразу с полем ``layout`` — готовой
++ записью библиотеки раскладки, если габарит известен.
++
++**Данных внутри модуля нет.** Каталог приносит вызывающая сторона: в поле
++``catalog`` или файлом в ``catalog_path``. В репозитории лежит только
++``data/cabinet_catalog.example.json`` — заглушка на типовых модульных габаритах
++DIN 43880 без производителей, серий и артикулов, помеченная ``example: true``.
++Ответ, построенный на ней, тоже помечается, чтобы типовой габарит нельзя было
++выдать за паспорт изделия.
++
++Дисциплина та же, что в расчёте: позиция без обязательного габарита уходит в
++``unverified``, а не подменяется «средним по рынку» значением.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++from typing import Any, Dict, List, Optional, Tuple
++
++_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++EXAMPLE_CATALOG_PATH = os.path.join(_PROJECT_ROOT, "data",
++                                    "cabinet_catalog.example.json")
++
++KIND_BREAKER = "breaker"
++KIND_RCD = "rcd"
++KIND_CONTACTOR = "contactor"
++KIND_TERMINAL = "terminal"
++KIND_BUSBAR = "busbar"
++KIND_PSU = "psu"
++KINDS = (KIND_BREAKER, KIND_RCD, KIND_CONTACTOR, KIND_TERMINAL, KIND_BUSBAR, KIND_PSU)
++
++GEOMETRY_FIELDS = ("width_mm", "height_mm")
++
++LIMITS = [
++    "Данных внутри модуля нет: каталог приносит вызывающая сторона в поле "
++    "catalog или файлом в catalog_path.",
++    "Файл data/cabinet_catalog.example.json — заглушка на типовых модульных "
++    "габаритах DIN 43880 без производителей, серий и артикулов. Ответы по ней "
++    "помечены example=true и не пригодны для проекта.",
++    "Чтение файлов допускается только внутри корня проекта и текущего "
++    "каталога: путь наружу отклоняется.",
++    "Позиция без обязательного габарита уходит в unverified, а не заполняется "
++    "типовым значением.",
++    "Поиск по каталогу не заменяет сверку с паспортом изделия: перед заказом "
++    "нужна проверка по каталогу изготовителя.",
++]
++
++
++# --------------------------------------------------------------------------
++# разбор
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
++    item: Dict[str, Any] = {"code": code, "message": message}
++    item.update(extra)
++    return item
++
++
++def _as_values(value: Any) -> List[str]:
++    """Значение фильтра в список строк в нижнем регистре."""
++    if value is None:
++        return []
++    raw = value if isinstance(value, (list, tuple)) else [value]
++    return [_text(item).lower() for item in raw if _text(item)]
++
++
++# --------------------------------------------------------------------------
++# загрузка каталога
++# --------------------------------------------------------------------------
++
++def _allowed_roots() -> List[str]:
++    roots = [_PROJECT_ROOT]
++    try:
++        roots.append(os.path.realpath(os.getcwd()))
++    except OSError:
++        pass
++    return [os.path.realpath(root) for root in roots]
++
++
++def resolve_catalog_path(path: str) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
++    """Путь к каталогу, если он внутри разрешённого корня."""
++    candidate = os.path.realpath(os.path.abspath(path))
++    for root in _allowed_roots():
++        if candidate == root or candidate.startswith(root + os.sep):
++            return candidate, None
++    return None, _refusal("path_outside_root",
++                          "Файл каталога вне корня проекта и вне текущего каталога.",
++                          allowed_roots=_allowed_roots())
++
++
++def load_catalog(payload: Any) -> Tuple[List[Dict[str, Any]], Dict[str, Any],
++                                        List[Dict[str, Any]], List[str]]:
++    """Позиции каталога, его описание, отказы и примечания.
++
++    Источник в приоритете: явное поле ``catalog``, затем ``catalog_path``, затем
++    пример из репозитория — но пример всегда помечается, чтобы типовой габарит
++    нельзя было принять за паспорт изделия.
++    """
++    data = _as_dict(payload)
++    notes: List[str] = []
++    refusals: List[Dict[str, Any]] = []
++
++    inline = data.get("catalog")
++    if isinstance(inline, (list, tuple)):
++        items = [i for i in inline if isinstance(i, dict)]
++        return items, {"source": None, "example": False}, refusals, notes
++    if isinstance(inline, dict):
++        items = [i for i in _as_list(inline.get("items")) if isinstance(i, dict)]
++        return items, {"source": _text(inline.get("source")) or None,
++                       "example": bool(inline.get("example"))}, refusals, notes
++
++    path = _text(data.get("catalog_path"))
++    if path:
++        resolved, refusal = resolve_catalog_path(path)
++        if refusal:
++            return [], {}, [refusal], notes
++        if not os.path.isfile(resolved):
++            return [], {}, [_refusal("no_catalog_file",
++                                     "Файл каталога не найден: %s" % path,
++                                     path=path)], notes
++        try:
++            with open(resolved, encoding="utf-8") as handle:
++                document = json.load(handle)
++        except (OSError, ValueError) as error:
++            return [], {}, [_refusal("bad_catalog_file",
++                                     "Каталог не прочитан: %s" % error,
++                                     path=path)], notes
++        if isinstance(document, (list, tuple)):
++            items = [i for i in document if isinstance(i, dict)]
++            return items, {"source": None, "example": False}, refusals, notes
++        document = _as_dict(document)
++        items = [i for i in _as_list(document.get("items")) if isinstance(i, dict)]
++        return items, {"source": _text(document.get("source")) or None,
++                       "example": bool(document.get("example")),
++                       "path": path}, refusals, notes
++
++    if not os.path.isfile(EXAMPLE_CATALOG_PATH):
++        return [], {}, [_refusal("no_catalog",
++                                 "Каталог не передан: нужно поле catalog или "
++                                 "catalog_path, а файл-пример отсутствует.",
++                                 required_any=["catalog", "catalog_path"])], notes
++    try:
++        with open(EXAMPLE_CATALOG_PATH, encoding="utf-8") as handle:
++            document = json.load(handle)
++    except (OSError, ValueError) as error:
++        return [], {}, [_refusal("bad_catalog_file",
++                                 "Пример каталога не прочитан: %s" % error)], notes
++    notes.append("использован пример из репозитория: типовые модульные габариты "
++                 "DIN 43880 без производителей и артикулов. Для проекта замените "
++                 "каталог своим")
++    items = [i for i in _as_list(_as_dict(document).get("items")) if isinstance(i, dict)]
++    return items, {"source": _text(_as_dict(document).get("source")) or None,
++                   "example": True, "path": EXAMPLE_CATALOG_PATH}, refusals, notes
++
++
++# --------------------------------------------------------------------------
++# подбор
++# --------------------------------------------------------------------------
++
++def matches(item: Dict[str, Any], query: Dict[str, Any]) -> bool:
++    """Подходит ли позиция под запрос. Неизвестное поле считается неподходящим."""
++    kinds = _as_values(query.get("kind"))
++    if kinds and _text(item.get("kind")).lower() not in kinds:
++        return False
++
++    poles = query.get("poles")
++    if poles is not None:
++        allowed = {_num(value) for value in (poles if isinstance(poles, (list, tuple)) else [poles])}
++        allowed.discard(None)
++        if allowed and _num(item.get("poles")) not in allowed:
++            return False
++
++    rating = _num(item.get("rating_a"))
++    low = _num(query.get("rating_min_a"))
++    high = _num(query.get("rating_max_a"))
++    if low is not None and (rating is None or rating < low):
++        return False
++    if high is not None and (rating is None or rating > high):
++        return False
++
++    curves = _as_values(query.get("trip_curve"))
++    if curves:
++        curve = _text(item.get("trip_curve")).lower()
++        if not curve or curve not in curves:
++            return False
++
++    breaking = _num(query.get("breaking_ka_min"))
++    if breaking is not None:
++        value = _num(item.get("breaking_ka"))
++        if value is None or value < breaking:
++            return False
++
++    leakage = _num(query.get("leakage_ma"))
++    if leakage is not None and _num(item.get("leakage_ma")) != leakage:
++        return False
++
++    rcd_types = _as_values(query.get("rcd_type"))
++    if rcd_types:
++        value = _text(item.get("rcd_type")).lower()
++        if not value or value not in rcd_types:
++            return False
++
++    mounts = _as_values(query.get("mount"))
++    if mounts and _text(item.get("mount")).lower() not in mounts:
++        return False
++
++    for key, field in (("width_max_mm", "width_mm"), ("height_max_mm", "height_mm"),
++                       ("depth_max_mm", "depth_mm")):
++        limit = _num(query.get(key))
++        if limit is not None:
++            value = _num(item.get(field))
++            if value is None or value > limit:
++                return False
++
++    for key in ("manufacturer", "series"):
++        wanted = _as_values(query.get(key))
++        if wanted and _text(item.get(key)).lower() not in wanted:
++            return False
++
++    text = _text(query.get("text")).lower()
++    if text:
++        haystack = " ".join(_text(item.get(field)).lower()
++                            for field in ("id", "kind", "label", "designation",
++                                          "manufacturer", "series"))
++        if text not in haystack:
++            return False
++    return True
++
++
++def item_to_layout(item: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
++    """Запись библиотеки раскладки из позиции каталога.
++
++    Возвращает ``(None, причина)``, если габарита нет: подставлять типовой
++    размер здесь нельзя — раскладка станет правдоподобной и неверной.
++    """
++    missing = [field for field in GEOMETRY_FIELDS if _num(item.get(field)) is None]
++    if missing:
++        return None, "no_geometry:" + ",".join(missing)
++    entry = {
++        "lib_key": _text(item.get("id")) or _text(item.get("label")),
++        "name": _text(item.get("label")) or _text(item.get("id")),
++        "width_mm": _num(item.get("width_mm")),
++        "height_mm": _num(item.get("height_mm")),
++    }
++    offset = _num(item.get("rail_offset_mm"))
++    if offset is not None:
++        entry["rail_offset_mm"] = offset
++    depth = _num(item.get("depth_mm"))
++    if depth is not None:
++        entry["depth_mm"] = depth
++    return entry, None
++
++
++def search(payload: Any) -> Dict[str, Any]:
++    """Подбор оборудования по параметрам."""
++    data = _as_dict(payload)
++    query = _as_dict(data.get("query")) or data
++    items, meta, refusals, notes = load_catalog(data)
++    if refusals:
++        return {
++            "ok": False, "verdict": "refused", "query": query, "count": 0,
++            "items": [], "unverified": [], "refusals": refusals,
++            "notes": notes, "provenance": [], "example": False,
++            "limits": list(LIMITS),
++        }
++    if not items:
++        return {
++            "ok": False, "verdict": "refused", "query": query, "count": 0,
++            "items": [], "unverified": [],
++            "refusals": [_refusal("empty_catalog", "В каталоге нет ни одной позиции.")],
++            "notes": notes, "provenance": [], "example": bool(meta.get("example")),
++            "limits": list(LIMITS),
++        }
++
++    need_geometry = bool(data.get("need_geometry"))
++    found: List[Dict[str, Any]] = []
++    unverified: List[Dict[str, Any]] = []
++    for item in items:
++        if not matches(item, query):
++            continue
++        layout, reason = item_to_layout(item)
++        row = {
++            "id": _text(item.get("id")) or None,
++            "kind": _text(item.get("kind")) or None,
++            "label": _text(item.get("label")) or None,
++            "manufacturer": _text(item.get("manufacturer")) or None,
++            "series": _text(item.get("series")) or None,
++            "poles": _num(item.get("poles")),
++            "rating_a": _num(item.get("rating_a")),
++            "trip_curve": _text(item.get("trip_curve")) or None,
++            "breaking_ka": _num(item.get("breaking_ka")),
++            "leakage_ma": _num(item.get("leakage_ma")),
++            "rcd_type": _text(item.get("rcd_type")) or None,
++            "mount": _text(item.get("mount")) or None,
++            "width_mm": _num(item.get("width_mm")),
++            "height_mm": _num(item.get("height_mm")),
++            "depth_mm": _num(item.get("depth_mm")),
++            "rail_offset_mm": _num(item.get("rail_offset_mm")),
++            "source": _text(item.get("source")) or meta.get("source"),
++            "layout": layout,
++        }
++        if layout is None:
++            row["unverified_reason"] = reason
++        if need_geometry and layout is None:
++            unverified.append({"id": row["id"], "reason": reason})
++        else:
++            found.append(row)
++
++    found.sort(key=lambda row: (row["rating_a"] if row["rating_a"] is not None else 1e9,
++                                row["width_mm"] if row["width_mm"] is not None else 1e9,
++                                row["id"] or ""))
++    limit = int(_num(data.get("limit"), 20.0) or 20.0)
++    total = len(found)
++    truncated = total > max(limit, 0)
++    if limit > 0:
++        found = found[:limit]
++
++    provenance: List[Dict[str, Any]] = []
++    if meta.get("source"):
++        provenance.append({"catalog": meta.get("path") or "catalog",
++                           "source": meta.get("source")})
++    elif not notes:
++        notes.append("каталог передан без source: источник данных неизвестен")
++
++    return {
++        "ok": True,
++        "verdict": "computed_with_gaps" if unverified else "computed",
++        "query": query,
++        "count": len(found),
++        "total_matched": total,
++        "truncated": truncated,
++        "items": found,
++        "unverified": unverified,
++        "refusals": [],
++        "notes": notes,
++        "provenance": provenance,
++        "example": bool(meta.get("example")),
++        "kinds": sorted({_text(item.get("kind")).lower()
++                         for item in items if _text(item.get("kind"))}),
++        "limits": list(LIMITS),
++    }
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index 1bf687b..687e431 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -17,6 +17,7 @@ from cabinet_materialize import build_plan
+ from cabinet_exec import execute_plan
+ from cabinet_reconcile import reconcile
+ from cabinet_calc import calculate
++from cabinet_catalog import search as catalog_search
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -56,6 +57,11 @@ def cabinet_calc(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     return ok("cabinet.calc", calculate(params))
+ 
+ 
++def cabinet_catalog_search(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Подбор оборудования щита по каталогу: габарит сразу для раскладки."""
++    return ok("cabinet.catalog_search", catalog_search(params))
++
++
+ def cabinet_bom_reconcile(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     """Сверить ожидаемый состав щита с перечнем, прочитанным из КОМПАС."""
+     return ok("cabinet.bom_reconcile", reconcile(params))
+diff --git b/src/docs_search.py b/src/docs_search.py
+new file mode 100644
+index 0000000..6b216b4
+--- /dev/null
++++ b/src/docs_search.py
+@@ -0,0 +1,190 @@
++"""Поиск по локальным документам проекта с цитатами и ссылкой на источник.
++
++`SwitchScope` показал ценную дисциплину: ответ помощника обязан содержать
++проверяемую ссылку на документ, иначе проверить его нечем и верить ему нельзя.
++Здесь то же самое, но без векторной базы и без интернета: обычный полнотекстовый
++поиск по файлам проекта, где каждый результат — файл, номер строки и сам
++фрагмент.
++
++Что модуль **не** делает:
++
++- не ищет в интернете и не «вспоминает» нормы: найденное всегда взято из файла
++  на диске, и это видно по полю ``file``;
++- не делает семантический поиск: совпадение по подстроке, поэтому неточная
++  формулировка запроса даст пустой результат, а не правдоподобный ответ;
++- не читает ничего вне разрешённого корня: путь наружу отклоняется.
++
++Ограничение по объёму задано намеренно: сканирование останавливается на
++``max_files`` файлах, и об этом сообщается, чтобы тишина не выглядела как
++«в проекте такого нет».
++"""
++
++from __future__ import annotations
++
++import os
++from typing import Any, Dict, List, Optional
++
++DEFAULT_EXTENSIONS = (".md", ".txt", ".rst")
++SKIP_DIRS = {".git", ".hg", ".svn", "node_modules", "__pycache__",
++             ".venv", "venv", ".mypy_cache", ".pytest_cache", "build", "dist"}
++MAX_FILES = 4000
++DEFAULT_MAX_RESULTS = 20
++
++LIMITS = [
++    "Поиск полнотекстовый, без семантики: совпадение по подстроке. Неточная "
++    "формулировка даст пустой результат, а не правдоподобный ответ.",
++    "Чтение допускается только внутри корня проекта и текущего каталога.",
++    "Сканирование останавливается на max_files; если предел достигнут, это "
++    "указано в truncated — пустой результат тогда не означает отсутствия.",
++    "Файлы читаются как UTF-8; бинарные и нечитаемые пропускаются молча.",
++    "Найденный фрагмент — цитата из файла, а не проверенная выдержка из нормы: "
++    "сверка с действующей редакцией остаётся за инженером.",
++]
++
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
++    item: Dict[str, Any] = {"code": code, "message": message}
++    item.update(extra)
++    return item
++
++
++def project_root() -> str:
++    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++
++
++def allowed_roots() -> List[str]:
++    roots = [project_root()]
++    try:
++        roots.append(os.path.realpath(os.getcwd()))
++    except OSError:
++        pass
++    return [os.path.realpath(root) for root in roots]
++
++
++def resolve_root(path: str) -> tuple:
++    """Корень поиска, если он внутри разрешённой области."""
++    candidate = os.path.realpath(os.path.abspath(path))
++    for root in allowed_roots():
++        if candidate == root or candidate.startswith(root + os.sep):
++            return candidate, root, None
++    return None, None, _refusal("path_outside_root",
++                                "Каталог поиска вне корня проекта и вне текущего каталога.",
++                                allowed_roots=allowed_roots())
++
++
++def search_terms(query: Any) -> List[str]:
++    """Слова запроса. Искомое считается совпадением, только если есть все."""
++    if isinstance(query, (list, tuple)):
++        raw = [str(item) for item in query]
++    else:
++        raw = [str(query)]
++    terms: List[str] = []
++    for chunk in raw:
++        for word in chunk.split():
++            word = word.strip()
++            if word:
++                terms.append(word)
++    return terms
++
++
++def iter_files(root: str, extensions: tuple, max_files: int):
++    """Файлы с нужными расширениями. Возвращает (путь, истина_предела)."""
++    collected: List[str] = []
++    for directory, subdirs, files in os.walk(root):
++        subdirs[:] = [name for name in subdirs if name not in SKIP_DIRS]
++        for name in sorted(files):
++            if extensions and not name.lower().endswith(extensions):
++                continue
++            collected.append(os.path.join(directory, name))
++            if len(collected) >= max_files:
++                return collected, True
++    return collected, False
++
++
++def search(payload: Any) -> Dict[str, Any]:
++    """Поиск по файлам: цитата, файл, номер строки."""
++    data = _as_dict(payload)
++    terms = search_terms(data.get("query"))
++    base: Dict[str, Any] = {
++        "query": _text(data.get("query")) or terms,
++        "terms": terms,
++        "matches": [],
++        "files_scanned": 0,
++        "truncated": False,
++        "notes": [],
++        "limits": list(LIMITS),
++    }
++    if not terms:
++        return dict(base, ok=False, verdict="refused",
++                    refusals=[_refusal("empty_query",
++                                       "Пустой запрос: нужны слова для поиска.")])
++
++    root = _text(data.get("root")) or project_root()
++    resolved, display_root, refusal = resolve_root(root)
++    if refusal:
++        return dict(base, ok=False, verdict="refused", refusals=[refusal])
++    if not os.path.isdir(resolved):
++        return dict(base, ok=False, verdict="refused",
++                    refusals=[_refusal("no_root", "Каталог не найден: %s" % root,
++                                       root=root)])
++
++    extensions = tuple(data.get("extensions") or DEFAULT_EXTENSIONS)
++    max_results = int(_num(data.get("max_results"), float(DEFAULT_MAX_RESULTS))
++                      or DEFAULT_MAX_RESULTS)
++    context = int(_num(data.get("context_lines"), 0.0) or 0.0)
++    max_files = int(_num(data.get("max_files"), float(MAX_FILES)) or MAX_FILES)
++    case_sensitive = bool(data.get("case_sensitive"))
++
++    files, truncated = iter_files(resolved, extensions, max_files)
++    lowered = [term.lower() for term in terms] if not case_sensitive else terms
++
++    matches: List[Dict[str, Any]] = []
++    for path in files:
++        try:
++            with open(path, encoding="utf-8", errors="strict") as handle:
++                lines = handle.read().splitlines()
++        except (OSError, UnicodeDecodeError):
++            continue
++        for index, line in enumerate(lines):
++            haystack = line if case_sensitive else line.lower()
++            if not all(term in haystack for term in lowered):
++                continue
++            start = max(0, index - context)
++            end = min(len(lines), index + context + 1)
++            matches.append({
++                "file": os.path.relpath(path, display_root),
++                "line": index + 1,
++                "text": line.strip(),
++                "context": lines[start:end] if context else None,
++            })
++            if max_results > 0 and len(matches) >= max_results:
++                break
++        if max_results > 0 and len(matches) >= max_results:
++            break
++
++    notes: List[str] = []
++    if truncated:
++        notes.append("сканирование остановлено на %d файлах: просмотрено не всё, "
++                     "пустой результат не означает отсутствия" % max_files)
++    if max_results > 0 and len(matches) >= max_results:
++        notes.append("показан максимум результатов (%d): уточните запрос" % max_results)
++
++    return dict(base, ok=True, verdict="computed", root=display_root,
++                matches=matches, files_scanned=len(files), truncated=truncated,
++                notes=notes, refusals=[])
+diff --git b/src/docs_tools.py b/src/docs_tools.py
+new file mode 100644
+index 0000000..cb1c551
+--- /dev/null
++++ b/src/docs_tools.py
+@@ -0,0 +1,17 @@
++"""Обработчик поиска по документам проекта.
++
++Сам поиск живёт в ``docs_search`` — чистый модуль без зависимости от протокола.
++Здесь только обёртка: маршрут и ответ.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict
++
++from protocol import ok
++from docs_search import search
++
++
++def docs_search_handler(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Найти фрагменты в документах проекта: файл, строка, цитата."""
++    return ok("docs.search", search(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 1366557..5998f24 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -29,7 +29,9 @@ from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
+ from cabinet_tools import (cabinet_spec_check, cabinet_layout_check, cabinet_layout_build,
+                            cabinet_materialize_plan, cabinet_materialize_apply,
+-                           cabinet_bom_reconcile, cabinet_calc)
++                           cabinet_bom_reconcile, cabinet_calc,
++                           cabinet_catalog_search)
++from docs_tools import docs_search_handler
+ 
+ 
+ def _doc(s):
+@@ -331,4 +333,6 @@ registry = {
+     "cabinet.materialize_apply": cabinet_materialize_apply,
+     "cabinet.bom_reconcile": cabinet_bom_reconcile,
+     "cabinet.calc": cabinet_calc,
++    "cabinet.catalog_search": cabinet_catalog_search,
++    "docs.search": docs_search_handler,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index cafaeee..a13272f 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 54, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 56, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave10.py b/tests/test_wave10.py
+index 13e8f8a..25d0bec 100644
+--- a/tests/test_wave10.py
++++ b/tests/test_wave10.py
+@@ -66,8 +66,8 @@ TERMINALS = [{"id": "c", "lib_key": "term", "qty": 24, "tag_start": "B101",
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_tool_declared(self):
+         self.assertIn("kompas_cabinet_bom_reconcile",
+diff --git b/tests/test_wave12.py b/tests/test_wave12.py
+new file mode 100644
+index 0000000..3ae61c2
+--- /dev/null
++++ b/tests/test_wave12.py
+@@ -0,0 +1,417 @@
++"""Волна 12: каталог оборудования и поиск по документам.
++
++Два инструмента, которых у моста не было и которые есть у конкурентов в том или
++ином виде: подбор изделий по параметрам (`sans-calc-mcp`) и поиск по документам
++со ссылкой на источник (`SwitchScope`).
++
++Главное, что проверяется — не фильтры, а честность: каталог не выдумывает
++изделия, пример из репозитория помечен, позиция без габарита не подставляет
++типовой размер, а найденная цитата всегда указывает файл и строку.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++import shutil
++import sys
++import tempfile
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_catalog as ccat  # noqa: E402
++import docs_search as ds  # noqa: E402
++
++PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++
++INLINE = {"source": "каталог КЭАЗ, выгрузка 2026-08", "items": [
++    {"id": "b1", "kind": "breaker", "label": "Автомат 1P C16", "poles": 1,
++     "rating_a": 16.0, "trip_curve": "C", "breaking_ka": 6.0, "mount": "din",
++     "width_mm": 17.5, "height_mm": 85.0, "rail_offset_mm": 45.0},
++    {"id": "b2", "kind": "breaker", "label": "Автомат 3P C32", "poles": 3,
++     "rating_a": 32.0, "trip_curve": "C", "breaking_ka": 6.0, "mount": "din",
++     "width_mm": 52.5, "height_mm": 85.0, "rail_offset_mm": 45.0},
++    {"id": "b3", "kind": "breaker", "label": "Автомат 3P D32", "poles": 3,
++     "rating_a": 32.0, "trip_curve": "D", "breaking_ka": 4.5, "mount": "din",
++     "width_mm": 52.5, "height_mm": 85.0},
++    {"id": "r1", "kind": "rcd", "label": "УЗО 2P 30 мА", "poles": 2,
++     "rating_a": 40.0, "leakage_ma": 30.0, "rcd_type": "A", "mount": "din",
++     "width_mm": 35.0, "height_mm": 85.0},
++    {"id": "x1", "kind": "busbar", "label": "Шина PIN", "rating_a": 63.0,
++     "mount": "panel"},
++]}
++
++
++class CatalogLoadingTests(unittest.TestCase):
++    """Откуда берутся данные и как это помечается."""
++
++    def test_example_catalog_is_flagged(self):
++        """Типовой габарит не должен выглядеть как паспорт изделия."""
++        result = ccat.search({"kind": "breaker", "limit": 1})
++        self.assertTrue(result["example"])
++        self.assertTrue(any("пример" in note for note in result["notes"]))
++
++    def test_example_carries_manufacturer_and_source(self):
++        """Реальные позиции обязаны нести производителя, серию и источник."""
++        items, _meta, refusals, _notes = ccat.load_catalog({})
++        self.assertFalse(refusals)
++        self.assertTrue(items)
++        for item in items:
++            self.assertEqual(item.get("manufacturer"), "IEK")
++            self.assertTrue(item.get("series"))
++            self.assertTrue(item.get("source") or item.get("url"))
++
++    def test_rail_offset_is_left_empty_because_it_is_not_published(self):
++        """Производитель не публикует смещение оси рейки — заполнять его нечем."""
++        items, _meta, _refusals, _notes = ccat.load_catalog({})
++        for item in items:
++            self.assertIsNone(item.get("rail_offset_mm"))
++
++    def test_real_width_differs_from_typical_module(self):
++        """Главная находка: реальный модуль IEK 18 мм, а не 17,5 из DIN 43880."""
++        result = ccat.search({"kind": "breaker", "poles": 1, "limit": 1})
++        self.assertEqual(result["items"][0]["width_mm"], 18.0)
++        self.assertNotEqual(result["items"][0]["width_mm"], 17.5)
++
++    def test_width_grows_with_pole_count(self):
++        widths = {}
++        for poles in (1, 2, 3, 4):
++            result = ccat.search({"kind": "breaker", "poles": poles, "limit": 1})
++            widths[poles] = result["items"][0]["width_mm"]
++        self.assertEqual([widths[p] for p in (1, 2, 3, 4)], [18.0, 36.0, 54.0, 72.0])
++
++    def test_rcd_is_wider_than_breaker_of_same_poles(self):
++        """УЗО шире автомата: проверяется на реальных числах, а не на ощущении."""
++        rcd = ccat.search({"kind": "rcd", "poles": 2, "limit": 1})["items"][0]
++        brk = ccat.search({"kind": "breaker", "poles": 2, "limit": 1})["items"][0]
++        self.assertGreater(rcd["width_mm"], brk["width_mm"])
++
++    def test_contactor_without_dimensions_is_not_placed(self):
++        """Расхождение в данных производителя не разруливается домыслом."""
++        result = ccat.search({"kind": "contactor", "need_geometry": True})
++        self.assertEqual(result["count"], 0)
++        self.assertTrue(result["unverified"])
++
++    def test_inline_catalog_source_is_echoed(self):
++        result = ccat.search({"catalog": INLINE, "kind": "breaker"})
++        self.assertFalse(result["example"])
++        self.assertEqual(result["provenance"][0]["source"],
++                         "каталог КЭАЗ, выгрузка 2026-08")
++
++    def test_catalog_without_source_is_noted(self):
++        result = ccat.search({"catalog": INLINE["items"], "kind": "breaker"})
++        self.assertTrue(any("source" in note for note in result["notes"]))
++
++    def test_empty_query_returns_all_of_a_kind(self):
++        result = ccat.search({"catalog": INLINE})
++        self.assertEqual(result["count"], 5)
++
++    def test_missing_catalog_file_is_refused(self):
++        result = ccat.search({"catalog_path": "data/нет_такого.json"})
++        self.assertEqual(result["refusals"][0]["code"], "no_catalog_file")
++
++    def test_path_outside_root_is_refused(self):
++        result = ccat.search({"catalog_path": os.path.join(tempfile.gettempdir(),
++                                                           "evil.json")})
++        self.assertEqual(result["refusals"][0]["code"], "path_outside_root")
++
++
++class CatalogFilterTests(unittest.TestCase):
++    """Подбор по параметрам."""
++
++    def test_kind_filter(self):
++        result = ccat.search({"catalog": INLINE, "kind": "rcd"})
++        self.assertEqual([i["id"] for i in result["items"]], ["r1"])
++
++    def test_rating_range(self):
++        result = ccat.search({"catalog": INLINE, "rating_min_a": 32,
++                              "rating_max_a": 32})
++        self.assertEqual({i["id"] for i in result["items"]}, {"b2", "b3"})
++
++    def test_trip_curve_filter(self):
++        result = ccat.search({"catalog": INLINE, "trip_curve": "D"})
++        self.assertEqual([i["id"] for i in result["items"]], ["b3"])
++
++    def test_breaking_capacity_filter(self):
++        result = ccat.search({"catalog": INLINE, "breaking_ka_min": 6.0})
++        self.assertEqual({i["id"] for i in result["items"]}, {"b1", "b2"})
++
++    def test_poles_filter(self):
++        result = ccat.search({"catalog": INLINE, "poles": 3})
++        self.assertEqual({i["id"] for i in result["items"]}, {"b2", "b3"})
++
++    def test_leakage_and_rcd_type(self):
++        result = ccat.search({"catalog": INLINE, "kind": "rcd",
++                              "leakage_ma": 30.0, "rcd_type": "A"})
++        self.assertEqual([i["id"] for i in result["items"]], ["r1"])
++
++    def test_mount_filter(self):
++        result = ccat.search({"catalog": INLINE, "mount": "panel"})
++        self.assertEqual([i["id"] for i in result["items"]], ["x1"])
++
++    def test_width_limit(self):
++        result = ccat.search({"catalog": INLINE, "width_max_mm": 20.0})
++        self.assertEqual([i["id"] for i in result["items"]], ["b1"])
++
++    def test_text_filter(self):
++        result = ccat.search({"catalog": INLINE, "text": "УЗО"})
++        self.assertEqual([i["id"] for i in result["items"]], ["r1"])
++
++    def test_sorted_by_rating(self):
++        result = ccat.search({"catalog": INLINE, "kind": "breaker"})
++        ratings = [i["rating_a"] for i in result["items"]]
++        self.assertEqual(ratings, sorted(ratings))
++
++    def test_limit_truncates_and_reports(self):
++        result = ccat.search({"catalog": INLINE, "kind": "breaker", "limit": 2})
++        self.assertEqual(result["count"], 2)
++        self.assertTrue(result["truncated"])
++        self.assertEqual(result["total_matched"], 3)
++
++    def test_nested_query_object(self):
++        result = ccat.search({"catalog": INLINE, "query": {"kind": "rcd"}})
++        self.assertEqual([i["id"] for i in result["items"]], ["r1"])
++
++
++class CatalogGeometryTests(unittest.TestCase):
++    """Связь каталога с раскладкой и расчётом."""
++
++    def test_layout_entry_is_produced(self):
++        result = ccat.search({"catalog": INLINE, "kind": "breaker", "limit": 1})
++        layout = result["items"][0]["layout"]
++        self.assertEqual(layout["width_mm"], 17.5)
++        self.assertEqual(layout["height_mm"], 85.0)
++        self.assertEqual(layout["rail_offset_mm"], 45.0)
++        self.assertTrue(layout["lib_key"])
++
++    def test_item_without_geometry_has_no_layout(self):
++        """Нет габарита — нет записи, а не типовой размер."""
++        result = ccat.search({"catalog": INLINE, "kind": "busbar"})
++        self.assertIsNone(result["items"][0]["layout"])
++        self.assertEqual(result["items"][0]["unverified_reason"],
++                         "no_geometry:width_mm,height_mm")
++
++    def test_need_geometry_moves_item_to_unverified(self):
++        result = ccat.search({"catalog": INLINE, "kind": "busbar",
++                              "need_geometry": True})
++        self.assertEqual(result["count"], 0)
++        self.assertEqual(result["unverified"][0]["id"], "x1")
++        self.assertEqual(result["verdict"], "computed_with_gaps")
++
++    def test_selected_item_feeds_layout_build(self):
++        """Ответ каталога пригоден как библиотека раскладки без правок."""
++        from cabinet_build import build_layout
++        result = ccat.search({"catalog": INLINE, "kind": "breaker", "limit": 1})
++        library = [result["items"][0]["layout"]]
++        layout = build_layout({
++            "plate": {"width_mm": 600, "height_mm": 800},
++            "rail": {"first_rail_y_mm": 130, "pitch_mm": 170},
++            "library": library,
++            "lines": [{"id": "qf", "lib_key": library[0]["lib_key"], "qty": 1,
++                       "tag": "QF1"}],
++        })
++        self.assertTrue(layout.get("ok", True))
++        self.assertFalse(layout["unplaced"])
++        elements = layout["layout"]["elements"]
++        self.assertEqual(len(elements), 1)
++        used = next(item for item in layout["layout"]["library"]
++                    if item["lib_key"] == elements[0]["lib_key"])
++        self.assertEqual(used["width_mm"], 17.5)
++        # габарит из каталога дошёл до координат: y + rail_offset = ось рейки
++        self.assertEqual(elements[0]["y_mm"] + used["rail_offset_mm"], 130.0)
++
++
++class RealDataTests(unittest.TestCase):
++    """Проверка на реальном каталоге производителя.
++
++    Эти тесты существуют ради одного: показать, что механизм подбора ловит то,
++    что «на глаз» не видно. Подбор аппарата по току КЗ и вместимость ряда —
++    места, где правдоподобная цифра дороже пустого ответа.
++    """
++
++    @staticmethod
++    def _breaker_rows(poles: int = 3) -> list:
++        result = ccat.search({"kind": "breaker", "poles": poles, "limit": 0})
++        return [{"id": item["id"], "designation": item["id"],
++                 "rating_a": item["rating_a"], "trip_curve": item["trip_curve"],
++                 "breaking_ka": item["breaking_ka"]}
++                for item in result["items"]]
++
++    def test_breaker_is_refused_when_fault_current_exceeds_capacity(self):
++        """17,4 кА на вводе против 4,5 кА у серии ВА47-29: выбора нет."""
++        import cabinet_calc
++        fault = cabinet_calc.calculate({
++            "kind": "fault_current", "voltage_v": 380,
++            "transformer": {"power_mva": 0.63, "uk_percent": 5.5}})
++        self.assertGreater(fault["result"]["fault_current_ka"], 10.0)
++        selected = cabinet_calc.calculate({
++            "kind": "breaker_select", "current_a": 40.0,
++            "fault_current_ka": fault["result"]["fault_current_ka"],
++            "tables": {"breakers": {"source": "IEK ВА47-29",
++                                    "rows": self._breaker_rows()}}})
++        self.assertIsNone(selected["result"]["selected"])
++
++    def test_line_impedance_brings_fault_current_down(self):
++        """Та же точка, но за 40 м кабеля 4 мм²: аппарат находится."""
++        import cabinet_calc
++        fault = cabinet_calc.calculate({
++            "kind": "fault_current", "voltage_v": 380,
++            "transformer": {"power_mva": 0.63, "uk_percent": 5.5},
++            "length_m": 40, "section_mm2": 4, "material": "copper"})
++        self.assertLess(fault["result"]["fault_current_ka"], 2.0)
++        selected = cabinet_calc.calculate({
++            "kind": "breaker_select", "current_a": 40.0,
++            "fault_current_ka": fault["result"]["fault_current_ka"],
++            "tables": {"breakers": {"source": "IEK ВА47-29",
++                                    "rows": self._breaker_rows()}}})
++        self.assertIsNotNone(selected["result"]["selected"])
++        self.assertEqual(selected["result"]["selected"]["rating_a"], 40.0)
++
++    def test_row_capacity_with_real_width(self):
++        """Реальный модуль 18 мм: в ряд входит 26 автоматов, а не 27.
++
++        Цифры сняты с настоящих изделий. Типовой габарит 17,5 мм дал бы лишний
++        слот — и этот лишний слот не влез бы в щит.
++        """
++        from cabinet_build import build_layout
++        item = ccat.search({"kind": "breaker", "poles": 1, "limit": 1})["items"][0]
++        width = item["width_mm"]
++        self.assertEqual(width, 18.0)
++
++        def fits(qty):
++            result = build_layout({
++                "plate": {"width_mm": 600, "height_mm": 800},
++                "rail": {"first_rail_y_mm": 130, "pitch_mm": 170},
++                "library": [dict(item["layout"], rail_offset_mm=40.0)],
++                "lines": [{"id": "a", "lib_key": item["layout"]["lib_key"],
++                           "qty": qty, "tag": "QF1", "internal_gap_mm": 0}]})
++            return not result["unplaced"]
++
++        capacity = 0
++        for qty in range(1, 40):
++            if not fits(qty):
++                break
++            capacity = qty
++        self.assertEqual(capacity, 26)
++
++
++class DocsSearchTests(unittest.TestCase):
++    """Поиск по документам: цитата обязана указывать источник."""
++
++    @classmethod
++    def setUpClass(cls):
++        cls.tmp = tempfile.mkdtemp(dir=PROJECT_ROOT, prefix="_wave12_docs_")
++        with open(os.path.join(cls.tmp, "note.md"), "w", encoding="utf-8") as fh:
++            fh.write("# Нормы\n\nСечение кабеля выбирается по допустимому току.\n"
++                     "ПУЭ таблица 1.3.4 действует в этой редакции.\n")
++        with open(os.path.join(cls.tmp, "other.txt"), "w", encoding="utf-8") as fh:
++            fh.write("Ничего общего с кабелем.\n")
++
++    @classmethod
++    def tearDownClass(cls):
++        shutil.rmtree(cls.tmp, ignore_errors=True)
++
++    def _root(self):
++        return os.path.relpath(self.tmp, PROJECT_ROOT)
++
++    def test_citation_has_file_line_and_text(self):
++        result = ds.search({"query": "допустимому току", "root": self._root()})
++        self.assertTrue(result["ok"])
++        match = result["matches"][0]
++        self.assertTrue(match["file"].endswith("note.md"))
++        self.assertEqual(match["line"], 3)
++        self.assertIn("допустимому току", match["text"])
++
++    def test_all_words_must_match(self):
++        found = ds.search({"query": "ПУЭ таблица", "root": self._root()})
++        self.assertEqual(len(found["matches"]), 1)
++        missed = ds.search({"query": "ПУЭ несуществующее", "root": self._root()})
++        self.assertEqual(missed["matches"], [])
++
++    def test_context_lines(self):
++        """Совпадение в середине файла: строка выше и ниже попадают в цитату."""
++        result = ds.search({"query": "Сечение", "root": self._root(),
++                            "context_lines": 1})
++        self.assertEqual(len(result["matches"][0]["context"]), 3)
++
++    def test_max_results(self):
++        result = ds.search({"query": "е", "root": self._root(), "max_results": 2})
++        self.assertLessEqual(len(result["matches"]), 2)
++        self.assertTrue(any("максимум" in note for note in result["notes"]))
++
++    def test_extensions_filter(self):
++        result = ds.search({"query": "кабелем", "root": self._root(),
++                            "extensions": [".md"]})
++        self.assertEqual(result["matches"], [])
++
++    def test_case_sensitive(self):
++        result = ds.search({"query": "пуэ", "root": self._root(),
++                            "case_sensitive": True})
++        self.assertEqual(result["matches"], [])
++
++    def test_empty_query_is_refused(self):
++        result = ds.search({"query": "  ", "root": self._root()})
++        self.assertEqual(result["refusals"][0]["code"], "empty_query")
++
++    def test_outside_root_is_refused(self):
++        result = ds.search({"query": "что угодно",
++                            "root": os.path.join(tempfile.gettempdir(), "x")})
++        self.assertEqual(result["refusals"][0]["code"], "path_outside_root")
++
++    def test_missing_root_is_refused(self):
++        result = ds.search({"query": "нормы", "root": "нет_такого_каталога"})
++        self.assertEqual(result["refusals"][0]["code"], "no_root")
++
++    def test_max_files_truncation_is_reported(self):
++        result = ds.search({"query": "кабель", "root": self._root(),
++                            "max_files": 1})
++        self.assertTrue(result["truncated"])
++        self.assertTrue(any("остановлено" in note for note in result["notes"]))
++
++    def test_project_docs_are_searchable(self):
++        """Поиск работает и по настоящей документации проекта."""
++        result = ds.search({"query": "отказ вместо экстраполяции"})
++        self.assertTrue(result["ok"], result.get("refusals"))
++        self.assertTrue(result["matches"])
++        self.assertTrue(result["matches"][0]["file"].startswith("docs"))
++
++
++class Honesty12Tests(unittest.TestCase):
++    """То, без чего волну нельзя считать честной."""
++
++    def test_no_catalogue_data_is_built_in(self):
++        self.assertNotIn("КЭАЗ", ccat.__dict__)
++        self.assertNotIn("ABB", ccat.__dict__)
++        with open(os.path.join(PROJECT_ROOT, "src", "cabinet_catalog.py"),
++                  encoding="utf-8") as handle:
++            source = handle.read()
++        self.assertNotIn("win32com", source)
++        self.assertNotIn("requests", source)
++
++    def test_example_file_is_declared_as_example(self):
++        path = os.path.join(PROJECT_ROOT, "data", "cabinet_catalog.example.json")
++        with open(path, encoding="utf-8") as handle:
++            document = json.load(handle)
++        self.assertTrue(document["example"])
++        self.assertIn("iek.ru", document["source"])
++        self.assertTrue(document["note"])
++        self.assertTrue(document["legal"])
++
++    def test_docs_search_has_no_network(self):
++        with open(os.path.join(PROJECT_ROOT, "src", "docs_search.py"),
++                  encoding="utf-8") as handle:
++            source = handle.read()
++        for forbidden in ("urllib", "requests", "socket", "http"):
++            self.assertNotIn(forbidden, source)
++
++    def test_both_tools_are_registered(self):
++        import tools_catalog
++        names = [tool["name"] for tool in tools_catalog.TOOLS]
++        self.assertIn("kompas_cabinet_catalog_search", names)
++        self.assertIn("kompas_docs_search", names)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index f8e5c96..ee7e93d 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index 7b24e4c..3771712 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -314,8 +314,8 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ 
+ class TestCatalogWave3(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index eeeb9f3..eb77231 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -316,8 +316,8 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ 
+ class TestCatalogWave4(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index 7d20523..328415d 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -391,8 +391,8 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index a565f1c..461f072 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -434,8 +434,8 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index af82efb..4e6e7d1 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git a/tests/test_wave8.py b/tests/test_wave8.py
+index a161e2b..a3f6f07 100644
+--- a/tests/test_wave8.py
++++ b/tests/test_wave8.py
+@@ -71,8 +71,8 @@ def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None)
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_build_tool_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tests/test_wave9.py b/tests/test_wave9.py
+index 17799a5..e0ccf3a 100644
+--- a/tests/test_wave9.py
++++ b/tests/test_wave9.py
+@@ -100,8 +100,8 @@ class FakeExecutor:
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_54(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 54)
++    def test_tool_count_is_56(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 56)
+ 
+     def test_both_tools_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]

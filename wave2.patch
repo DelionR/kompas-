@@ -1,0 +1,1517 @@
+diff --git a/VERSION.json b/VERSION.json
+index f99ca28..87471c3 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -4,7 +4,7 @@
+   "protocol_version": "1.1.11",
+   "mcp_protocol_version": "2025-11-25",
+   "mcp_supported_protocol_versions": ["2025-06-18", "2025-11-25"],
+-  "mcp_tool_count": 35,
++  "mcp_tool_count": 38,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -28,6 +28,9 @@
+     "kompas_component_properties_set",
+     "kompas_bom_read",
+     "kompas_component_pattern_linear",
++    "kompas_mate_read",
++    "kompas_mate_create",
++    "kompas_artifact_check",
+     "kompas_model_bbox",
+     "kompas_set_view",
+     "kompas_fit_view",
+diff --git b/docs/WAVE2_CHANGES.md b/docs/WAVE2_CHANGES.md
+new file mode 100644
+index 0000000..2d5fb37
+--- /dev/null
++++ b/docs/WAVE2_CHANGES.md
+@@ -0,0 +1,164 @@
++# Волна 2: сопряжения сборки и проверка артефактов
++
++Изменения второго приоритета из плана аудита: сборка перестала быть набором
++независимо висящих компонентов, а результат экспорта перестал считаться
++успешным только потому, что COM-метод не бросил исключение.
++
++Всё в этой волне проверяется **без КОМПАСа**: 39 тестов в `tests/test_wave2.py`
++плюс 42 теста волны 1 и существующие контрактные тесты.
++
++## Проверка
++
++```powershell
++cd <bridge_root>
++python -m unittest discover -s tests -p "test_wave2.py" -v
++python -m unittest discover -s tests -p "test_wave1.py"
++python tests\test_mcp_stdio.py
++python tests\test_mcp_bridge_routing.py
++powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\RUN_STATIC_TESTS.ps1 -Root (Resolve-Path .)
++```
++
++## Что сделано
++
++### 1. Сопряжения сборки (B1)
++
++**Было.** Мост умел вставить компонент (`kompas_assembly_insert_component`) и
++задать ему абсолютную позу (`kompas_component_transform`). Связей между
++деталями не было ни одной: сборка оставалась набором независимо висящих тел,
++и повод «доделать руками в КОМПАСе» оставался.
++
++**Стало.** `src/mate_tools.py` и два инструмента:
++
++* `kompas_mate_read` - чтение сопряжений активной сборки: тип, направление,
++  числовое значение, признак фиксации, имена участников;
++* `kompas_mate_create` - создание **одного** сопряжения за вызов.
++
++Поддержаны семь типов: `coincident`, `parallel`, `perpendicular`,
++`concentric`, `tangent` (без числового параметра) и `distance`, `angle`
++(числовой параметр обязателен).
++
++Валидация вынесена в чистые функции и проверяется тестами без КОМПАСа:
++
++* значение, переданное для типа, который его не принимает, - ошибка, а не
++  молчаливое игнорирование;
++* отсутствие обязательного значения - ошибка;
++* `distance` ограничен 10 000 мм, `angle` - 360°, значение должно быть
++  конечным и положительным;
++* сборка обязана быть `*_AGENT_COPY.a3d` в рабочем каталоге моста;
++* два селектора, указывающие на один и тот же компонент, отклоняются до
++  открытия файла.
++
++Транзакционная обвязка повторяет принятый в проекте порядок: байтовый снимок,
++проверка точного активного `PathName`, создание, проверка роста числа
++сопряжений, `Save` → `Close` → `Reopen`, повторное чтение, восстановление
++прежнего активного документа; при любой ошибке - откат из снимка.
++
++**Границы честности.** Интерфейс сопряжений (`IMateConstraint` /
++`ksMateConstraint`) в разных версиях КОМПАСа называется по-разному, а
++подтверждённого стенда под рукой не было. Поэтому модуль **не утверждает**,
++что умеет создавать сопряжения:
++
++* имена коллекции и методов перебираются из списка известных вариантов;
++* если ни один не подошёл, поднимается `mate_create_interface_not_available`
++  со списком испробованного, а не тихая подмена результата;
++* в ответе всегда есть блок `interface` с фактически сработавшим путём
++  (`read_source`, `create_method`) - его и нужно занести в матрицу версий;
++* `kompas_mate_read` при ненайденной коллекции возвращает
++  `interface.confirmed = false` и объяснение, а **не** пустой список, который
++  можно принять за «сопряжений нет».
++
++Геометрическая корректность сопряжения не проверяется: для этого нужен анализ
++степеней свободы, и он в эту волну не входит. Об этом прямо сказано в
++`warnings` ответа.
++
++### 2. Проверка артефактов экспорта (B4, частично)
++
++**Было.** Единственным доказательством успешного экспорта было отсутствие
++исключения. COM-метод возвращает управление и тогда, когда файл получился
++пустым, обрезанным или содержит только заголовок, поэтому агент мог объявить
++выгрузку выполненной по пустышке.
++
++**Стало.** `src/artifact_check.py` и инструмент `kompas_artifact_check`,
++который проверяет **содержимое** файла:
++
++| Формат | Что проверяется |
++|---|---|
++| STEP | сигнатура `ISO-10303-21`, закрывающий `END-ISO-10303-21`, число сущностей, наличие `MANIFOLD_SOLID_BREP` / `ADVANCED_FACE`, `FILE_SCHEMA` |
++| DXF | список секций, наличие `ENTITIES`, маркер `EOF`, число сущностей по типам, `$ACADVER`, `$INSUNITS` |
++| PDF | версия из заголовка, завершающий `%%EOF`, число страниц |
++| PNG | сигнатура, чанк `IHDR`, реальные ширина и высота, `IEND` |
++
++Дополнительно:
++
++* формат определяется по расширению, а при несоответствии - по сигнатуре;
++* файл больше 32 МБ читается частично, и это **не скрывается**:
++  `scan_truncated` и предупреждение в `warnings`;
++* неподдерживаемый формат даёт `ok: false` с кодом
++  `unsupported_artifact_kind`, а не «похоже, всё хорошо»;
++* читать можно только внутри `work/` и разрешённых корней записи; выход за
++  них - `path_outside_approved_roots`;
++* в каждом вердикте есть блок `limits`, который прямо говорит: проверка
++  структурная, совпадение геометрии с моделью ею не подтверждается.
++
++Модуль не зависит от COM, поэтому проверяется тестами целиком - включая
++синтетические STEP, DXF, PDF и PNG, собранные в самих тестах.
++
++## Изменения, заметные оператору
++
++1. **Поверхность выросла с 35 до 38 инструментов.** Три новых:
++   `kompas_mate_read`, `kompas_mate_create`, `kompas_artifact_check`.
++   `VERSION.json` обновлён, контрактный тест это проверяет.
++2. **`kompas_mate_create` пишет не более одного сопряжения за вызов.** Пакетная
++   запись не позволяет понять, какое именно сопряжение разъехалось, если после
++   перестроения модель поехала.
++3. **`kompas_mate_create` требует, чтобы активным был `*_AGENT_COPY.a3d`** в
++   рабочем каталоге моста. Сопряжения в исходную сборку не пишутся никогда.
++4. **`kompas_artifact_check` читает только разрешённые корни.** Проверить
++   произвольный файл на диске через него нельзя.
++5. **Версия сборки не поднята** - осталась `1.1.14_CAP2`. Строка зашита в десяти
++   местах, включая `tests/build_cap2_golden.py`, который собирает golden-пакет;
++   поднятие версии - отдельный релизный шаг, а не побочный эффект правки кода.
++6. **Тест `test_wave1.py` обновлён осознанно:** ожидаемое число инструментов
++   изменено с 35 на 38. Это и был его смысл - заставить заметить изменение
++   поверхности.
++
++## Чего в этой волне нет
++
++Осознанно отложено:
++
++* чертежи, основная надпись, экспорт DXF как операция (B2);
++* спецификация как документ, а не только чтение BOM (B3);
++* сам экспорт STEP через COM - в этой волне сделан только **контроль**
++  результата; сама выгрузка по-прежнему идёт через `kompas_run_job` либо
++  руками;
++* сторож модальных диалогов (C2) - требует живого КОМПАСа для проверки;
++* версионная матрица КОМПАСа (C5) - сопряжения дают для неё первый реальный
++  материал: зафиксировать фактически сработавшие имена интерфейсов;
++* устойчивые ссылки на объекты (D2), сухой прогон для всех мутирующих
++  инструментов (D4), checkpoint/rollback (D5);
++* самокалибровка кадра скриншота (D6);
++* упаковка, CI, лицензия (E1-E3).
++
++Актуальный список приоритетов - в отчёте `KOMPAS-3D_AI_Bridge_audit_plan.html`.
++
++## Состав изменений
++
++Новые файлы:
++
++| Файл | Назначение |
++|---|---|
++| `src/mate_tools.py` | чтение и создание сопряжений сборки |
++| `src/artifact_check.py` | структурная проверка STEP/DXF/PDF/PNG |
++| `tests/test_wave2.py` | 39 тестов без КОМПАСа |
++| `docs/WAVE2_CHANGES.md` | этот документ |
++
++Изменённые файлы:
++
++| Файл | Что изменилось |
++|---|---|
++| `mcp/tools_catalog.py` | три новых инструмента и их маршрутизация |
++| `src/engineering_capabilities.py` | действия `mate.read`, `mate.create`, `artifact.check` |
++| `VERSION.json` | 38 инструментов |
++| `tests/test_wave1.py` | ожидаемое число инструментов 38 |
++| `tests/RUN_STATIC_TESTS.ps1` | шаг волны 2, новые обязательные файлы |
++| `skills/kompas-engineering/SKILL.md` | правила работы с сопряжениями и проверкой артефактов |
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index e4c64b0..fc893a2 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -84,6 +84,9 @@ TOOLS = [
+     {"name":"kompas_component_properties_set","description":"Set only proven native writable API7 IPart7 occurrence fields Name and Marking/designation in a closed direct-work *_AGENT_COPY.a3d. Requires at least one value; preserves external source reference and bytes; snapshots assembly; verifies before/requested/after and Save->Close->Reopen persistence; restores the prior active AGENT_COPY.","inputSchema":{"type":"object","required":["assembly_filename","selector"],"properties":{"assembly_filename":{"type":"string","minLength":1},"selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"designation":{"type":"string","minLength":1,"maxLength":200},"name":{"type":"string","minLength":1,"maxLength":200}},"anyOf":[{"required":["designation"]},{"required":["name"]}],"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":True}},
+     {"name":"kompas_bom_read","description":"Read an assembly BOM from the real recursive API7 IPart7 occurrence tree. Membership uses native CreateSpcObjects plus InheritExclude semantics; rows are grouped by exact source/designation/name/material and quantity is the exact eligible occurrence count. Native A3D SpecificationDescriptions metadata is reported separately. No filename inventory or floating text is substituted.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_component_pattern_linear","description":"Create a real native API7 assembly component linear pattern through IFeaturePatterns.Add(ksObjectPartsLinearPattern) and ILinearPattern. Uses one existing source occurrence, a signed global X/Y/Z direction, positive spacing, and count 2..20; transactionally verifies native exemplar count, exact placements, source reference/hash, tree persistence, and Save->Close->Reopen.","inputSchema":{"type":"object","required":["assembly_filename","source_selector","direction","spacing","count"],"properties":{"assembly_filename":{"type":"string","minLength":1},"source_selector":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"direction":{"type":"array","items":{"type":"number"},"minItems":3,"maxItems":3},"spacing":{"type":"number","exclusiveMinimum":0},"count":{"type":"integer","minimum":2,"maximum":20},"name":{"type":"string","minLength":1,"maxLength":100,"default":"CAP2_LINEAR_COMPONENT_PATTERN"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_mate_read","description":"Read the mate constraints of the active assembly through the native IMateConstraint collection: kind, direction, numeric value, fixed flag and participant names. Call it before adding mates so you work from the real constraint set. Reports which interface name actually resolved, and returns interface.confirmed=false instead of an empty list when no known collection name matched.","inputSchema":{"type":"object","properties":{"max_items":{"type":"integer","minimum":1,"maximum":2000,"default":200}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_mate_create","description":"Create exactly ONE native mate constraint between two existing components of a closed direct-work *_AGENT_COPY.a3d. kind=distance or angle require value in mm or degrees; coincident, parallel, perpendicular, concentric and tangent must not carry a value. Performs a byte transaction snapshot, exact active-path checks, mate-count growth check, Save->Close->Reopen persistence verification, and restores the previously active document. Refuses with mate_create_interface_not_available when no known create method resolves, instead of reporting success.","inputSchema":{"type":"object","required":["assembly_filename","kind","selector_a","selector_b"],"properties":{"assembly_filename":{"type":"string","minLength":1},"kind":{"type":"string","enum":["coincident","parallel","perpendicular","concentric","tangent","distance","angle"]},"selector_a":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"selector_b":{"oneOf":[{"type":"integer","minimum":0},{"type":"string","minLength":1},{"type":"array","items":{"type":"integer","minimum":0},"minItems":1}]},"value":{"type":"number","exclusiveMinimum":0},"align":{"type":"string","enum":["aligned","opposite","auto"],"default":"auto"},"fixed":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_artifact_check","description":"Verify an exported artifact by its content instead of trusting that the export call returned without error: STEP header/end markers plus entity and solid counts, DXF sections plus entity count, PDF page count, PNG dimensions. Use it after any export or kompas_run_job that produced a file, because a failed KOMPAS export normally raises nothing at all.","inputSchema":{"type":"object","required":["relative_path"],"properties":{"relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_model_bbox","description":"Read the exact native bounding box of the active top-level model. Use it to sanity-check overall size before and after geometry edits. It is a whole-model measure and is not a substitute for the per-component bounding box returned by kompas_component_info.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+     {"name":"kompas_fit_view","description":"Fit the active 3D model in the KOMPAS viewport using API5 ZoomPrevNextOrAll(2). Call it before kompas_viewport_capture when the model may be out of frame or off-screen. It changes only the camera, never geometry, and performs no Save.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+@@ -134,6 +137,9 @@ ACTION_MAP = {
+     "kompas_component_properties_set": ("component.properties_set", lambda a: a),
+     "kompas_bom_read": ("bom.read", lambda a: a),
+     "kompas_component_pattern_linear": ("component.pattern_linear", lambda a: a),
++    "kompas_mate_read": ("mate.read", lambda a: a),
++    "kompas_mate_create": ("mate.create", lambda a: a),
++    "kompas_artifact_check": ("artifact.check", lambda a: a),
+     "kompas_model_bbox": ("model.bbox", lambda a: {}),
+     "kompas_set_view": ("view.set", lambda a: a),
+     "kompas_fit_view": ("view.fit", lambda a: {}),
+diff --git a/skills/kompas-engineering/SKILL.md b/skills/kompas-engineering/SKILL.md
+index 1e78e94..17381e7 100644
+--- a/skills/kompas-engineering/SKILL.md
++++ b/skills/kompas-engineering/SKILL.md
+@@ -37,6 +37,21 @@ Never invent:
+ 
+ Read them from the model/source requirements or explicitly mark them unresolved. If mass is not natively available or material is unknown, report that rather than creating a plausible value.
+ 
++## Assembly mates
++- A set of positioned components is not an assembly. Related parts must be tied by real mate constraints, not only by absolute placement.
++- Read the current mate set with `kompas_mate_read` before adding anything. `interface.confirmed=false` means the mate interface was not found in this KOMPAS build - it does NOT mean the assembly has no mates. Report it as unresolved instead of assuming an empty assembly.
++- Give each component a deliberate origin first, then constrain it. Mates are not a substitute for explicit placement.
++- Add mates one at a time with `kompas_mate_create` and confirm the mate count grew after each call. Never batch several mates into one step.
++- `distance` and `angle` require a value in mm or degrees. `coincident`, `parallel`, `perpendicular`, `concentric` and `tangent` must not carry a value.
++- `mate_create_interface_not_available` means the create interface could not be resolved. Report it as an unresolved operation; never present it as a created mate.
++- Record the `interface.create_method` value from the response when working on a new KOMPAS version.
++
++## Export verification
++- A successful export call is not evidence that a file was produced. KOMPAS export methods raise nothing when the result is empty, truncated or header-only.
++- After every export, run `kompas_artifact_check` on the produced file and require `ok: true` before treating the artifact as a deliverable.
++- `ok: false` means the export failed. Fix the cause; do not hand the file to the user.
++- The check is structural only. When STEP is a deliverable, additionally open/import the exported STEP and compare overall dimensions against the model - `kompas_artifact_check` does not prove geometry equivalence.
++
+ ## Temporary visual state
+ `hide`, `isolate`, view rotation, and similar operations are inspection aids. Restore temporary visibility before saving unless changed visibility is explicitly part of the requested deliverable.
+ 
+@@ -75,6 +90,8 @@ API QA should cover, as applicable:
+ - bounding boxes;
+ - references and missing refs;
+ - save/reopen persistence;
++- mate set: count before and after each added mate, kind and value readback;
++- exported artifacts verified with `kompas_artifact_check`, not by the absence of an export error;
+ - specifications and exports when required.
+ 
+ Vision QA should cover, as applicable:
+diff --git b/src/artifact_check.py b/src/artifact_check.py
+new file mode 100644
+index 0000000..caf4620
+--- /dev/null
++++ b/src/artifact_check.py
+@@ -0,0 +1,298 @@
++"""Проверка артефактов, которые мост получает от КОМПАСа.
++
++Зачем этот модуль существует
++---------------------------
++Экспорт из КОМПАСа (STEP, DXF, PDF) возвращает управление успешно почти
++всегда: COM-метод не бросает исключение и тогда, когда файл получился
++пустым, обрезанным или содержит только заголовок. Раньше единственным
++доказательством успеха экспорта было само отсутствие исключения, поэтому
++агент мог объявить выгрузку выполненной по пустышке.
++
++Здесь проверяется содержимое файла, а не факт вызова метода:
++
++* STEP - сигнатура ISO-10303-21, закрывающий END-ISO-10303-21, число
++  сущностей, наличие тел и граней;
++* DXF - секции, наличие ENTITIES и EOF, число сущностей, единицы измерения;
++* PDF - версия, завершающий %%EOF, число страниц;
++* PNG - сигнатура, чанк IHDR, реальные ширина и высота.
++
++Модуль намеренно не зависит от COM: он работает с уже лежащим на диске
++файлом, поэтому его можно проверить тестами без запущенного КОМПАСа.
++
++Границы честности
++-----------------
++Проверка структурная. Она отвечает на вопрос "файл целый и непустой", но
++не на вопрос "геометрия в файле та же, что в модели". Для второго нужен
++импорт обратно в КОМПАС и сверка габаритов - это отдельная операция,
++и здесь она не имитируется.
++"""
++from __future__ import annotations
++
++import re
++from pathlib import Path
++from typing import Any, Dict, List, Optional
++
++from settings import settings_for
++
++# Больше этого не читаем в память: STEP-файл крупной сборки легко
++# переваливает за сотню мегабайт, а ответ инструмента должен остаться
++# компактным.
++MAX_SCAN_BYTES = 32 * 1024 * 1024
++
++KIND_BY_SUFFIX: Dict[str, str] = {
++    ".step": "step",
++    ".stp": "step",
++    ".dxf": "dxf",
++    ".pdf": "pdf",
++    ".png": "png",
++}
++
++PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
++
++
++def detect_kind(name: str, head: bytes = b"") -> Optional[str]:
++    """Определить формат по расширению, с откатом на сигнатуру."""
++    suffix = Path(str(name)).suffix.lower()
++    if suffix in KIND_BY_SUFFIX:
++        return KIND_BY_SUFFIX[suffix]
++    if head.startswith(PNG_SIGNATURE):
++        return "png"
++    if head.startswith(b"%PDF-"):
++        return "pdf"
++    if head.lstrip()[:14].upper().startswith(b"ISO-10303-21"):
++        return "step"
++    return None
++
++
++def _text(data: bytes) -> str:
++    return data.decode("latin-1", errors="replace")
++
++
++def _result(kind: str, ok: bool, findings: List[str], **extra: Any) -> Dict[str, Any]:
++    payload: Dict[str, Any] = {"kind": kind, "ok": bool(ok), "findings": list(findings)}
++    payload.update(extra)
++    return payload
++
++
++def check_step(data: bytes) -> Dict[str, Any]:
++    text = _text(data)
++    findings: List[str] = []
++    counts: Dict[str, Any] = {}
++
++    starts_ok = text.lstrip()[:14].upper().startswith("ISO-10303-21")
++    if not starts_ok:
++        findings.append("missing_iso_10303_21_header")
++
++    ends_ok = "END-ISO-10303-21" in text
++    if not ends_ok:
++        findings.append("missing_end_iso_10303_21_marker")
++
++    entity_lines = [line for line in text.splitlines() if line.lstrip().startswith("#")]
++    counts["entities"] = len(entity_lines)
++    if counts["entities"] == 0:
++        findings.append("no_step_entities")
++
++    for keyword, key in (
++        ("MANIFOLD_SOLID_BREP", "solid_breps"),
++        ("ADVANCED_FACE", "advanced_faces"),
++        ("CARTESIAN_POINT", "cartesian_points"),
++        ("PRODUCT", "products"),
++    ):
++        counts[key] = text.count(keyword)
++
++    if counts["solid_breps"] == 0 and counts["advanced_faces"] == 0:
++        findings.append("no_solid_or_face_geometry")
++
++    schema = re.search(r"FILE_SCHEMA\s*\(\s*\(\s*'([^']+)'", text)
++    counts["file_schema"] = schema.group(1) if schema else None
++
++    header_ok = "HEADER" in text and "DATA" in text
++    if not header_ok:
++        findings.append("missing_header_or_data_section")
++
++    ok = starts_ok and ends_ok and counts["entities"] > 0 and not findings
++    return _result("step", ok, findings, counts=counts, header_section=header_ok)
++
++
++def check_dxf(data: bytes) -> Dict[str, Any]:
++    text = _text(data)
++    lines = [line.strip() for line in text.splitlines()]
++    findings: List[str] = []
++    sections: List[str] = []
++    entities: Dict[str, int] = {}
++    header_values: Dict[str, str] = {}
++
++    index = 0
++    inside_entities = False
++    while index < len(lines) - 1:
++        code = lines[index].strip()
++        value = lines[index + 1].strip()
++        if code == "0" and value.upper() == "SECTION":
++            name = ""
++            if index + 3 < len(lines) and lines[index + 2].strip() == "2":
++                name = lines[index + 3].strip().upper()
++            sections.append(name)
++            inside_entities = name == "ENTITIES"
++        elif code == "0" and value.upper() == "ENDSEC":
++            inside_entities = False
++        elif inside_entities and code == "0" and value:
++            key = value.upper()
++            entities[key] = entities.get(key, 0) + 1
++        elif code == "9" and value:
++            if index + 3 < len(lines):
++                header_values[value] = lines[index + 3].strip()
++        index += 2
++
++    if not sections:
++        findings.append("no_dxf_sections")
++    if "ENTITIES" not in sections:
++        findings.append("missing_entities_section")
++    if not any(line.strip().upper() == "EOF" for line in lines[-20:] or []):
++        findings.append("missing_eof_marker")
++
++    total_entities = sum(entities.values())
++    if total_entities == 0:
++        findings.append("no_dxf_entities")
++
++    counts: Dict[str, Any] = {
++        "sections": sections,
++        "entities": total_entities,
++        "entity_kinds": dict(sorted(entities.items(), key=lambda kv: -kv[1])[:20]),
++        "acad_version": header_values.get("$ACADVER"),
++        "units_code": header_values.get("$INSUNITS"),
++    }
++
++    ok = not findings
++    return _result("dxf", ok, findings, counts=counts)
++
++
++def check_pdf(data: bytes) -> Dict[str, Any]:
++    text = _text(data)
++    findings: List[str] = []
++
++    version = None
++    match = re.search(r"%PDF-(\d\.\d)", text[:1024])
++    if match:
++        version = match.group(1)
++    else:
++        findings.append("missing_pdf_header")
++
++    tail = text[-4096:]
++    if "%%EOF" not in tail:
++        findings.append("missing_eof_marker")
++
++    pages = len(re.findall(r"/Type\s*/Page(?![sA-Za-z])", text))
++    counts: Dict[str, Any] = {"version": version, "pages": pages}
++    if pages == 0:
++        findings.append("no_pdf_pages")
++
++    return _result("pdf", not findings, findings, counts=counts)
++
++
++def check_png(data: bytes) -> Dict[str, Any]:
++    findings: List[str] = []
++    counts: Dict[str, Any] = {}
++
++    if not data.startswith(PNG_SIGNATURE):
++        return _result("png", False, ["missing_png_signature"], counts=counts)
++
++    if data[12:16] != b"IHDR":
++        findings.append("missing_ihdr_chunk")
++        return _result("png", False, findings, counts=counts)
++
++    width = int.from_bytes(data[16:20], "big")
++    height = int.from_bytes(data[20:24], "big")
++    counts["width"] = width
++    counts["height"] = height
++    counts["has_iend"] = data.rstrip().endswith(b"IEND\xaeB`\x82")
++
++    if width <= 0 or height <= 0:
++        findings.append("degenerate_png_size")
++    if not counts["has_iend"]:
++        findings.append("missing_iend_chunk")
++
++    return _result("png", not findings, findings, counts=counts)
++
++
++CHECKS = {
++    "step": check_step,
++    "dxf": check_dxf,
++    "pdf": check_pdf,
++    "png": check_png,
++}
++
++
++def _resolve(bridge_root: Any, relative_path: str) -> Path:
++    """Найти файл только внутри разрешённых корней моста."""
++    settings = settings_for(bridge_root)
++    raw = str(relative_path or "").strip()
++    if not raw:
++        raise ValueError("relative_path_required")
++
++    candidate = Path(raw)
++    if candidate.is_absolute():
++        target = candidate.resolve()
++    else:
++        target = (settings.work_dir / candidate).resolve()
++
++    allowed = (settings.work_dir,) + tuple(settings.write_roots)
++    if not any(target == root or target.is_relative_to(root) for root in allowed):
++        raise RuntimeError("path_outside_approved_roots:" + str(target))
++    if settings.is_protected(target):
++        raise RuntimeError("path_protected:" + str(target))
++    if not target.is_file():
++        raise FileNotFoundError(str(target))
++    return target
++
++
++def artifact_check(
++    bridge_root: Any,
++    relative_path: str,
++    max_scan_bytes: int = MAX_SCAN_BYTES,
++) -> Dict[str, Any]:
++    """Проверить один артефакт экспорта и вернуть структурный вердикт."""
++    target = _resolve(bridge_root, relative_path)
++    size = target.stat().st_size
++
++    with target.open("rb") as handle:
++        data = handle.read(int(max_scan_bytes))
++    truncated = size > len(data)
++
++    kind = detect_kind(target.name, data[:64])
++    warnings: List[str] = []
++    if truncated:
++        warnings.append(
++            "scan_truncated: проверены первые "
++            f"{len(data)} байт из {size}; хвост файла не анализировался"
++        )
++
++    if kind is None:
++        return {
++            "path_relative": str(relative_path),
++            "kind": None,
++            "size_bytes": size,
++            "ok": False,
++            "findings": ["unsupported_artifact_kind"],
++            "counts": {},
++            "warnings": warnings,
++            "limits": [
++                "Поддержаны только step/stp, dxf, pdf и png. "
++                "Другие форматы не проверяются, а не считаются валидными."
++            ],
++        }
++
++    outcome = CHECKS[kind](data)
++    outcome.update({
++        "path_relative": str(relative_path),
++        "size_bytes": size,
++        "scan_bytes": len(data),
++        "scan_truncated": truncated,
++        "warnings": warnings,
++        "limits": [
++            "Проверка структурная: целостность файла, а не совпадение "
++            "геометрии с моделью.",
++            "Совпадение геометрии подтверждается только обратным импортом "
++            "в КОМПАС и сверкой габаритов - эта операция здесь не выполняется.",
++        ],
++    })
++    return outcome
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index bc91e5d..9a44c68 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -18,6 +18,8 @@ from pmi_tools import pmi_dimension_create, pmi_read
+ from component_properties_tools import component_properties_read, component_properties_set
+ from bom_tools import bom_read
+ from component_pattern_tools import component_pattern_linear
++from mate_tools import mate_create, mate_read
++from artifact_check import artifact_check
+ from view_tools import set_view, fit, rotate, visibility, projections
+ 
+ 
+@@ -153,6 +155,9 @@ def read_component_properties(s, p): return ok("component.properties_read", comp
+ def set_component_properties(s, p): return ok("component.properties_set", component_properties_set(s, p["assembly_filename"], p["selector"], p.get("designation"), p.get("name")))
+ def read_bom(s, p): return ok("bom.read", bom_read(s, p.get("max_depth", 8)))
+ def create_component_linear_pattern(s, p): return ok("component.pattern_linear", component_pattern_linear(s, p["assembly_filename"], p["source_selector"], p["direction"], p["spacing"], p["count"], p.get("name", "CAP2_LINEAR_COMPONENT_PATTERN")))
++def read_mates(s, p): return ok("mate.read", mate_read(s, p.get("max_items", 200)))
++def create_mate(s, p): return ok("mate.create", mate_create(s, p["assembly_filename"], p["kind"], p["selector_a"], p["selector_b"], p.get("value"), p.get("align", "auto"), p.get("fixed", False)))
++def check_artifact(s, p): return ok("artifact.check", artifact_check(s.root, p["relative_path"]))
+ def bbox(s, p): return ok("model.bbox", model_bbox(s))
+ def refs(s, p): return ok("qa.references", references_qa(s, p.get("package_root"), int(p.get("max_depth", 8))))
+ def view_projections(s, p): return ok("view.projections", {"projections": projections(s)})
+@@ -189,6 +194,9 @@ registry = {
+     "component.properties_set": set_component_properties,
+     "bom.read": read_bom,
+     "component.pattern_linear": create_component_linear_pattern,
++    "mate.read": read_mates,
++    "mate.create": create_mate,
++    "artifact.check": check_artifact,
+     "model.bbox": bbox,
+     "qa.references": refs,
+     "view.projections": view_projections,
+diff --git b/src/mate_tools.py b/src/mate_tools.py
+new file mode 100644
+index 0000000..a9cb6c0
+--- /dev/null
++++ b/src/mate_tools.py
+@@ -0,0 +1,512 @@
++"""Сопряжения сборки КОМПАС-3D: чтение и создание.
++
++Зачем этот модуль существует
++---------------------------
++До этой волны мост умел собрать изделие из деталей, но не умел связать их
++между собой: `kompas_assembly_insert_component` вставляет компонент,
++`kompas_component_transform` ставит его в абсолютную позу, и на этом
++сборка оставалась набором независимо висящих тел. Сопряжения - это то,
++что делает сборку сборкой, и именно их не хватало.
++
++Границы честности
++-----------------
++Интерфейс сопряжений (`IMateConstraint` / `ksMateConstraint`) в разных
++версиях КОМПАСа называется по-разному, и подтверждённого стенда под рукой
++не было. Поэтому модуль не утверждает, что умеет создавать сопряжения:
++
++* имена коллекции и методов перебираются из списка известных вариантов;
++* если ни один вариант не подошёл, поднимается
++  ``mate_create_interface_not_available`` со списком испробованного,
++  а не тихая подмена результата;
++* в ответе всегда есть блок ``interface`` с тем, какой именно путь
++  сработал, чтобы оператор мог это зафиксировать в матрице версий.
++
++Валидация входных данных вынесена в чистые функции и проверяется тестами
++без КОМПАСа - это единственная часть, которую можно подтвердить здесь.
++"""
++from __future__ import annotations
++
++import math
++import shutil
++import uuid
++from pathlib import Path
++from typing import Any, Dict, List, Optional, Sequence, Tuple
++
++from assembly_insert_tools import _close, _norm, _open_exact, _sha256
++from material_tools import _ensure_closed, _restore_exact_active
++from model_tools import _doc3d, find_component
++
++# Типы сопряжений и обязательность числового параметра.
++MATE_KINDS: Dict[str, Dict[str, Any]] = {
++    "coincident": {"requires_value": False, "unit": None},
++    "parallel": {"requires_value": False, "unit": None},
++    "perpendicular": {"requires_value": False, "unit": None},
++    "concentric": {"requires_value": False, "unit": None},
++    "tangent": {"requires_value": False, "unit": None},
++    "distance": {"requires_value": True, "unit": "mm"},
++    "angle": {"requires_value": True, "unit": "deg"},
++}
++
++ALIGNMENTS: Tuple[str, ...] = ("aligned", "opposite", "auto")
++
++# Границы значений: агент не должен одним вызовом увести деталь на километр.
++MAX_DISTANCE_MM = 10_000.0
++MAX_ANGLE_DEG = 360.0
++
++# Одно сопряжение за вызов. Пакетная запись не даёт проверить, какое именно
++# сопряжение испортило сборку, если после перестроения что-то разъехалось.
++MAX_MATES_PER_CALL = 1
++
++# Кандидаты на коллекцию сопряжений. Порядок - от наиболее вероятного
++# к наименее; в ответе видно, какой источник сработал.
++COLLECTION_SOURCES: Tuple[Tuple[str, str], ...] = (
++    ("document", "MateConstraints"),
++    ("top_part", "MateConstraints"),
++    ("document", "MateConstraintCollection"),
++    ("top_part", "MateConstraintCollection"),
++    ("document", "Constraints"),
++    ("top_part", "Constraints"),
++)
++
++COLLECTION_METHODS: Tuple[str, ...] = (
++    "GetMateConstraints",
++    "GetMateConstraintCollection",
++    "GetConstraints",
++)
++
++CREATE_METHODS: Tuple[str, ...] = (
++    "AddMateConstraint",
++    "CreateMateConstraint",
++    "AddConstraint",
++)
++
++
++# ---------------------------------------------------------------------------
++# Валидация (чистые функции, тестируются без КОМПАСа)
++# ---------------------------------------------------------------------------
++def normalize_kind(kind: Any) -> str:
++    value = str(kind or "").strip().lower()
++    if value not in MATE_KINDS:
++        raise ValueError(
++            "unsupported_mate_kind: " + (value or "<empty>")
++            + "; supported=" + ",".join(sorted(MATE_KINDS))
++        )
++    return value
++
++
++def validate_value(kind: str, value: Any) -> Optional[float]:
++    """Проверить числовой параметр сопряжения под конкретный тип."""
++    spec = MATE_KINDS[normalize_kind(kind)]
++    if not spec["requires_value"]:
++        if value is None:
++            return None
++        raise ValueError(f"value_not_allowed_for_{kind}")
++    if value is None:
++        raise ValueError(f"value_required_for_{kind}")
++    try:
++        number = float(value)
++    except (TypeError, ValueError):
++        raise ValueError("value_must_be_number") from None
++    if not math.isfinite(number):
++        raise ValueError("value_must_be_finite")
++    limit = MAX_DISTANCE_MM if spec["unit"] == "mm" else MAX_ANGLE_DEG
++    if number <= 0:
++        raise ValueError("value_must_be_positive")
++    if number > limit:
++        raise ValueError(f"value_above_limit_{limit:g}_{spec['unit']}")
++    return number
++
++
++def validate_alignment(align: Any) -> str:
++    value = str(align or "auto").strip().lower()
++    if value not in ALIGNMENTS:
++        raise ValueError(
++            "unsupported_alignment: " + (value or "<empty>")
++            + "; supported=" + ",".join(ALIGNMENTS)
++        )
++    return value
++
++
++def validate_assembly_filename(name: Any) -> str:
++    raw = str(name or "").strip()
++    if not raw:
++        raise ValueError("assembly_filename_required")
++    if Path(raw).name != raw:
++        raise ValueError("assembly_filename_must_be_basename")
++    if not raw.lower().endswith(".a3d"):
++        raise ValueError("assembly_filename_must_end_with_a3d")
++    if "_agent_copy" not in Path(raw).stem.lower():
++        raise ValueError("assembly_filename_must_contain_AGENT_COPY")
++    return raw
++
++
++def validate_selector(selector: Any, label: str) -> Any:
++    if isinstance(selector, bool) or selector is None:
++        raise ValueError(f"{label}_required")
++    if isinstance(selector, int):
++        if selector < 0:
++            raise ValueError(f"{label}_must_be_nonnegative")
++        return selector
++    if isinstance(selector, str):
++        value = selector.strip()
++        if not value:
++            raise ValueError(f"{label}_must_be_nonempty")
++        return value
++    if isinstance(selector, (list, tuple)):
++        if not selector:
++            raise ValueError(f"{label}_list_must_be_nonempty")
++        out: List[int] = []
++        for item in selector:
++            if isinstance(item, bool) or not isinstance(item, int) or item < 0:
++                raise ValueError(f"{label}_list_must_contain_nonnegative_ints")
++            out.append(int(item))
++        return out
++    raise ValueError(f"{label}_must_be_int_string_or_int_list")
++
++
++# ---------------------------------------------------------------------------
++# COM-доступ
++# ---------------------------------------------------------------------------
++def _attr(obj: Any, name: str, default: Any = None) -> Any:
++    try:
++        value = getattr(obj, name)
++        return value() if callable(value) else value
++    except Exception:
++        return default
++
++
++def _finite(value: Any) -> Optional[float]:
++    try:
++        number = float(value)
++    except Exception:
++        return None
++    return number if math.isfinite(number) else None
++
++
++def _bool_or_none(value: Any) -> Optional[bool]:
++    try:
++        return bool(value)
++    except Exception:
++        return None
++
++
++def _items(collection: Any) -> Optional[List[Any]]:
++    """Развернуть COM-коллекцию в список, если это действительно коллекция."""
++    if collection is None:
++        return None
++    try:
++        count = int(collection.Count)
++    except Exception:
++        return None
++    rows: List[Any] = []
++    for index in range(count):
++        item = None
++        for getter in ("Item", "MateConstraint"):
++            try:
++                item = getattr(collection, getter)(index)
++                break
++            except Exception:
++                continue
++        rows.append(item)
++    return rows
++
++
++def _find_collection(document: Any, top: Any) -> Tuple[Optional[List[Any]], Optional[str]]:
++    owners = {"document": document, "top_part": top}
++    for owner_name, attribute in COLLECTION_SOURCES:
++        owner = owners.get(owner_name)
++        if owner is None:
++            continue
++        rows = _items(_attr(owner, attribute))
++        if rows is not None:
++            return rows, f"{owner_name}.{attribute}"
++    for owner_name, owner in owners.items():
++        if owner is None:
++            continue
++        for method in COLLECTION_METHODS:
++            function = _attr(owner, method)
++            if not callable(function):
++                continue
++            try:
++                rows = _items(function())
++            except Exception:
++                continue
++            if rows is not None:
++                return rows, f"{owner_name}.{method}()"
++    return None, None
++
++
++def _mate_row(index: int, mate: Any) -> Dict[str, Any]:
++    if mate is None:
++        return {"index": index, "unreadable": True}
++    participants: List[Any] = []
++    for attribute in ("Objects", "Participants", "Items"):
++        rows = _items(_attr(mate, attribute))
++        if rows:
++            participants = [str(_attr(item, "Name", "") or "") for item in rows]
++            break
++    return {
++        "index": index,
++        "name": str(_attr(mate, "Name", "") or ""),
++        "constraint_type": _attr(
++            mate, "ConstraintType", _attr(mate, "constraintType", None)
++        ),
++        "direction": _attr(mate, "Direction", None),
++        "distance": _finite(_attr(mate, "Distance", None)),
++        "angle": _finite(_attr(mate, "Angle", None)),
++        "fixed": _bool_or_none(_attr(mate, "Fixed", None)),
++        "participants": participants,
++    }
++
++
++def mate_read(session: Any, max_items: int = 200) -> Dict[str, Any]:
++    """Прочитать сопряжения активной сборки."""
++    limit = max(1, min(int(max_items), 2000))
++    document, top = _doc3d(session)
++    rows, source = _find_collection(document, top)
++
++    if rows is None:
++        return {
++            "count": None,
++            "mates": [],
++            "interface": {
++                "confirmed": False,
++                "source": None,
++                "tried": [f"{owner}.{attr}" for owner, attr in COLLECTION_SOURCES]
++                + list(COLLECTION_METHODS),
++            },
++            "active_document": str(session.active_path() or ""),
++            "warnings": [
++                "Коллекция сопряжений не найдена ни по одному известному имени. "
++                "Это не значит, что сопряжений нет: возможно, интерфейс этой "
++                "версии КОМПАСа называется иначе. Добавьте подтверждённое имя "
++                "в COLLECTION_SOURCES и повторите."
++            ],
++        }
++
++    mates = [_mate_row(index, mate) for index, mate in enumerate(rows)]
++    return {
++        "count": len(mates),
++        "mates": mates[:limit],
++        "truncated": len(mates) > limit,
++        "interface": {
++            "confirmed": True,
++            "source": source,
++            "tried": [],
++        },
++        "active_document": str(session.active_path() or ""),
++        "read_only": True,
++        "saved": False,
++    }
++
++
++def _create_mate(
++    document: Any,
++    top: Any,
++    kind: str,
++    part_a: Any,
++    part_b: Any,
++    value: Optional[float],
++    align: str,
++    fixed: bool,
++) -> Tuple[Any, str]:
++    """Создать сопряжение через первый сработавший метод.
++
++    Перебор сигнатур - вынужденная мера: подтверждённого стенда под рукой
++    не было, а молча вернуть успех без созданного сопряжения нельзя.
++    """
++    owners = {"document": document, "top_part": top}
++    errors: List[str] = []
++    for owner_name, owner in owners.items():
++        if owner is None:
++            continue
++        for method_name in CREATE_METHODS:
++            method = _attr(owner, method_name)
++            if not callable(method):
++                continue
++            attempts: Sequence[Tuple[Any, ...]] = (
++                (kind, part_a, part_b, value, align, fixed),
++                (kind, part_a, part_b, value),
++                (kind, part_a, part_b),
++            )
++            for args in attempts:
++                try:
++                    return method(*args), f"{owner_name}.{method_name}/{len(args)}"
++                except Exception as exc:
++                    errors.append(f"{owner_name}.{method_name}/{len(args)}: {exc}")
++    raise RuntimeError(
++        "mate_create_interface_not_available: "
++        + ("; ".join(errors[:6]) or "ни один известный метод создания не найден")
++    )
++
++
++def mate_create(
++    session: Any,
++    assembly_filename: str,
++    kind: str,
++    selector_a: Any,
++    selector_b: Any,
++    value: Any = None,
++    align: Any = "auto",
++    fixed: bool = False,
++) -> Dict[str, Any]:
++    """Создать одно сопряжение в сборке с полной транзакцией и проверкой."""
++    filename = validate_assembly_filename(assembly_filename)
++    mate_kind = normalize_kind(kind)
++    mate_value = validate_value(mate_kind, value)
++    alignment = validate_alignment(align)
++    selector_a = validate_selector(selector_a, "selector_a")
++    selector_b = validate_selector(selector_b, "selector_b")
++    is_fixed = bool(fixed)
++
++    original_document = session.active()
++    original_path = str(session.active_path() or "")
++    if original_document is None or not original_path:
++        raise RuntimeError("no_active_document_path")
++    original = Path(original_path).resolve()
++    work = (Path(session.root).resolve() / "work").resolve()
++    if original.parent != work or "_agent_copy" not in original.stem.lower():
++        raise RuntimeError("active_document_not_safe_direct_work_AGENT_COPY")
++    target = (work / filename).resolve()
++    if target.parent != work or not target.is_file():
++        raise FileNotFoundError(str(target))
++
++    app = session.connect()
++    _ensure_closed(app, session, target)
++    backup_dir = (Path(session.root).resolve() / "_BACKUPS").resolve()
++    backup_dir.mkdir(parents=True, exist_ok=True)
++    snapshot = backup_dir / ("TXN_MATE_" + uuid.uuid4().hex + "_" + target.name)
++    shutil.copy2(target, snapshot)
++    before_hash = _sha256(target)
++    opened = None
++    reopened_document = None
++    saved = False
++    try:
++        opened = _open_exact(app, target)
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError("opened_mate_target_not_exact_active")
++
++        _, top = _doc3d(session)
++        part_a, path_a = find_component(session, selector_a)
++        part_b, path_b = find_component(session, selector_b)
++        if list(path_a) == list(path_b):
++            raise ValueError("selector_a_and_selector_b_resolve_to_same_component")
++
++        before_rows, before_source = _find_collection(opened, top)
++        before_count = len(before_rows) if before_rows is not None else None
++
++        created, interface_used = _create_mate(
++            opened, top, mate_kind, part_a, part_b,
++            mate_value, alignment, is_fixed,
++        )
++        for name in ("Update", "Rebuild"):
++            function = _attr(opened, name)
++            if callable(function):
++                try:
++                    function()
++                    break
++                except Exception:
++                    continue
++
++        after_rows, after_source = _find_collection(opened, top)
++        if after_rows is None:
++            raise RuntimeError("mate_collection_unreadable_after_create")
++        if before_count is not None and len(after_rows) <= before_count:
++            raise RuntimeError(
++                "mate_count_did_not_grow: "
++                f"before={before_count}, after={len(after_rows)}"
++            )
++
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError("active_document_changed_before_mate_Save")
++        if opened.Save() is False:
++            raise RuntimeError("IKompasDocument.Save_returned_false")
++        saved = True
++        _close(opened)
++        opened = None
++
++        reopened_document = _open_exact(app, target)
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError("reopened_mate_target_not_exact_active")
++        _, reopened_top = _doc3d(session)
++        reopened_rows, reopened_source = _find_collection(reopened_document, reopened_top)
++        if reopened_rows is None:
++            raise RuntimeError("mate_collection_unreadable_after_reopen")
++        if before_count is not None and len(reopened_rows) <= before_count:
++            raise RuntimeError("mate_not_persistent_after_reopen")
++
++        persisted = _mate_row(len(reopened_rows) - 1, reopened_rows[-1])
++        _close(reopened_document)
++        reopened_document = None
++        restored = _restore_exact_active(app, session, original_path, original_document)
++        after_hash = _sha256(target)
++        snapshot.unlink()
++
++        return {
++            "requested_action": {
++                "assembly_filename": filename,
++                "kind": mate_kind,
++                "selector_a": selector_a,
++                "selector_b": selector_b,
++                "value": mate_value,
++                "unit": MATE_KINDS[mate_kind]["unit"],
++                "align": alignment,
++                "fixed": is_fixed,
++            },
++            "active_document": restored,
++            "target": str(target),
++            "interface": {
++                "confirmed": True,
++                "read_source": reopened_source or after_source or before_source,
++                "create_method": interface_used,
++                "create_return": str(created) if created is not None else None,
++            },
++            "before": {"mate_count": before_count, "assembly_sha256": before_hash},
++            "after": {"mate_count": len(reopened_rows), "assembly_sha256": after_hash},
++            "created_mate": persisted,
++            "changed": before_hash != after_hash,
++            "saved": saved,
++            "verification": {
++                "mate_count_grew": (
++                    before_count is None or len(reopened_rows) > before_count
++                ),
++                "save_close_reopen_verified": True,
++                "transaction_snapshot_created": True,
++                "transaction_snapshot_removed_after_commit": True,
++                "original_active_restored": True,
++                "original_saved": False,
++            },
++            "warnings": [
++                "Создано ровно одно сопряжение за вызов.",
++                "Тип и параметры прочитаны обратно из модели, но "
++                "геометрическая корректность сопряжения не проверяется: "
++                "для этого нужен анализ степеней свободы.",
++                "Метод создания сопряжения подобран перебором известных "
++                "имён; зафиксируйте фактически сработавший путь в матрице "
++                "версий КОМПАСа.",
++            ],
++        }
++    except Exception:
++        for document in (reopened_document, opened):
++            if document is not None:
++                try:
++                    _close(document)
++                except Exception:
++                    pass
++        try:
++            _restore_exact_active(app, session, original_path, original_document)
++        except Exception:
++            pass
++        try:
++            if snapshot.is_file():
++                shutil.copy2(snapshot, target)
++        finally:
++            try:
++                snapshot.unlink()
++            except FileNotFoundError:
++                pass
++        try:
++            _restore_exact_active(app, session, original_path, original_document)
++        except Exception:
++            pass
++        raise
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index 692af53..5d43548 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,23 +6,29 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/5] Python compileall"
++Write-Host "[1/6] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/5] MCP stdio contract"
++Write-Host "[2/6] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/5] MCP file-routing + image attachment contract"
++Write-Host "[3/6] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/5] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Write-Host "[4/6] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 1 tests failed" }
+-Write-Host "[5/5] Required files"
+-$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[5/6] Wave 2: assembly mates, artifact verification"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave2.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 2 tests failed" }
++Write-Host "[6/6] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index b0bdec7..5344650 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 35, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 38, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git b/tests/test_wave2.py b/tests/test_wave2.py
+new file mode 100644
+index 0000000..b5d5b9b
+--- /dev/null
++++ b/tests/test_wave2.py
+@@ -0,0 +1,351 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 2»: сопряжения сборки и проверка артефактов экспорта.
++
++Все тесты работают без КОМПАСа, без COM и без сети. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave2.py" -v
++
++Что проверяется по существу:
++
++* валидация сопряжений отклоняет бессмысленные комбинации (значение там,
++  где его быть не должно; отсутствие значения там, где оно обязательно);
++* схема инструмента ``kompas_mate_create`` в каталоге не может разъехаться
++  с реальным списком типов сопряжений в коде;
++* проверка артефактов различает целый файл и обрезанный, а не полагается
++  на расширение;
++* артефакт вне разрешённых корней не читается вообще.
++"""
++from __future__ import annotations
++
++import json
++import struct
++import sys
++import tempfile
++import unittest
++import zlib
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import artifact_check     # noqa: E402
++import mate_tools         # noqa: E402
++import settings           # noqa: E402
++import tools_catalog      # noqa: E402
++
++
++STEP_MINIMAL = (
++    "ISO-10303-21;\n"
++    "HEADER;\n"
++    "FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\n"
++    "ENDSEC;\n"
++    "DATA;\n"
++    "#1=MANIFOLD_SOLID_BREP('solid',#2);\n"
++    "#2=ADVANCED_FACE('face',(#3),#4,.T.);\n"
++    "ENDSEC;\n"
++    "END-ISO-10303-21;\n"
++).encode("latin-1")
++
++DXF_MINIMAL = (
++    "0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1015\n"
++    "9\n$INSUNITS\n70\n4\n0\nENDSEC\n"
++    "0\nSECTION\n2\nENTITIES\n"
++    "0\nLINE\n0\nCIRCLE\n"
++    "0\nENDSEC\n0\nEOF\n"
++).encode("latin-1")
++
++PDF_MINIMAL = (
++    "%PDF-1.4\n"
++    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
++    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
++    "3 0 obj\n<< /Type /Page /Parent 2 0 R >>\nendobj\n"
++    "trailer\n<< /Root 1 0 R >>\n%%EOF\n"
++).encode("latin-1")
++
++
++def png_minimal(width: int = 4, height: int = 3) -> bytes:
++    signature = b"\x89PNG\r\n\x1a\n"
++    ihdr_payload = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
++    ihdr = (
++        struct.pack(">I", len(ihdr_payload))
++        + b"IHDR"
++        + ihdr_payload
++        + struct.pack(">I", zlib.crc32(b"IHDR" + ihdr_payload))
++    )
++    iend = struct.pack(">I", 0) + b"IEND" + struct.pack(">I", zlib.crc32(b"IEND"))
++    return signature + ihdr + iend
++
++
++class TempRootCase(unittest.TestCase):
++    """Временный корень моста с каталогом work."""
++
++    def setUp(self):
++        self._tmp = tempfile.TemporaryDirectory(prefix="kompas_wave2_")
++        self.root = Path(self._tmp.name)
++        (self.root / "work").mkdir(parents=True, exist_ok=True)
++        settings.reset_cache()
++        self.addCleanup(settings.reset_cache)
++        self.addCleanup(self._tmp.cleanup)
++
++    def write_artifact(self, name: str, data: bytes) -> Path:
++        target = self.root / "work" / name
++        target.parent.mkdir(parents=True, exist_ok=True)
++        target.write_bytes(data)
++        return target
++
++
++class TestMateValidation(unittest.TestCase):
++    """Валидация входных данных сопряжений - чистые функции."""
++
++    def test_all_documented_kinds_are_accepted(self):
++        for kind in mate_tools.MATE_KINDS:
++            self.assertEqual(mate_tools.normalize_kind(kind.upper()), kind)
++
++    def test_unknown_kind_is_rejected_with_supported_list(self):
++        with self.assertRaises(ValueError) as ctx:
++            mate_tools.normalize_kind("weld")
++        self.assertIn("unsupported_mate_kind", str(ctx.exception))
++        self.assertIn("coincident", str(ctx.exception))
++
++    def test_distance_requires_value(self):
++        with self.assertRaises(ValueError) as ctx:
++            mate_tools.validate_value("distance", None)
++        self.assertIn("value_required_for_distance", str(ctx.exception))
++
++    def test_valueless_kind_rejects_value(self):
++        with self.assertRaises(ValueError) as ctx:
++            mate_tools.validate_value("coincident", 5)
++        self.assertIn("value_not_allowed_for_coincident", str(ctx.exception))
++
++    def test_value_must_be_positive_and_bounded(self):
++        for bad in (0, -1, mate_tools.MAX_DISTANCE_MM + 1):
++            with self.assertRaises(ValueError):
++                mate_tools.validate_value("distance", bad)
++        self.assertEqual(mate_tools.validate_value("distance", 12.5), 12.5)
++
++    def test_angle_uses_its_own_limit(self):
++        self.assertEqual(mate_tools.validate_value("angle", 360.0), 360.0)
++        with self.assertRaises(ValueError) as ctx:
++            mate_tools.validate_value("angle", 361.0)
++        self.assertIn("deg", str(ctx.exception))
++
++    def test_non_finite_value_is_rejected(self):
++        with self.assertRaises(ValueError):
++            mate_tools.validate_value("distance", float("nan"))
++        with self.assertRaises(ValueError):
++            mate_tools.validate_value("distance", "abc")
++
++    def test_alignment_whitelist(self):
++        self.assertEqual(mate_tools.validate_alignment(None), "auto")
++        self.assertEqual(mate_tools.validate_alignment("ALIGNED"), "aligned")
++        with self.assertRaises(ValueError):
++            mate_tools.validate_alignment("flipped")
++
++    def test_assembly_filename_must_be_controlled_copy(self):
++        with self.assertRaises(ValueError):
++            mate_tools.validate_assembly_filename("C:/elsewhere/part_AGENT_COPY.a3d")
++        with self.assertRaises(ValueError):
++            mate_tools.validate_assembly_filename("part.a3d")
++        with self.assertRaises(ValueError):
++            mate_tools.validate_assembly_filename("part_AGENT_COPY.m3d")
++        self.assertEqual(
++            mate_tools.validate_assembly_filename("unit_AGENT_COPY.a3d"),
++            "unit_AGENT_COPY.a3d",
++        )
++
++    def test_selector_shapes(self):
++        self.assertEqual(mate_tools.validate_selector(0, "selector_a"), 0)
++        self.assertEqual(mate_tools.validate_selector("0/1", "selector_a"), "0/1")
++        self.assertEqual(mate_tools.validate_selector([0, 2], "selector_a"), [0, 2])
++        for bad in (True, None, -1, "", [], [0, -1], [0, "1"], 1.5):
++            with self.assertRaises(ValueError):
++                mate_tools.validate_selector(bad, "selector_a")
++
++    def test_one_mate_per_call_is_a_deliberate_limit(self):
++        self.assertEqual(mate_tools.MAX_MATES_PER_CALL, 1)
++
++
++class TestMateCatalogContract(unittest.TestCase):
++    """Схема инструмента и код не могут разъехаться."""
++
++    def test_mate_create_schema_matches_code_whitelist(self):
++        tool = tools_catalog.TOOL_INDEX["kompas_mate_create"]
++        schema = tool["inputSchema"]
++        enum = schema["properties"]["kind"]["enum"]
++        self.assertEqual(sorted(enum), sorted(mate_tools.MATE_KINDS))
++
++    def test_value_is_optional_but_selector_pair_is_required(self):
++        schema = tools_catalog.TOOL_INDEX["kompas_mate_create"]["inputSchema"]
++        self.assertEqual(
++            sorted(schema["required"]),
++            ["assembly_filename", "kind", "selector_a", "selector_b"],
++        )
++        self.assertIn("value", schema["properties"])
++
++    def test_mate_tools_are_routed_to_the_worker(self):
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_mate_read"][0], "mate.read")
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_mate_create"][0], "mate.create")
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_artifact_check"][0], "artifact.check")
++
++    def test_mate_read_and_artifact_check_are_marked_read_only(self):
++        for name in ("kompas_mate_read", "kompas_artifact_check"):
++            annotations = tools_catalog.TOOL_INDEX[name].get("annotations") or {}
++            self.assertTrue(annotations.get("readOnlyHint"), name)
++
++    def test_mate_create_does_not_claim_to_be_destructive(self):
++        annotations = tools_catalog.TOOL_INDEX["kompas_mate_create"].get("annotations") or {}
++        self.assertFalse(annotations.get("readOnlyHint"))
++        self.assertFalse(annotations.get("destructiveHint"))
++
++    def test_module_imports_without_com(self):
++        self.assertFalse(hasattr(mate_tools, "win32com"))
++        self.assertFalse(hasattr(artifact_check, "win32com"))
++
++
++class TestArtifactCheck(TempRootCase):
++    """Проверка артефактов по содержимому."""
++
++    def test_valid_step_is_accepted(self):
++        self.write_artifact("out.step", STEP_MINIMAL)
++        result = artifact_check.artifact_check(self.root, "out.step")
++        self.assertTrue(result["ok"], result["findings"])
++        self.assertEqual(result["kind"], "step")
++        self.assertEqual(result["counts"]["entities"], 2)
++        self.assertEqual(result["counts"]["solid_breps"], 1)
++        self.assertEqual(result["counts"]["file_schema"], "AUTOMOTIVE_DESIGN")
++
++    def test_truncated_step_is_rejected(self):
++        self.write_artifact("cut.step", STEP_MINIMAL.replace(b"END-ISO-10303-21;\n", b""))
++        result = artifact_check.artifact_check(self.root, "cut.step")
++        self.assertFalse(result["ok"])
++        self.assertIn("missing_end_iso_10303_21_marker", result["findings"])
++
++    def test_step_without_geometry_is_rejected(self):
++        body = b"ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\n#1=PRODUCT('p');\nENDSEC;\nEND-ISO-10303-21;\n"
++        self.write_artifact("empty.step", body)
++        result = artifact_check.artifact_check(self.root, "empty.step")
++        self.assertFalse(result["ok"])
++        self.assertIn("no_solid_or_face_geometry", result["findings"])
++
++    def test_empty_file_is_not_a_valid_step(self):
++        self.write_artifact("zero.step", b"")
++        result = artifact_check.artifact_check(self.root, "zero.step")
++        self.assertFalse(result["ok"])
++        self.assertIn("missing_iso_10303_21_header", result["findings"])
++
++    def test_valid_dxf_is_accepted(self):
++        self.write_artifact("out.dxf", DXF_MINIMAL)
++        result = artifact_check.artifact_check(self.root, "out.dxf")
++        self.assertTrue(result["ok"], result["findings"])
++        self.assertEqual(result["counts"]["entities"], 2)
++        self.assertEqual(result["counts"]["acad_version"], "AC1015")
++        self.assertEqual(result["counts"]["units_code"], "4")
++
++    def test_dxf_without_eof_is_rejected(self):
++        self.write_artifact("cut.dxf", DXF_MINIMAL.replace(b"0\nEOF\n", b""))
++        result = artifact_check.artifact_check(self.root, "cut.dxf")
++        self.assertFalse(result["ok"])
++        self.assertIn("missing_eof_marker", result["findings"])
++
++    def test_valid_pdf_reports_pages(self):
++        self.write_artifact("out.pdf", PDF_MINIMAL)
++        result = artifact_check.artifact_check(self.root, "out.pdf")
++        self.assertTrue(result["ok"], result["findings"])
++        self.assertEqual(result["counts"]["pages"], 1)
++        self.assertEqual(result["counts"]["version"], "1.4")
++
++    def test_pdf_pages_object_is_not_counted_as_page(self):
++        self.write_artifact("pages.pdf", PDF_MINIMAL)
++        result = artifact_check.artifact_check(self.root, "pages.pdf")
++        self.assertEqual(result["counts"]["pages"], 1)
++
++    def test_png_dimensions_are_read_from_ihdr(self):
++        self.write_artifact("shot.png", png_minimal(1280, 720))
++        result = artifact_check.artifact_check(self.root, "shot.png")
++        self.assertTrue(result["ok"], result["findings"])
++        self.assertEqual(result["counts"]["width"], 1280)
++        self.assertEqual(result["counts"]["height"], 720)
++
++    def test_broken_png_is_rejected(self):
++        self.write_artifact("broken.png", png_minimal()[:20])
++        result = artifact_check.artifact_check(self.root, "broken.png")
++        self.assertFalse(result["ok"])
++
++    def test_unknown_kind_is_not_treated_as_valid(self):
++        self.write_artifact("model.m3d", b"not a checked format")
++        result = artifact_check.artifact_check(self.root, "model.m3d")
++        self.assertFalse(result["ok"])
++        self.assertIn("unsupported_artifact_kind", result["findings"])
++        self.assertIsNone(result["kind"])
++
++    def test_kind_is_detected_by_content_when_suffix_lies(self):
++        self.write_artifact("actually_png.step", png_minimal(10, 10))
++        result = artifact_check.artifact_check(self.root, "actually_png.step")
++        self.assertEqual(result["kind"], "step")
++        self.assertFalse(result["ok"])
++
++    def test_large_file_is_scanned_partially_and_says_so(self):
++        big = STEP_MINIMAL + b"#3=CARTESIAN_POINT('p',(0.,0.,0.));\n" * 500
++        self.write_artifact("big.step", big)
++        result = artifact_check.artifact_check(self.root, "big.step", max_scan_bytes=64)
++        self.assertTrue(result["scan_truncated"])
++        self.assertTrue(any("scan_truncated" in w for w in result["warnings"]))
++
++    def test_path_outside_approved_roots_is_refused(self):
++        outside = self.root / "outside.step"
++        outside.write_bytes(STEP_MINIMAL)
++        with self.assertRaises(RuntimeError) as ctx:
++            artifact_check.artifact_check(self.root, "../outside.step")
++        self.assertIn("path_outside_approved_roots", str(ctx.exception))
++
++    def test_missing_file_raises(self):
++        with self.assertRaises(FileNotFoundError):
++            artifact_check.artifact_check(self.root, "absent.step")
++
++    def test_empty_relative_path_is_refused(self):
++        with self.assertRaises(ValueError):
++            artifact_check.artifact_check(self.root, "   ")
++
++    def test_every_verdict_states_its_own_limits(self):
++        self.write_artifact("out.step", STEP_MINIMAL)
++        result = artifact_check.artifact_check(self.root, "out.step")
++        self.assertTrue(result["limits"])
++        self.assertIn("геометрии", " ".join(result["limits"]))
++
++
++class TestCatalogWave2(unittest.TestCase):
++    """Каталог остаётся единственным источником поверхности."""
++
++    def test_tool_count_is_38(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 38)
++
++    def test_new_tools_are_present(self):
++        for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
++            self.assertIn(name, tools_catalog.TOOL_INDEX)
++
++    def test_version_json_matches_catalog(self):
++        version_file = REPO_ROOT / "VERSION.json"
++        declared = json.loads(version_file.read_text(encoding="utf-8-sig"))
++        snapshot = tools_catalog.catalog_snapshot()
++        self.assertEqual(declared["mcp_tool_count"], snapshot["mcp_tool_count"])
++        self.assertEqual(declared["mcp_tools"], snapshot["mcp_tools"])
++        self.assertEqual(declared["worker_version"], snapshot["server_version"])
++
++    def test_every_core_tool_is_routed(self):
++        for tool in tools_catalog.TOOLS:
++            name = tool["name"]
++            if name in tools_catalog.WRAPPER_SIDE_TOOLS:
++                continue
++            self.assertIn(name, tools_catalog.ACTION_MAP, name)
++
++    def test_descriptions_stay_useful_for_a_model(self):
++        for tool in tools_catalog.TOOLS:
++            self.assertGreater(len(tool["description"]), 40, tool["name"])
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

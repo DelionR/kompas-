@@ -1,0 +1,27 @@
+[ 1/26] circuit breaker step                   total=28     top=aws-samples/serverless-circuit-breaker-stepfunctions
+[ 2/26] circuit breaker 3d model               total=1      top=VB6Hobbyst7/ControlPanelAutomation
+[ 3/26] din rail 3d model                      total=1      top=NikodemSzwed/Mounting-rack-for-2.5-inch-disk-for-din-rail-3D-model
+[ 4/26] din rail step file                     total=0      top=-
+[ 5/26] terminal block 3d model                total=2      top=antonteplov/3DPrintedTerminalBlock6x16x5
+[ 6/26] contactor 3d model                     total=174    top=snuvclab/coma
+[ 7/26] electrical cabinet 3d                  total=2      top=Bossixd/dirac-assembly-simulation
+[ 8/26] switchgear 3d model                    total=0      top=-
+[ 9/26] electrical enclosure step              total=0      top=-
+[10/26] distribution board 3d                  total=7      top=FYSETC/Tool-Distribution-Board
+[11/26] electrical cad library 3d              total=0      top=-
+[12/26] electrical components 3d library       total=1      top=CHANCUCO/PROTEUS-LIBRARY-ESP32-DEVKIT
+[13/26] panel components 3d library            total=0      top=-
+[14/26] cabinet hardware 3d library            total=0      top=-
+[15/26] enclosure 3d library                   total=6      top=SlyWombat/casemaker-library
+[16/26] schneider electric 3d model            total=1      top=Mahmoud-Elsayed22/Mahmoud-Elsayed22
+[17/26] abb circuit breaker 3d                 total=0      top=-
+[18/26] eaton 3d model                         total=0      top=-
+[19/26] phoenix contact 3d                     total=0      top=-
+[20/26] siemens 3d model step                  total=3      top=CHETHAN-2002/SIEMENS-NX
+[21/26] topic:step-files                       total=19     top=mathLab/PyGeM
+[22/26] topic:3d-models                        total=3305   top=openscad/openscad
+[23/26] topic:cad-library                      total=0      top=-
+[24/26] topic:stl                              total=2430   top=huihut/interview
+[25/26] electrical parts library freecad       total=1      top=sisul01/FreeCAD-parts_library
+[26/26] freecad electrical library             total=1      top=sisul01/FreeCAD-parts_library
+сохранено gh_results4.json

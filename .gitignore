@@ -1,0 +1,50 @@
+# Окружение Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Сборки и бинарные артефакты
+*.dll
+*.exe
+*.pdb
+bin/
+obj/
+x64/
+Debug/
+Release/
+
+# Логи и рантайм моста
+*.log
+runtime/commands/*
+runtime/responses/*
+runtime/processed/*
+runtime/logs/*
+runtime/evidence/*
+runtime/artifacts/*
+work/*
+
+# Секреты
+.env
+*.key
+*.token
+
+# Файлы КОМПАС и САПР — артефакты работы, а не исходники
+*.a3d
+*.m3d
+*.cdw
+*.spw
+*.step
+*.stp
+*.dwg
+*.dxf
+
+# Архивы
+*.zip
+*.rar
+*.7z
+
+# Распакованные чужие проекты из research: скачиваются заново,
+# в репозитории им не место (только бинарные сборки и node_modules)
+research/src/

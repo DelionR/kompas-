@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Щитовой доменный слой для KOMPAS-3D MCP — ТЗ</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#1a1d23; --muted:#5c6572; --line:#e3e7ec;
+    --accent:#1f6feb; --accent-soft:#eaf2ff;
+    --ok:#0f7b4f; --ok-soft:#e6f5ee;
+    --warn:#9a5b00; --warn-soft:#fdf2e0;
+    --bad:#a32a2a; --bad-soft:#fbeaea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+  h1{font-size:27px;line-height:1.25;margin:0 0 8px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:38px 0 8px;letter-spacing:-.01em;padding-top:6px;border-top:1px solid var(--line)}
+  h3{font-size:16px;margin:22px 0 6px}
+  .lead{color:var(--muted);margin:0 0 18px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 12px}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:16px 0}
+  .box.accent{border-left:4px solid var(--accent)}
+  .box.warn{border-left:4px solid var(--warn)}
+  .box.ok{border-left:4px solid var(--ok)}
+  .box.bad{border-left:4px solid var(--bad)}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  table{width:100%;border-collapse:separate;border-spacing:0 6px;margin:10px 0}
+  th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:0 10px 2px;font-weight:600}
+  td{background:var(--card);border:1px solid var(--line);border-left:0;border-right:0;padding:10px;vertical-align:top;font-size:14px}
+  tr td:first-child{border-left:1px solid var(--line);border-radius:8px 0 0 8px}
+  tr td:last-child{border-right:1px solid var(--line);border-radius:0 8px 8px 0}
+  code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  pre{background:#1e2229;color:#e6e9ee;border-radius:10px;padding:14px 16px;overflow-x:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+  pre .c{color:#8b98a8}
+  pre .k{color:#9fd0ff}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:#14428f;margin-right:4px}
+  .tag.g{background:var(--ok-soft);color:var(--ok)}
+  .tag.w{background:var(--warn-soft);color:var(--warn)}
+  .tag.r{background:var(--bad-soft);color:var(--bad)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .kpi b{display:block;font-size:20px}
+  .kpi span{color:var(--muted);font-size:13px}
+  footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Щитовой доменный слой для KOMPAS-3D MCP</h1>
+<p class="lead">Техническое задание, собранное по следам разбора двух эталонных проектов: <code>Taam4142/cabinet-layout-generator-v2</code> (раскладка монтажной панели → DXF) и <code>postall74/TaCP</code> (домен НКУ и АСУ ТП). Исходники обоих проектов распакованы и разобраны, модель данных и правила извлечены из кода, а не из README.</p>
+
+<div class="box accent">
+<b>Зачем.</b> Обзор GitHub показал: открытых библиотек щитов под КОМПАС не существует вовсе (11 целых запросов дают ноль). При этом почти всё, что нужно для генерации щита, в мосте <b>уже есть</b> — 47 инструментов покрывают создание детали, вставку компонентов, линейный массив, запись свойств, спецификацию, экспорт DXF и контрольные точки. Не хватает не CAD-возможностей, а <b>доменного слоя</b>: модели щита, справочника оборудования и правил.
+</div>
+
+<div class="grid">
+  <div class="kpi"><b>47</b><span>инструментов в мосте сейчас</span></div>
+  <div class="kpi"><b>~9 из 11</b><span>шагов генерации щита покрыто</span></div>
+  <div class="kpi"><b>9</b><span>доменных правил из TaCP</span></div>
+  <div class="kpi"><b>4</b><span>геометрических правила из CLG2</span></div>
+</div>
+
+<h2>1. Три слоя и границы ответственности</h2>
+<p class="sub">Главное архитектурное решение CLG2, которое стоит перенести: модель — единственный источник истины, CAD — только вид. Ничего не рисуется «по ходу», ничего не угадывается.</p>
+<table>
+<thead><tr><th style="width:20%">Слой</th><th style="width:34%">Отвечает за</th><th>Чего НЕ делает</th></tr></thead>
+<tbody>
+<tr><td><b>Домен</b><br><span class="tag">щит</span></td><td>Тип шкафа (ГРЩ, ВРУ, АВР, Шкаф ПЛК, ЩУО, ЗИП), состав оборудования, секционирование по ГОСТ IEC 61439-2, проверки совместимости, перечень (BOM)</td><td>Не знает координат, не знает КОМПАС. Результат — валидированный <code>CabinetSpec</code></td></tr>
+<tr><td><b>Раскладка</b><br><span class="tag">геометрия</span></td><td>Монтажная панель, кабельные каналы, позиции оборудования, ряды, зазоры, маркировка. Модель в мм, начало координат — верхний левый угол</td><td>Не выбирает оборудование, не считает цену. Результат — валидированный <code>LayoutModel</code></td></tr>
+<tr><td><b>Мост</b><br><span class="tag g">уже есть</span></td><td>Материализация модели в КОМПАС: деталь панели, компоненты, массивы, свойства, спецификация, чертёж, DXF. Плюс контрольные точки и откат</td><td>Не принимает инженерных решений, не исправляет модель молча. Всё, что требует COM и непроверено, возвращает «не подтверждено»</td></tr>
+</tbody>
+</table>
+
+<div class="box warn">
+<b>Правило, обязательное для всех трёх слоёв.</b> Код ничего не изобретает и не подставляет значения по умолчанию для неизвестного. Если номинал, габарит или привязка к DIN-рейке неизвестны — позиция помечается <code>confirm: true</code> и попадает в список неподтверждённого. У CLG2 это правило вынесено в заголовок <code>types.ts</code>: «blank prints blank, never invented». Оно же должно стоять и у нас, только жёстче: мост физически может записать геометрию в КОМПАС, и правдоподобно неверная деталь уйдёт в цех.
+</div>
+
+<h2>2. Модель данных</h2>
+<h3>2.1. Спецификация шкафа — синтез TaCP <code>Cabinet</code> и CLG2 <code>LayoutModel</code></h3>
+<pre><span class="c">// Уровень 1. Домен (что за щит и из чего)</span>
+{
+  <span class="k">"cabinet"</span>: {
+    <span class="k">"id"</span>: <span class="k">"cab-1"</span>,
+    <span class="k">"kind"</span>: <span class="k">"Шкаф ПЛК"</span>,          <span class="c">// ГРЩ | ВРУ | АВР | Шкаф ПЛК | ЩУО | ЗИП</span>
+    <span class="k">"name"</span>: <span class="k">"Шкаф управления насосной"</span>,
+    <span class="k">"enclosure"</span>: {                       <span class="c">// корпус: серия + типоразмер</span>
+      <span class="k">"series"</span>: <span class="k">"DKC CQE N"</span>, <span class="k">"size"</span>: <span class="k">"2000x800x600"</span>,
+      <span class="k">"mount"</span>: <span class="k">"floor"</span>, <span class="k">"ip"</span>: <span class="k">"IP54"</span>,
+      <span class="k">"confirm"</span>: <span class="k">false</span>
+    },
+    <span class="k">"form"</span>: <span class="k">"2b"</span>,                       <span class="c">// форма разделения по ГОСТ IEC 61439-2</span>
+    <span class="k">"segments"</span>: [                        <span class="c">// функциональные отсеки</span>
+      { <span class="k">"id"</span>: <span class="k">"s1"</span>, <span class="k">"kind"</span>: <span class="k">"input"</span>,   <span class="k">"name"</span>: <span class="k">"Вводной отсек"</span>, <span class="k">"partitions"</span>: <span class="k">2</span> },
+      { <span class="k">"id"</span>: <span class="k">"s2"</span>, <span class="k">"kind"</span>: <span class="k">"control"</span>, <span class="k">"name"</span>: <span class="k">"Управление"</span>,   <span class="k">"partitions"</span>: <span class="k">2</span> },
+      { <span class="k">"id"</span>: <span class="k">"s3"</span>, <span class="k">"kind"</span>: <span class="k">"busbar"</span>, <span class="k">"name"</span>: <span class="k">"Шинный отсек"</span>, <span class="k">"partitions"</span>: <span class="k">1</span> }
+    ],
+    <span class="k">"items"</span>: [                            <span class="c">// позиции — снимок из справочника</span>
+      { <span class="k">"lineId"</span>: <span class="k">"i1"</span>, <span class="k">"eqId"</span>: <span class="k">"eq-plc110"</span>, <span class="k">"qty"</span>: <span class="k">1</span>, <span class="k">"tag"</span>: <span class="k">"A1"</span> },
+      { <span class="k">"lineId"</span>: <span class="k">"i2"</span>, <span class="k">"eqId"</span>: <span class="k">"eq-drp12024"</span>, <span class="k">"qty"</span>: <span class="k">1</span>, <span class="k">"tag"</span>: <span class="k">"G1"</span> },
+      { <span class="k">"lineId"</span>: <span class="k">"i3"</span>, <span class="k">"eqId"</span>: <span class="k">"eq-ds25"</span>,     <span class="k">"qty"</span>: <span class="k">12</span>, <span class="k">"tagStart"</span>: <span class="k">"B101"</span>, <span class="k">"tagStep"</span>: <span class="k">1</span> }
+    ]
+  }
+}
+</pre>
+
+<pre><span class="c">// Уровень 2. Раскладка (где стоит на монтажной панели) — единицы: мм,</span>
+<span class="c">// начало координат: ВЕРХНИЙ ЛЕВЫЙ угол, +y ВНИЗ (как в CLG2).</span>
+{
+  <span class="k">"plate"</span>: { <span class="k">"width_mm"</span>: <span class="k">1800</span>, <span class="k">"height_mm"</span>: <span class="k">700</span>, <span class="k">"origin"</span>: <span class="k">"top_left"</span> },
+  <span class="k">"defaults"</span>: {
+    <span class="k">"gap_between_equipment_mm"</span>: <span class="k">5</span>,
+    <span class="k">"clearance_equipment_to_duct_mm"</span>: <span class="k">20</span>
+  },
+  <span class="k">"ducts"</span>:    [ { <span class="k">"id"</span>: <span class="k">"d1"</span>, <span class="k">"x_mm"</span>: <span class="k">0</span>,   <span class="k">"y_mm"</span>: <span class="k">0</span>, <span class="k">"length_mm"</span>: <span class="k">700</span>, <span class="k">"width_mm"</span>: <span class="k">40</span>, <span class="k">"rot_deg"</span>: <span class="k">0</span> } ],
+  <span class="k">"elements"</span>: [ { <span class="k">"id"</span>: <span class="k">"e1"</span>, <span class="k">"lib_key"</span>: <span class="k">"plc110"</span>, <span class="k">"tag"</span>: <span class="k">"A1"</span>, <span class="k">"x_mm"</span>: <span class="k">80</span>, <span class="k">"y_mm"</span>: <span class="k">60</span>,
+                  <span class="k">"rot_deg"</span>: <span class="k">0</span>, <span class="k">"gap_before_mm"</span>: <span class="k">5</span>, <span class="k">"locked"</span>: <span class="k">false</span> } ],
+  <span class="k">"groups"</span>:   [ { <span class="k">"id"</span>: <span class="k">"g1"</span>, <span class="k">"kind"</span>: <span class="k">"set"</span>, <span class="k">"lib_key"</span>: <span class="k">"ds25"</span>, <span class="k">"count"</span>: <span class="k">12</span>,
+                  <span class="k">"internal_gap_mm"</span>: <span class="k">0</span>, <span class="k">"tag_start"</span>: <span class="k">"B101"</span>, <span class="k">"tag_step"</span>: <span class="k">1</span>,
+                  <span class="k">"cap_start_key"</span>: <span class="k">"ds25-endcover"</span>, <span class="k">"cap_end_key"</span>: <span class="k">null</span>,
+                  <span class="k">"x_mm"</span>: <span class="k">100</span>, <span class="k">"y_mm"</span>: <span class="k">400</span>, <span class="k">"rot_deg"</span>: <span class="k">0</span>, <span class="k">"exploded"</span>: <span class="k">false</span> } ],
+  <span class="k">"labels"</span>:   [],
+  <span class="k">"bom_extras"</span>: [ { <span class="k">"item_no"</span>: <span class="k">"1"</span>, <span class="k">"description"</span>: <span class="k">"Корпус DKC CQE N 2000×800×600"</span>, <span class="k">"qty"</span>: <span class="k">1</span> } ]
+}
+</pre>
+
+<div class="box">
+<b>Два решения, которые стоит скопировать дословно:</b>
+<ul>
+<li><code>rail_offset_mm</code> — расстояние от <b>верхней</b> кромки детали до осевой DIN-рейки. Именно по этой линии детали выравниваются в ряд, а не по центру габарита. Без этого поля клеммные ряды «пляшут».</li>
+<li><code>label_h_mm</code> у канала — <b>только подпись</b> («40×60»), на геометрию не влияет нигде. Разделение «геометрия» и «надпись» на уровне схемы снимает целый класс ошибок.</li>
+</ul>
+</div>
+
+<h3>2.2. Справочник оборудования</h3>
+<p class="sub">Поля взяты из TaCP <code>Equipment</code> + габаритные поля CLG2 <code>LibItem</code>. Это и есть та библиотека, которой нет ни у кого.</p>
+<table>
+<thead><tr><th style="width:26%">Поле</th><th style="width:14%">Тип</th><th>Смысл и требование</th></tr></thead>
+<tbody>
+<tr><td><code>id</code>, <code>sku</code>, <code>name</code>, <code>brand</code></td><td>string</td><td>Идентификация. <code>sku</code> — артикул для заказа, используется как фолбэк при подстановке</td></tr>
+<tr><td><code>category</code></td><td>string</td><td>Одно из: автоматические выключатели · УЗО и дифавтоматы · рубильники и переключатели · контакторы и реле · УЗИП и защита · шины и клеммы · ПЛК и модули · блоки питания · панели оператора · греющий кабель · управление обогревом</td></tr>
+<tr><td><code>ratedCurrent</code></td><td>number?</td><td>Номинальный ток, А. <b>Обязателен для силовых аппаратов</b> — без него правила 1 и 9 не работают</td></tr>
+<tr><td><code>width_mm</code>, <code>height_mm</code></td><td>number?</td><td>Габарит посадочного места на панели. Если неизвестен — <code>confirm: true</code>, а не «примерно 90»</td></tr>
+<tr><td><code>rail_offset_mm</code></td><td>number?</td><td>От верхней кромки до оси DIN-рейки. Undefined = центр по высоте</td></tr>
+<tr><td><code>fragment_ref</code></td><td>string?</td><td><span class="tag r">нет аналога</span> Ссылка на фрагмент КОМПАС / DXF-блок. В CLG2 это <code>block_ref</code> + <code>svg_ref</code>; у нас — путь к файлу фрагмента</td></tr>
+<tr><td><code>confirm</code></td><td>boolean</td><td>Габарит не подтверждён. Такая позиция попадает в отдельный список и не должна молча уходить в геометрию</td></tr>
+</tbody>
+</table>
+
+<h2>3. Правила валидации</h2>
+<h3>3.1. Доменные — перенесены из TaCP <code>rules.ts</code></h3>
+<table>
+<thead><tr><th style="width:6%">№</th><th style="width:38%">Условие</th><th style="width:12%">Уровень</th><th>Текст и подсказка</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Номинал отходящего аппарата выше номинала шины. Вводной (максимальный) исключается из сравнения</td><td><span class="tag r">error</span></td><td>«100 А выше, чем у шины (63 А)». Подсказка: заменить шину или снизить номинал</td></tr>
+<tr><td>2</td><td>≥3 автоматов и нет соединительной шины</td><td><span class="tag">info</span></td><td>Перемычками менее надёжно — предложить гребёнку PS-63 3P или шину ШМТ</td></tr>
+<tr><td>3</td><td>УЗИП без вводного автомата или рубильника</td><td><span class="tag w">warn</span></td><td>Иначе УЗИП нельзя безопасно отключить для замены</td></tr>
+<tr><td>4</td><td>Контроллер без блока питания 24 В в этом шкафу</td><td><span class="tag w">warn</span></td><td>Предложить DRP-120-24 / DRP-240-24</td></tr>
+<tr><td>5</td><td>Панель оператора есть, ПЛК нет ни в одном шкафу проекта</td><td><span class="tag w">warn</span></td><td><b>Межшкафное правило</b> — нужен доступ ко всему проекту, не к одному шкафу</td></tr>
+<tr><td>6</td><td>Шкаф пуст</td><td><span class="tag">info</span></td><td>Оборудование ещё не добавлено</td></tr>
+<tr><td>7</td><td>Заявлена форма ≥2, а шинного отсека в составе нет</td><td><span class="tag w">warn</span></td><td>Ранг форм: 1 &lt; 2a=2b &lt; 3a=3b &lt; 4a=4b</td></tr>
+<tr><td>8</td><td>Форма ≥3 при менее чем двух функциональных отсеках</td><td><span class="tag w">warn</span></td><td>Разбить минимум на два отсека</td></tr>
+<tr><td>9</td><td>Сумма номиналов отходящих автоматов выше допустимого тока шины</td><td><span class="tag w">warn</span></td><td>Проверить коэффициент неодновременности или взять шину большего сечения</td></tr>
+<tr><td>10</td><td>Греющий кабель без терморегулятора (правило на проект)</td><td><span class="tag w">warn</span></td><td>Без регулирования кабель греет постоянно</td></tr>
+</tbody>
+</table>
+
+<h3>3.2. Геометрические — перенесены из CLG2 <code>validate.ts</code></h3>
+<table>
+<thead><tr><th style="width:26%">Код</th><th style="width:12%">Уровень</th><th>Смысл</th></tr></thead>
+<tbody>
+<tr><td><code>BAD_ORIGIN</code>, <code>BAD_PLATE_SIZE</code></td><td>error</td><td>Начало координат только <code>top_left</code>; размеры панели &gt; 0</td></tr>
+<tr><td><code>DUPLICATE_ID</code></td><td>error</td><td>Сквозная уникальность id по каналам, элементам, группам и подписям</td></tr>
+<tr><td><code>UNRESOLVED_LIB_KEY</code></td><td>error</td><td>Ссылка на справочник не разрешается — позиция не может быть размещена</td></tr>
+<tr><td><code>OFF_PLATE</code></td><td><span class="tag w">warn</span></td><td>Элемент выходит за панель. Разрешается, но показывается</td></tr>
+<tr><td><code>OVERLAP</code></td><td><span class="tag w">warn</span></td><td>Пересечение посадочных мест</td></tr>
+<tr><td><code>CLEARANCE_TIGHT</code></td><td><span class="tag w">warn</span></td><td>Зазор до канала меньше заданного — провод не проложить</td></tr>
+<tr><td><code>ROW_OVERFLOW</code></td><td><span class="tag w">warn</span></td><td>Ряд не влезает между боковыми каналами; выдаётся перебор в мм</td></tr>
+</tbody>
+</table>
+
+<div class="box ok">
+<b>Ключевая дисциплина CLG2:</b> <code>error</code> — структурно невозможно, <code>warning</code> — разрешено, но показать. Ничего не исправляется автоматически и ничего не скрывается. Мост должен вести себя так же: предупреждение не блокирует запись в КОМПАС, но обязано вернуться в ответе и попасть в журнал.
+</div>
+
+<h2>4. Конвейер: от модели до КОМПАС</h2>
+<p class="sub">Сверено с каталогом моста — 47 инструментов, имена приведены точно.</p>
+<table>
+<thead><tr><th style="width:6%">Шаг</th><th style="width:30%">Действие</th><th style="width:28%">Инструмент моста</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Проверить модель и домен до всякой записи</td><td>— (новый доменный модуль)</td><td><span class="tag r">нет</span> писать</td></tr>
+<tr><td>2</td><td>Сухой прогон: что будет изменено, без изменений</td><td><code>kompas_dry_run</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>3</td><td>Контрольная точка перед мутацией</td><td><code>kompas_checkpoints</code> (create)</td><td><span class="tag g">есть</span></td></tr>
+<tr><td>4</td><td>Создать деталь монтажной панели</td><td><code>kompas_part_create</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>5</td><td>Контур панели и посадочные места</td><td><code>kompas_part_add_primitive</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>6</td><td>Отверстия под крепёж и вводы</td><td><code>kompas_part_add_hole</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>7</td><td>Создать сборку шкафа</td><td><code>kompas_assembly_create</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>8</td><td>Вставить корпус и оборудование</td><td><code>kompas_assembly_insert_component</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>9</td><td>Разместить по раскладке</td><td><code>kompas_component_translate_xy</code>, <code>kompas_component_transform</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>10</td><td>Клеммный ряд B101…B112 одним массивом</td><td><code>kompas_component_pattern_linear</code></td><td><span class="tag g">есть</span> — прямое попадание в «сеты» CLG2</td></tr>
+<tr><td>11</td><td>Записать обозначения и маркировку</td><td><code>kompas_component_properties_set</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>12</td><td>Проверить, что ничего не пересекается</td><td><code>kompas_interference_check</code>, <code>kompas_model_bbox</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>13</td><td>Прочитать спецификацию и сверить с BOM</td><td><code>kompas_specification_read</code>, <code>kompas_bom_read</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>14</td><td>Оформить лист и основную надпись</td><td><code>kompas_drawing_info</code>, <code>kompas_stamp_read/write</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>15</td><td>Экспорт DXF монтажной панели с проверкой результата</td><td><code>kompas_export</code> → <code>kompas_artifact_check</code></td><td><span class="tag g">есть</span></td></tr>
+<tr><td>16</td><td>Откат при расхождении</td><td><code>kompas_checkpoints</code> (restore)</td><td><span class="tag g">есть</span></td></tr>
+</tbody>
+</table>
+
+<h2>5. Разрывы: чего в мосте нет</h2>
+<div class="box bad">
+<ol>
+<li><b>Вставка фрагмента из библиотеки.</b> Сейчас <code>assembly_insert_component</code> вставляет компонент, но нет инструмента «взять позицию из справочника оборудования и вставить её файл-фрагмент/модель». Это главный разрыв — без него библиотека щитового оборудования не привязывается к геометрии. Поле <code>fragment_ref</code> в справочнике рассчитано именно на него.</li>
+<li><b>Слои и стили линий.</b> CLG2 кладёт экспорт по слоям <code>PLATE / DUCT / EQUIP / TEXT / GROUND / SHEET</code>. Через мост layers сейчас не управляются — DXF выйдет «всё в один слой», и сортировать канал от оборудования в CAD будет нечем.</li>
+<li><b>Зазоры и очистки как параметр.</b> <code>gap_before_mm</code> и <code>clearance_to_duct_mm</code> есть в модели, но мост размещает «в точку». Нужен либо расчёт смещения на стороне домена (проще и проверяемо), либо параметр clearance в инструменте.</li>
+<li><b>Маркировка на чертеже.</b> <code>kompas_pmi_dimension_create</code> есть, но вынос позиционных обозначений (B101…B112) и надписей каналов — отдельная задача.</li>
+<li><b>Чтение настоящего <code>.spw</code>.</b> Спецификация сейчас производная. Для щита это критично: перечень оборудования — основной выход. Остаётся с волны 5.</li>
+<li><b>Ни одного правила проверено на живом КОМПАСе.</b> Все девять доменных и четыре геометрических правила — чистые функции, они тестируемы без CAD. Но <code>rail_offset_mm</code>, габариты и привязки должны быть сверены с реальными моделями, иначе получится аккуратно собранный, но физически невозможный щит.</li>
+</ol>
+</div>
+
+<h2>6. План</h2>
+<table>
+<thead><tr><th style="width:12%">Волна</th><th style="width:38%">Содержание</th><th>Критерий готовности</th></tr></thead>
+<tbody>
+<tr><td><b>7</b></td><td>Домен: <code>CabinetSpec</code>, справочник оборудования, 10 доменных правил, движок проверок (чистые функции, без COM)</td><td>Тесты на правила без КОМПАС; ни одно правило не выдаёт «ОК» при отсутствующих данных — только <code>unknown</code></td></tr>
+<tr><td><b>8</b></td><td>Раскладка: <code>LayoutModel</code>, ряды, каналы, зазоры, переполнение, <code>rail_offset_mm</code></td><td>Модель → геометрия без CAD; переполнение ряда считается в мм, а не «не влезло»</td></tr>
+<tr><td><b>9</b></td><td>Материализация: панель, компоненты, линейные массивы, свойства, чертёж, DXF; слои экспорта</td><td>Сквозной прогон на живом КОМПАСе с контрольной точкой и откатом; DXF открывается со слоями</td></tr>
+<tr><td><b>10</b></td><td>Сверка: спецификация ↔ BOM, чтение настоящего <code>.spw</code>, библиотека фрагментов</td><td>Расхождение перечня и модели — ошибка, а не предупреждение</td></tr>
+</tbody>
+</table>
+
+<h2>7. Честные ограничения</h2>
+<div class="box warn">
+<ul>
+<li><b>Цены и экономику не трогаем.</b> В TaCP это половина кода (себестоимость, маржа, НДС, СМР/ПНР). Для моста это чужая ответственность — слой домена отдаёт состав и трудозатраты, но не считает деньги.</li>
+<li><b>Выбор оборудования не автоматизируем.</b> 14-шаговый опросник TaCP — это инженерные решения. Мост может подсказать и проверить, но не выбрать аппарат за инженера.</li>
+<li><b>Тепловой расчёт и расчёт токов КЗ — отдельно.</b> Есть готовые источники (<code>TechFlipsi/FlipsiTherm</code>, IEC 60895), но это отдельный домен со своими нормативами, смешивать его с раскладкой не надо.</li>
+<li><b>Всё, что требует COM и не проверено, возвращает «не подтверждено».</b> Это уже принятая дисциплина моста (волны 2–4) — она должна сохраниться и здесь.</li>
+</ul>
+</div>
+
+<footer>
+Источники разобраны из исходников: <code>research/src/clg2</code> (cabinet-layout-generator-v2: <code>web/src/model/types.ts</code>, <code>validate.ts</code>, <code>service/dxf_build.py</code>) и <code>research/src/tacp</code> (TaCP: <code>src/types.ts</code>, <code>src/utils/rules.ts</code>, <code>segments.ts</code>).<br>
+Обзор репозиториев — <code>github_shity_kompas_solidworks_research.html</code>. Каталог инструментов моста — 47 позиций, волна 6.
+</footer>
+
+</div>
+</body>
+</html>

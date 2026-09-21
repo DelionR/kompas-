@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub: щитовое оборудование, АСУ ТП — КОМПАС-3D / SolidWorks</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d23; --muted:#5c6572; --line:#e3e7ec;
+    --accent:#1f6feb; --accent-soft:#eaf2ff;
+    --ok:#0f7b4f; --ok-soft:#e6f5ee;
+    --warn:#9a5b00; --warn-soft:#fdf2e0;
+    --bad:#a32a2a; --bad-soft:#fbeaea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+  h1{font-size:27px;line-height:1.25;margin:0 0 8px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:38px 0 6px;letter-spacing:-.01em}
+  h3{font-size:16px;margin:22px 0 8px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 4px}
+  .lead{color:var(--muted);font-size:15px;margin:0 0 22px}
+  .tldr{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
+        border-radius:10px;padding:18px 20px;margin:22px 0 8px}
+  .tldr h3{margin:0 0 10px;font-size:16px}
+  .tldr ul{margin:0;padding-left:20px}
+  .tldr li{margin:5px 0}
+  .findings{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0 8px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .kpi b{display:block;font-size:22px;line-height:1.2}
+  .kpi span{color:var(--muted);font-size:13px}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px;position:sticky;top:0;
+           background:var(--bg);padding:10px 0;z-index:5;border-bottom:1px solid var(--line)}
+  .filters button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+                  border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer}
+  .filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+     padding:0 10px 2px;font-weight:600}
+  td{background:var(--card);border:1px solid var(--line);border-left:0;border-right:0;
+     padding:12px 10px;vertical-align:top}
+  tr td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px}
+  tr td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}
+  .repo{font-weight:600}
+  .repo a{color:var(--accent);text-decoration:none}
+  .repo a:hover{text-decoration:underline}
+  .desc{color:var(--muted);font-size:13.5px;margin-top:3px}
+  .why{font-size:13.5px;margin-top:6px}
+  .meta{white-space:nowrap;font-size:13px;color:var(--muted)}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;
+       background:var(--accent-soft);color:#14428f;margin-right:4px}
+  .tag.g{background:var(--ok-soft);color:var(--ok)}
+  .tag.w{background:var(--warn-soft);color:var(--warn)}
+  .tag.r{background:var(--bad-soft);color:var(--bad)}
+  code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12.5px}
+  .empty{background:var(--card);border:1px dashed var(--line);border-radius:10px;
+         padding:14px 18px;color:var(--muted);font-size:14px;margin:10px 0}
+  footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Щитовое оборудование и АСУ ТП на GitHub: что есть под КОМПАС-3D и SolidWorks</h1>
+<p class="lead">Обзор открытых репозиториев (сентябрь 2026). Искал по GitHub Search API — 62 запроса, ~300 уникальных репозиториев, отобрано 60 по теме: проектирование щитов/НКУ, шкафы АСУ ТП, автоматизация КОМПАС-3D и SolidWorks, MCP-мосты к CAD.</p>
+
+<div class="tldr">
+  <h3>Главный вывод</h3>
+  <ul>
+    <li><b>Готовых opensource-библиотек «щиты для КОМПАС-3D» не существует</b> — и это проверено на двух языках. По-русски ноль дают: <code>компас щит</code>, <code>компас шкаф</code>, <code>компас НКУ</code>, <code>компас электрощит</code>, <code>компас электромонтаж</code>, <code>электрощит</code>, <code>шкаф управления</code>, <code>низковольтное комплектное устройство</code>. По-английски ноль дают: <code>kompas cabinet</code>, <code>kompas 3d cabinet</code>, <code>kompas3d cabinet</code>, <code>kompas electrical cabinet</code>, <code>kompas switchgear</code>, <code>kompas distribution board</code>, <code>kompas3d electrical</code>, <code>kompas3d library</code>. Ниша пустая по-настоящему.</li>
+    <li><b>Лучший рабочий эталон щитовой логики</b> — <code>Taam4142/cabinet-layout-generator-v2</code>: раскладка монтажной панели щита в браузере с экспортом настоящего DXF (MIT, живой проект).</li>
+    <li><b>Лучший источник русской доменной логики НКУ/АСУ ТП</b> — <code>postall74/TaCP</code>: дерево шкафов (ГРЩ, ВРУ, АВР, шкаф ПЛК), секционирование по ГОСТ IEC 61439-2, проверки совместимости.</li>
+    <li><b>Новое после второй волны</b> — <code>managallment-svg/lv-panel-designer-pro</code>: веб-платформа расчёта и компоновки низковольтных щитов (MDB, SMDB, MCC, ATS, APFC, Feeder Pillar) с расчётом шин, проверкой Icw, GA-чертежом, BOM и PDF. Плюс экспертная система на PyKnow и генератор этикеток для щитов.</li>
+    <li><b>Под SolidWorks всё уже есть</b>: xCAD, CodeStack, SolidDNA, pySolidWorks и минимум 4 разных MCP-сервера. Под КОМПАС API-обёртки есть, а MCP — шесть разрозненных проектов, самый сильный из которых <code>dwnmf/KOMPAS-3D-MCP-bin</code> (28 ★).</li>
+  </ul>
+</div>
+
+<div class="findings">
+  <div class="kpi"><b>0</b><span>репозиториев по «КОМПАС + щит» — на русском и на английском</span></div>
+  <div class="kpi"><b>102</b><span>поисковых запроса к GitHub API</span></div>
+  <div class="kpi"><b>~640</b><span>уникальных репозиториев просмотрено</span></div>
+  <div class="kpi"><b>82</b><span>отобрано как релевантные</span></div>
+</div>
+
+<div class="filters">
+  <button class="on" data-f="all">Все</button>
+  <button data-f="shity">Щиты / НКУ / АСУ ТП</button>
+  <button data-f="eplan">EPLAN</button>
+  <button data-f="sw">SolidWorks</button>
+  <button data-f="kompas">КОМПАС-3D</button>
+  <button data-f="calc">Расчёты и справочники</button>
+</div>
+
+<h2 id="a">A. Щитовое оборудование, НКУ, шкафы АСУ ТП <span class="tag">ядро запроса</span></h2>
+<p class="sub">Проектирование, раскладка, конфигурирование щитов — независимо от CAD.</p>
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/Taam4142/cabinet-layout-generator-v2">Taam4142/cabinet-layout-generator-v2</a></div>
+  <div class="desc">Раскладка монтажной панели щита управления в браузере + экспорт DXF/PDF/PNG/SVG. React 19 + TS + Fabric.js, сервис на Python/FastAPI + ezdxf. Слои DUCT/EQUIP/TEXT/GROUND, именованный блок на каждую деталь, вкладки «A3 SHEET» и «BOM», BOM в CSV, 1:1 основной надписи.</div></td>
+  <td class="meta">MIT · 2026-07-28<br>TS + Python</td>
+  <td class="why"><b>Главный эталон.</b> Архитектура «одна JSON-модель → один рендерер → DXF» — ровно то, что нужно для генератора щитов. Плюс принцип «никогда не угадывать геометрию».</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/Taamrock04/cabinet-layout-generator">Taamrock04/cabinet-layout-generator</a></div>
+  <div class="desc">V1 того же проекта, замороженная однопользовательская версия.</div></td>
+  <td class="meta">2026-06-06<br>TS + Python</td>
+  <td class="why">Меньшая кодовая база — проще читать ядро расчёта раскладки.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/postall74/TaCP">postall74/TaCP</a> — «ТКП·Про»</div>
+  <div class="desc">Веб-сервис подготовки ТКП на НКУ, АСУ ТП / АСУ Э, системы электрообогрева. Дерево шкафов (ГРЩ, ВРУ, АВР, шкаф ПЛК, ЩУО, ЗИП), мастер подбора из 14 шагов, составные корпуса (ПРОВЕНТО / DKC CQE N), заземление TN-S/TN-C-S/TT/IT, УЗИП, конфигуратор ПЛК (DI/DO/AI/AO), секционирование по ГОСТ IEC 61439-2, проверки совместимости, экономика и экспорт в Word/PDF/Excel. React 18 + TS + C#/ASP.NET + PostgreSQL.</div></td>
+  <td class="meta">закрытый код<br>2026-09-11</td>
+  <td class="why"><b>Лучший открытый источник доменной логики щитов на русском.</b> Справочник на ~80 позиций (Schneider, ABB, IEK, КЭАЗ, EKF, ОВЕН), формулы и правила — можно читать как ТЗ для своего модуля.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/Samidou-Automation/industrial-control-cabinet-eplan">Samidou-Automation/industrial-control-cabinet-eplan</a></div>
+  <div class="desc">Проект промышленного шкафа управления: EPLAN Electric P8 (схемы) + EPLAN Pro Panel (3D-компоновка шкафа).</div></td>
+  <td class="meta">2026-09-05</td>
+  <td class="why">Готовый пример полного цикла «схема → 3D шкаф». Ещё: <code>Star-Delta-Motor-Starter-EPLAN</code>.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/nomnom033-sys/nku-docs-checker">nomnom033-sys/nku-docs-checker</a></div>
+  <div class="desc">Claude Code агент для автоматической проверки технической документации на низковольтные комплектные устройства.</div></td>
+  <td class="meta">Python · 2026-03-16</td>
+  <td class="why">Пример того, как навесить ИИ-проверку именно на ТД по НКУ.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/foasyaw/perechni-signalov">foasyaw/perechni-signalov</a></div>
+  <div class="desc">Генератор Word-перечней сигналов АСУ ТП из чертежей DWG/DXF по ГОСТ.</div></td>
+  <td class="meta">Python · 2026-09-11</td>
+  <td class="why">Свежий, узкий и полезный: DWG/DXF → перечень сигналов по ГОСТ. Такая же связка нужна для КОМПАС.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/pakhomovnikolay/Project_Configurator">pakhomovnikolay/Project_Configurator</a></div>
+  <div class="desc">Конфигуратор типовых проектов АСУ ТП.</div></td>
+  <td class="meta">C# · 2024-09-16</td>
+  <td class="why">Идея «типовой проект → конфигурация» близка к сборке щита из типовых узлов.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/martynov-alex/dkc-cabinet-configurator-flutter">martynov-alex/dkc-cabinet-configurator-flutter</a></div>
+  <div class="desc">Конфигуратор шкафов DKC (российский производитель корпусов НКУ) на Flutter.</div></td>
+  <td class="meta">Dart · 2022-07-18</td>
+  <td class="why">Единственный найденный конфигуратор именно под российского вендора корпусов.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/jsalliotte/CabinetConfigurator">jsalliotte/CabinetConfigurator</a></div>
+  <div class="desc">C# конфигуратор: автоматическая генерация чертежей и моделей оснастки через SolidWorks.</div></td>
+  <td class="meta">C# · 2019-03-18</td>
+  <td class="why">Прямой пример параметрической генерации через SW API. Старый, но архитектура понятна.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/ctanto333/AntoCAD">ctanto333/AntoCAD</a></div>
+  <div class="desc">Приложение для вставки блоков в AutoCAD для производителя распределительных устройств (switchgear).</div></td>
+  <td class="meta">C# · 2021-01-20</td>
+  <td class="why">Тот же паттерн «справочник изделий → вставка в чертёж», что нужен для КОМПАС.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/Bossixd/dirac-assembly-simulation">Bossixd/dirac-assembly-simulation</a></div>
+  <div class="desc">Симуляция укладки и демонтажа гибкого провода в 3D-шкафу.</div></td>
+  <td class="meta">Python · 2024-12-13</td>
+  <td class="why">Редкая тема — трассировка жгута внутри шкафа. Пригодится для проверки собираемости.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/KoperekPL/Electrical_Cabinet_Layout">KoperekPL/Electrical_Cabinet_Layout</a></div>
+  <div class="desc">Раскладка электрического шкафа.</div></td>
+  <td class="meta">2026-04-10</td>
+  <td class="why">Свежий, без описания — смотреть на структуру данных раскладки.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/SachkovDI/PCS-CAD">SachkovDI/PCS-CAD</a></div>
+  <div class="desc">САПР АСУ ТП.</div></td>
+  <td class="meta">2013-09-12 <span class="tag w">архив</span></td>
+  <td class="why">Исторический интерес: одна из первых попыток открытой САПР для АСУ ТП.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/noovikov/virtual-asutp-stand">noovikov/virtual-asutp-stand</a></div>
+  <div class="desc">Виртуальный стенд АСУ ТП: Modbus TCP, OpenPLC (IEC 61131-3), OPC UA, SCADA, историзация.</div></td>
+  <td class="meta">Python · 2026-08-14</td>
+  <td class="why">Если щит нужно не только нарисовать, но и отладить ПЛК-логику.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/Shchelkonogov/MnemonicScheme">Shchelkonogov/MnemonicScheme</a> / <a href="https://github.com/Shchelkonogov/MnemonicNet">MnemonicNet</a></div>
+  <div class="desc">Генерация мнемосхем объекта и сети АСУ ТП.</div></td>
+  <td class="meta">Java · 2025-01-30</td>
+  <td class="why">Мнемосхемы — часть документации щитовых проектов.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/sergekomarov/object-detection-s2ds">sergekomarov/object-detection-s2ds</a></div>
+  <div class="desc">Детекция контроллеров в шкафах ПЛК по фото (TensorFlow).</div></td>
+  <td class="meta">Jupyter · 2021-09-26</td>
+  <td class="why">Идея для фичи: сверка собранного щита с проектом по фотографии.</td></tr>
+</tbody>
+</table>
+
+<h2 id="b">B. EPLAN <span class="tag">де-факто стандарт для щитов</span></h2>
+<p class="sub">EPLAN Electric P8 + Pro Panel — основной инструмент щитовиков. Открытых скриптов и, что важнее, готовых MCP/RAG-обвязок там больше, чем у КОМПАС.</p>
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/covagashi/eplan-rag-mcp">covagashi/eplan-rag-mcp</a></div>
+  <div class="desc">EPLAN Electric P8 2026/2027 + ИИ: MCP-серверы, RAG по документации, Claude Code skill для EPLAN-скриптов.</div></td>
+  <td class="meta">96 ★ · Python<br>2026-09-10</td>
+  <td class="why"><b>Самый звёздный и свежий проект на стыке щитового CAD и ИИ.</b> Прямой ориентир для KOMPAS-3D MCP: та же схема «MCP + RAG по SDK + skill».</td></tr>
+
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/savushkin-r-d/EasyEPLANner">savushkin-r-d/EasyEPLANner</a></div>
+  <div class="desc">Add-In к EPLAN, сокращающий работу инженера АСУ ТП и разработчика ППО (русскоязычное сообщество, активный проект).</div></td>
+  <td class="meta">66 ★ · C#<br>2026-09-09</td>
+  <td class="why">Живой русскоязычный проект автоматизации щитового CAD — смотреть на фичи и на то, как устроен плагин.</td></tr>
+
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/Suplanus/EPLAN-Scripting">Suplanus/EPLAN-Scripting</a> · <a href="https://github.com/Suplanus/Suplanus.Sepla">Suplanus.Sepla</a></div>
+  <div class="desc">Книга и коллекция скриптов по EPLAN API; Sepla — обёртка над EPLAN API.</div></td>
+  <td class="meta">71 ★ / 35 ★ · C#</td>
+  <td class="why">Аналог того, что нужно сделать для КОМПАС: «обёртка API + библиотека скриптов».</td></tr>
+
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/Hopelezz/Eplan">Hopelezz/Eplan</a></div>
+  <div class="desc">Скрипты и утилиты, расширяющие EPLAN Electric P8.</div></td>
+  <td class="meta">10 ★ · C# · 2026-05-01</td>
+  <td class="why">Примеры практических утилит для ежедневной работы щитовика.</td></tr>
+
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/annavannagu/eplan_addin_export_parts_to_xls">annavannagu/eplan_addin_export_parts_to_xls</a></div>
+  <div class="desc">Экспорт комплектующих из EPLAN Electric P8 2.5 в Excel с разбивкой по шкафам.</div></td>
+  <td class="meta">C# · 2021-03-04</td>
+  <td class="why">Классическая задача «перечень оборудования по шкафам» — переносится на КОМПАС один в один.</td></tr>
+
+<tr data-g="eplan"><td><div class="repo"><a href="https://github.com/covagashi/eplan-development-skill">covagashi/eplan-development-skill</a> · <a href="https://github.com/covagashi/eplan-ctxmenu-kit">eplan-ctxmenu-kit</a> · <a href="https://github.com/Hanson-keir/eplan-automate">Hanson-keir/eplan-automate</a></div>
+  <div class="desc">Claude Code / Codex скиллы для разработки под EPLAN API и автоматизации схем.</div></td>
+  <td class="meta">2026</td>
+  <td class="why">Паттерн «скилл для агента вместо документации» — то, чем может стать ваш KOMPAS-MCP.</td></tr>
+</tbody>
+</table>
+
+<h2 id="c">C. SolidWorks <span class="tag g">инфраструктура готова</span></h2>
+<p class="sub">API, фреймворки плагинов, Python-автоматизация и MCP-серверы. Здесь берём архитектурные решения.</p>
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/wzyn20051216/solidworks-automation-skill">wzyn20051216/solidworks-automation-skill</a></div>
+  <div class="desc">Python-тулкит для автоматизации SolidWorks API (в т.ч. как skill для агентов).</div></td>
+  <td class="meta">948 ★ · Python<br>2026-09-16</td>
+  <td class="why">Самый популярный проект автоматизации SW. Смотреть, как упакованы команды для агента.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/alisamsam/Solidworks-MCP">alisamsam/Solidworks-MCP</a></div>
+  <div class="desc">MCP-сервер для автоматизации SolidWorks через ИИ: 22 инструмента — детали, эскизы, элементы.</div></td>
+  <td class="meta">131 ★ · Python<br>2026-03-23</td>
+  <td class="why">Прямой аналог вашего проекта, но под SW. Сравнить набор инструментов и транспорт.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/Slacker-LLC/solidworks-mcp">Slacker-LLC/solidworks-mcp</a></div>
+  <div class="desc">MCP-сервер, управляющий запущенным SolidWorks через COM API: 92 инструмента.</div></td>
+  <td class="meta">11 ★ · Python<br>2026-08-16</td>
+  <td class="why">92 инструмента против 22 у предыдущего — посмотреть, что именно они добавили.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/xarial/xcad">xarial/xcad</a> + <a href="https://github.com/xarial/xcad-examples">xcad-examples</a></div>
+  <div class="desc">Фреймворк для разработки CAD-приложений под SolidWorks: плагины, автономные приложения, макросы. Плюс огромная библиотека примеров.</div></td>
+  <td class="meta">212 ★ / 87 ★ · C#</td>
+  <td class="why">Лучший пример «фреймворк над CAD API». Для КОМПАС аналога нет — это и есть возможность.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/xarial/codestack">xarial/codestack</a></div>
+  <div class="desc">Библиотека примеров SOLIDWORKS API, SOLIDWORKS PDM API, VBA и Desktop.</div></td>
+  <td class="meta">372 ★ · VBA/C#</td>
+  <td class="why">Справочник паттернов: как решать типовые задачи на API.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/CAD-Booster/SolidDNA">CAD-Booster/SolidDNA</a> · <a href="https://github.com/codestackdev/swex-addin">codestackdev/swex-addin</a> · <a href="https://github.com/weianweigan/SolidWorksLookup">SolidWorksLookup</a></div>
+  <div class="desc">SolidDNA — упрощает создание плагинов SW; SwEx.AddIn — фреймворк плагинов; SolidWorksLookup — интерактивный обозреватель дерева объектов API.</div></td>
+  <td class="meta">155 ★ / 66 ★ / 106 ★<br>C#</td>
+  <td class="why">SolidWorksLookup — отличная идея для КОМПАС: живой инспектор объектов вместо копания в SDK.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/mklanac/pySolidWorks">mklanac/pySolidWorks</a> · <a href="https://github.com/Glutenberg/swtoolkit">Glutenberg/swtoolkit</a></div>
+  <div class="desc">Наборы Python-рутин для работы с SolidWorks через COM.</div></td>
+  <td class="meta">78 ★ / 73 ★ · Python</td>
+  <td class="why">Ближайший аналог python-обёрток КОМПАС (см. раздел D).</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/Linmoqian/solidworks-autodesign">Linmoqian/solidworks-autodesign</a></div>
+  <div class="desc">Полный инструментарий автоматизации SolidWorks через Python COM, упакованный как skill для Codex/Claude.</div></td>
+  <td class="meta">Python · 2026-05</td>
+  <td class="why">Пример «CAD API как навык агента» — напрямую применимо к вашему MCP.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/infei12306/solidworks-bridge">infei12306/solidworks-bridge</a> · <a href="https://github.com/danielproxd2/solidworks-mcp">danielproxd2/solidworks-mcp</a> · <a href="https://github.com/ANYLXB/solidworks-mcp-pro">ANYLXB/solidworks-mcp-pro</a> · <a href="https://github.com/just1step/solidworks-mcp">just1step/solidworks-mcp</a></div>
+  <div class="desc">Свежие MCP-мосты к SolidWorks: COM-драйверы, in-process плагины, параметрическая автоматизация.</div></td>
+  <td class="meta">2 ★ / 1 ★ / 2 ★ / 25 ★<br>2026-06…09</td>
+  <td class="why">Показывают, что тема «CAD + MCP» сейчас горячая и решений много — но все под SW, не под КОМПАС.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/piresig/Excel-Automation">piresig/Excel-Automation</a></div>
+  <div class="desc">Проект на SOLIDWORKS Electrical API для автоматизации таблиц Excel.</div></td>
+  <td class="meta">C#</td>
+  <td class="why">Стык «электрика + CAD + Excel» — типичный для щитовиков.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/OmniaGit/odooplm">OmniaGit/odooplm</a> · <a href="https://github.com/alekssadowski95/nanoPLM">alekssadowski95/nanoPLM</a></div>
+  <div class="desc">Открытые PLM/PDM с CAD-интеграцией (SolidWorks, Inventor, SolidEdge, AutoCAD, FreeCAD).</div></td>
+  <td class="meta">154 ★ / 73 ★ · Python</td>
+  <td class="why">Если щиты нужно вести как номенклатуру с версиями и спецификациями.</td></tr>
+
+<tr data-g="sw"><td><div class="repo"><a href="https://github.com/Cai-aa/CAD-Agent-Hub">Cai-aa/CAD-Agent-Hub</a> · <a href="https://github.com/U-C4N/Autocad-MCP">U-C4N/Autocad-MCP</a> · <a href="https://github.com/AnCode666/multiCAD-mcp">AnCode666/multiCAD-mcp</a></div>
+  <div class="desc">MCP-серверы и мосты для CATIA, SolidWorks, NX, Fusion, AutoCAD: 62 ★ / 92 ★ / 114 ★.</div></td>
+  <td class="meta">Python · 2026</td>
+  <td class="why">multiCAD — пример единого интерфейса поверх разных CAD. Архитектурный ориентир.</td></tr>
+</tbody>
+</table>
+
+<h2 id="d">D. КОМПАС-3D <span class="tag r">ниша свободна</span></h2>
+<p class="sub">API-обёртки и макросы есть, параметрических библиотек и MCP — практически нет. Прямых щитовых библиотек — ноль.</p>
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/dwnmf/KOMPAS-3D-MCP-bin">dwnmf/KOMPAS-3D-MCP-bin</a></div>
+  <div class="desc">Ready-to-use Windows client for connecting KOMPAS-3D to MCP.</div></td>
+  <td class="meta">28 ★ · Python<br>2026-08-22</td>
+  <td class="why"><b>Самый звёздный MCP под КОМПАС.</b> Найден только на третьей волне — запросом <code>kompas 3d</code>, а не <code>kompas3d</code>. Обязателен к разбору перед любой новой разработкой.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/dwnmf/kompas-3d-guard-bin">dwnmf/kompas-3d-guard-bin</a></div>
+  <div class="desc">KOMPAS-3D_GUARD для Windows x64: SDK/CLI.</div></td>
+  <td class="meta">4 ★ · 2026-07-31</td>
+  <td class="why">Отдельный GUARD-слой поверх КОМПАС. Подтверждает: идея детерминированного валидатора между моделью и ядром — не наша выдумка, её уже реализуют независимо.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Alexey-Izilianov/kompas-mcp">Alexey-Izilianov/kompas-mcp</a></div>
+  <div class="desc">MCP-сервер автоматизации КОМПАС-3D v22: чистый C# без зависимостей.</div></td>
+  <td class="meta">4 ★ · C#<br>2026-09-16 <span class="tag g">свежий</span></td>
+  <td class="why">Нативный C#-подход вместо Python+COM. Сравнить с нашим воркером по надёжности и покрытию.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/xomyachok-shaolin/kompas-3d-mcp-linux">xomyachok-shaolin/kompas-3d-mcp-linux</a></div>
+  <div class="desc">MCP-сервер для КОМПАС-3D под Linux — управление КОМПАС v24 через MCP.</div></td>
+  <td class="meta">3 ★ · C++ · 2026-04-01</td>
+  <td class="why">Единственный замеченный вариант под Linux (там же лежат pkgbuild/flake для v24). Интересен как способ гонять КОМПАС в CI.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/AntonSHBK/compas3d-mcp-server">AntonSHBK/compas3d-mcp-server</a> · <a href="https://github.com/kuzadmin-coder/mcp-kompas-3D">kuzadmin-coder/mcp-kompas-3D</a></div>
+  <div class="desc">Ещё два MCP-сервера под КОМПАС. У первого — Apache-2.0, обновлён 18.09.2026.</div></td>
+  <td class="meta">0 ★ / 1 ★<br>2026-09-18</td>
+  <td class="why">Суммарно шесть MCP-проектов под КОМПАС, ни один не набрал и 30 звёзд. Ниша не занята никем.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Mikarisar/KOMPAS_tools">Mikarisar/KOMPAS_tools</a> · <a href="https://github.com/Leafan23/rapidly_part">Leafan23/rapidly_part</a></div>
+  <div class="desc">Инструменты для КОМПАС 3D v20; макросы для КОМПАС-3D.</div></td>
+  <td class="meta">7 ★ / 3 ★ · Python<br>2024-01</td>
+  <td class="why">Примеры утилит, заточенных под конкретную версию — напоминание про версионную матрицу.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Weltraum/Article-Python-in-aid-of-the-designer-Tames-API-Kompas-3D">Weltraum/Article-…-Tames-API-Kompas-3D</a></div>
+  <div class="desc">Статья и код: как приручить API КОМПАС-3D из Python.</div></td>
+  <td class="meta">17 ★ · Python · 2017</td>
+  <td class="why">Старый, но третий по звёздности в теме. Учебный материал по Automation.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/alexbereznikov/kompas-interp">alexbereznikov/kompas-interp</a></div>
+  <div class="desc">Встраивание C#-подобного скриптового языка в ASCON КОМПАС-3D.</div></td>
+  <td class="meta">0 ★ · C# · 2012</td>
+  <td class="why">Редкая попытка дать КОМПАСУ собственный скриптовый язык. Идея жива — см. GUARD-слой в свежих проектах.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/AntonPetunin/KompasSDKReference">AntonPetunin/KompasSDKReference</a> · <a href="https://github.com/Dima-tyman/KOMPAS-SDK">Dima-tyman/KOMPAS-SDK</a></div>
+  <div class="desc">Справочник по SDK КОМПАС (C) и SDK на Python.</div></td>
+  <td class="meta">0 ★ / 0 ★<br>2026-03 / 2026-04</td>
+  <td class="why">Свежие материалы по SDK — пригодятся как источник для RAG по API.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/tamoshka/Screwdriver-plugin-for-Compas3D">tamoshka/Screwdriver-plugin-for-Compas3D</a> · <a href="https://github.com/maximvaraxin/CAPP_create_model_automation">maximvaraxin/CAPP_create_model_automation</a></div>
+  <div class="desc">Плагин-генератор отвертки для КОМПАС-3D (C#, MIT); автоматизация создания модели в КОМПАС (Python).</div></td>
+  <td class="meta">0 ★ / 0 ★<br>2025-01 / 2022-10</td>
+  <td class="why">Второй найденный генератор параметрической сборки — значит, таких примеров два, не один. Плюс автоматизация построения модели.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Jestyrn/K-KompasPlacer">Jestyrn/K-KompasPlacer</a></div>
+  <div class="desc">Автоматизация раскладки деталей в CAD-редакторах; оптимизация размещения.</div></td>
+  <td class="meta">1 ★ · C# · MIT<br>2025-08-30</td>
+  <td class="why">Единственный найденный проект про <b>раскладку</b> (nesting/placement) под КОМПАС — прямой сосед модуля раскладки щита.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/kostia-egik/geomwright">kostia-egik/geomwright</a></div>
+  <div class="desc">«Local-first KOMPAS-3D CAD automation with MCP tools and Studio».</div></td>
+  <td class="meta">1 ★ · Python<br>2026-09-17 <span class="tag g">свежий</span></td>
+  <td class="why"><b>Прямой сосед вашего проекта.</b> Посмотреть, какие инструменты они уже отдали, и не дублировать.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/hymaxo/kompas3d-mcp">hymaxo/kompas3d-mcp</a></div>
+  <div class="desc">MCP-сервер для КОМПАС-3D.</div></td>
+  <td class="meta">2 ★ · Python<br>2026-09-04</td>
+  <td class="why">Ещё один прямой аналог. Сверить покрытие API.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/EMX302/AI-to-CAD-Bridge-SW-">EMX302/AI-to-CAD-Bridge-SW-</a></div>
+  <div class="desc">Мост для использования ИИ в CAD: локальный MCP-сервер на компьютере пользователя.</div></td>
+  <td class="meta">2026-09-13</td>
+  <td class="why">Свежий проект в topic <code>kompas-3d</code>, заявлен именно как AI↔CAD мост.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/nikitamamay/KompasAPI-01">nikitamamay/KompasAPI-01</a> + <a href="https://github.com/nikitamamay/KompasAPI-stubs-generator">KompasAPI-stubs-generator</a></div>
+  <div class="desc">Библиотека-обёртка над API КОМПАС-3D со стабами, аннотациями типов и документацией из справки SDK + генератор стабов.</div></td>
+  <td class="meta">2 ★ / 3 ★ · Python<br>2026-03</td>
+  <td class="why"><b>Фундамент.</b> Типизированный доступ к API — то, без чего MCP-инструменты писать мучительно.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/nikitamamay/romashki-macros">nikitamamay/romashki-macros</a> · <a href="https://github.com/nikitamamay/romashki-dimensions">romashki-dimensions</a></div>
+  <div class="desc">Коллекция скриптов автоматизации КОМПАС-3D; отдельно — работа с размерами в чертежах.</div></td>
+  <td class="meta">10 ★ / 3 ★ · Python</td>
+  <td class="why">Примеры реальных макросов: как выглядит рабочий код под КОМПАС.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/ortman/Kompas3DPrint">ortman/Kompas3DPrint</a></div>
+  <div class="desc">Инструменты печати/экспорта для КОМПАС-3D.</div></td>
+  <td class="meta">28 ★ · C++<br>2026-09-08</td>
+  <td class="why">Самый звёздный из «утилитарных» проектов по КОМПАС; активен.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/U-Board/CKE_converter-from-Kompas3D-to-excel">U-Board/CKE_converter-from-Kompas3D-to-excel</a></div>
+  <div class="desc">Автоматическое формирование спецификации из сборок КОМПАС-3D в Excel.</div></td>
+  <td class="meta">8 ★ · Python · 2023</td>
+  <td class="why">Спецификация щита — ключевой выход. Здесь уже есть рабочий пайплайн.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/baalp/TheScrewdriverGenerator">baalp/TheScrewdriverGenerator</a></div>
+  <div class="desc">Программа, которая запускает КОМПАС-3D и собирает в нём сборку отвёртки по параметрам.</div></td>
+  <td class="meta">2022-12-24</td>
+  <td class="why"><b>Редчайший пример параметрической сборки в КОМПАС.</b> Именно такой движок нужен для генератора щита.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Paashik/LibAccess">Paashik/LibAccess</a> · <a href="https://github.com/IKEENOO/3DTreadsLib">IKEENOO/3DTreadsLib</a> · <a href="https://github.com/afedorov3/Kompas3D-libs">afedorov3/Kompas3D-libs</a></div>
+  <div class="desc">Библиотеки стандартных изделий для КОМПАС-3D (на Access), библиотека 3D-резьб, библиотеки на C++.</div></td>
+  <td class="meta">0 ★ / 0 ★ / 3 ★</td>
+  <td class="why">Показывают, как устроены прикладные библиотеки КОМПАС. Аналогичной библиотеки «электрооборудование и корпуса щитов» нет.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/Bogruina/DFCAD">Bogruina/DFCAD</a> · <a href="https://github.com/Sapchanskiy/CADCUP">Sapchanskiy/CADCUP</a> · <a href="https://github.com/frei480/-22-SDK">frei480/-22-SDK</a></div>
+  <div class="desc">Библиотека под КОМПАС-3D на C#/WinForms, учебный плагин по API КОМПАС, SDK КОМПАС 22.</div></td>
+  <td class="meta">3 ★ / 0 ★ / 0 ★ · C#</td>
+  <td class="why">Примеры работы с API из .NET и исходники SDK — полезно для нативной части моста.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/dimak222/KSaver">dimak222/KSaver</a> · <a href="https://github.com/dimak222/KText2Excel">KText2Excel</a> · <a href="https://github.com/dimak222/TTEditor">TTEditor</a></div>
+  <div class="desc">Макросы КОМПАС: сохранение, выгрузка текста 2D-документа в Excel, редактор технических требований.</div></td>
+  <td class="meta">1 ★ / 0 ★ / 0 ★ · Python</td>
+  <td class="why">Готовые приёмы для работы с чертежом — пригодятся в инструментах оформления щитовых чертежей.</td></tr>
+
+<tr data-g="kompas"><td><div class="repo"><a href="https://github.com/SimakR/kompas3d-v24-pkgbuild">SimakR/kompas3d-v24-pkgbuild</a> · <a href="https://github.com/Plasitol/Kompas3D-v24-flake">Plasitol/Kompas3D-v24-flake</a></div>
+  <div class="desc">Установка КОМПАС-3D v24 на Arch/NixOS.</div></td>
+  <td class="meta">Shell / Nix</td>
+  <td class="why">Побочная, но ценная ветка: если понадобится гонять КОМПАС в контейнере/CI.</td></tr>
+</tbody>
+</table>
+
+<h2 id="e">E. Расчёты, нормативы, справочники по щитам</h2>
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/TechFlipsi/FlipsiTherm">TechFlipsi/FlipsiTherm</a></div>
+  <div class="desc">Бесплатный, независимый от производителя расчёт климата шкафа управления: нагрев и охлаждение.</div></td>
+  <td class="meta">HTML/JS<br>2026-09-17 <span class="tag g">свежий</span></td>
+  <td class="why">Тепловой расчёт шкафа — обязательная часть проекта щита и частая боль.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/chaimarochdi-etu-collab/outil-predimensionnement-bt">chaimarochdi-etu-collab/outil-predimensionnement-bt</a></div>
+  <div class="desc">Инструмент автоматического предразмеривания низковольтных распределительных щитов по нормам (IEC 61439).</div></td>
+  <td class="meta">Python · 2026-03-04</td>
+  <td class="why">Один из трёх найденных проектов, реально считающих щит по IEC 61439.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/jhonat23/IEC-60895-busbar-shortcircuit-calculation">jhonat23/IEC-60895-busbar-shortcircuit-calculation</a></div>
+  <div class="desc">Расчёт токов КЗ для шин распределительных устройств по IEC 60895.</div></td>
+  <td class="meta">2 ★ · Python · 2023</td>
+  <td class="why">Готовый расчёт шинной системы — прямой ввод в выбор шин в щите.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/Skeeter-spec/power-service-toolbox">Skeeter-spec/power-service-toolbox</a> · <a href="https://github.com/Skeeter-spec/industrial-index">industrial-index</a></div>
+  <div class="desc">Открытые инструменты по энергоснабжению: распределительные устройства, защитные реле, АВР, учёт; каталог технической документации по автоматизации.</div></td>
+  <td class="meta">JS / Python · 2026-07</td>
+  <td class="why">Каталог документации — источник нормативов для правил валидации щита.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/lweinstock/KiCad_Electrical">lweinstock/KiCad_Electrical</a></div>
+  <div class="desc">Библиотеки символов и посадочных мест KiCad для электротехнических систем, включая коммутационные шкафы.</div></td>
+  <td class="meta">2024-08-07</td>
+  <td class="why">Пример оформления библиотеки электрооборудования — структура данных переносима.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/CameronBrooks11/parametric-electrical-enclosure">CameronBrooks11/parametric-electrical-enclosure</a></div>
+  <div class="desc">Масштабируемый влагозащищённый корпус на OpenSCAD.</div></td>
+  <td class="meta">OpenSCAD · 2025-03-26</td>
+  <td class="why">Минимальный пример параметрического корпуса — как «Hello world» для генератора шкафа.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/ch5721032-arch/gstarcad-electrical-tools">ch5721032-arch/gstarcad-electrical-tools</a></div>
+  <div class="desc">Электротехнические инструменты для GstarCAD: УГО схем, нумерация проводов, скрипты раскладки панелей.</div></td>
+  <td class="meta">Common Lisp · 2026-08-19</td>
+  <td class="why">Тот же набор фич, что нужен щитовику в КОМПАС — можно переносить по списку.</td></tr>
+</tbody>
+</table>
+
+<h2 id="f">F. Третья волна: английские щитовые термины и ловушки поиска</h2>
+<p class="sub">После замечания «а запросы compas 3D тоже?» прогнал ещё 40 запросов: все варианты написания КОМПАС латиницей, английские щитовые термины и топики. Часть находок — новые, часть — шум, который стоит знать в лицо.</p>
+
+<table>
+<thead><tr><th style="width:46%">Репозиторий</th><th style="width:16%">Мета</th><th>Зачем смотреть</th></tr></thead>
+<tbody>
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/managallment-svg/lv-panel-designer-pro">managallment-svg/lv-panel-designer-pro</a></div>
+  <div class="desc">Веб-платформа предварительного профессионального расчёта и компоновки низковольтных щитов: MDB, SMDB, Final DB, Consumer Unit, Feeder Pillar, Street Lighting, MCC, ATS, APFC, Outdoor Kiosk. Выбор корпуса из каталога производителя <b>без молчаливой подмены одного производителя другим</b>, расчёт спроса и шин, N и PE, проверка Icw, заполнение ячеек по габаритам прибора из каталога, интерактивный GA-чертёж, таблица изготовления, BOM, PDF-отчёты. Явные предупреждения по теплу, Icu/cascading и несовпадению семейства.</div></td>
+  <td class="meta">0 ★ · TS/Vite<br>2026-08-30 <span class="tag g">свежий</span><br>есть GitHub Pages</td>
+  <td class="why"><b>Самая близкая к нашему ТЗ находка третьей волны.</b> Отдельная команда <code>npm run audit:engineering</code>, детерминированные расчёты не зависят от ИИ, а в README прямо сказано: результат — не сертификат IEC 61439 и не замена расчёту защиты. Та же честность, которую мы закладываем.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/AliMunzerShamma/Expert-System-For-Design-Electrical-Panels">AliMunzerShamma/Expert-System-For-Design-Electrical-Panels</a></div>
+  <div class="desc">Экспертная система проектирования электрощитов на Python + PyKnow (продукционный движок): по требованиям заказчика подбирает конфигурацию панели. Есть Report.pdf с описанием.</div></td>
+  <td class="meta">1 ★ · Python<br>2025-01-09</td>
+  <td class="why">Единственный найденный пример <b>продукционных правил</b> для щитов. PyKnow — совсем другая парадигма, нежели чистые функции TaCP, полезно сравнить.</td></tr>
+
+<tr data-g="shity"><td><div class="repo"><a href="https://github.com/SenMorgan/Electrical-Panel-Label-Generator">SenMorgan/Electrical-Panel-Label-Generator</a> · <a href="https://github.com/Waltberry/LV-Switchboard">Waltberry/LV-Switchboard</a> · <a href="https://github.com/luisdanielsilva/MCC">luisdanielsilva/MCC</a></div>
+  <div class="desc">Веб-генератор печатных этикеток для электрощита; проект LV-щита; Motor Control Center.</div></td>
+  <td class="meta">1 ★ / 0 ★ / 1 ★<br>2026-06 / 2025-11</td>
+  <td class="why">Маркировка — недооценённая часть щита. B101…B112 должны не только попасть в модель, но и напечататься.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/earthtojake/step.parts">earthtojake/step.parts</a></div>
+  <div class="desc">12 000+ opensource STEP-деталей для CAD-проектов.</div></td>
+  <td class="meta">355 ★ · MIT<br>2026-06-13</td>
+  <td class="why">Потенциальный источник готовой геометрии для библиотеки оборудования — если лицензии конкретных деталей это позволяют.</td></tr>
+
+<tr data-g="calc"><td><div class="repo"><a href="https://github.com/upb-lea/Inkscape_electric_Symbols">upb-lea/Inkscape_electric_Symbols</a></div>
+  <div class="desc">Библиотека электрических УГО для Inkscape.</div></td>
+  <td class="meta">572 ★ · CC0-1.0<br>2026-02-08</td>
+  <td class="why">CC0 — можно брать без оглядки. Для КОМПАС УГО придётся переоформить, но номенклатура и структура уже готовы.</td></tr>
+</tbody>
+</table>
+
+<h3>Ловушки поиска — чтобы не тратить время дважды</h3>
+<table>
+<thead><tr><th style="width:22%">Запрос</th><th style="width:12%">Выдаёт</th><th>Что это на самом деле</th></tr></thead>
+<tbody>
+<tr><td><code>compas</code></td><td>36 613</td><td><b>Не КОМПАС.</b> SASS Compass, MongoDB Compass, Android-компас, COMPAS framework от BlockResearchGroup (ETH Zürich), индонезийская газета Kompas. Реальных проектов по АСКОН — единицы, и только в написании <code>compas3d</code> (7 результатов)</td></tr>
+<tr><td><code>ascon</code></td><td>992</td><td><b>Не АСКОН.</b> Ascon — это криптоалгоритм (NIST LWC): <code>ascon/ascon-c</code>, <code>ascon-hardware</code>, <code>pyascon</code>. <code>ascon cad</code> — 0, <code>ascon kompas</code> — 1</td></tr>
+<tr><td><code>kompas</code></td><td>2 233</td><td>Смесь: индонезийские медиа-скраперы, навигационные библиотеки (<code>kompass</code>), статус-панели. Много шума, но именно здесь нашлись инструменты по КОМПАС</td></tr>
+<tr><td><code>compas 3d</code></td><td>86</td><td>Почти всё — 3D-компас для Android и Arduino. Реальный КОМПАС здесь не находится</td></tr>
+<tr><td><code>topic:electrical-engineering</code></td><td>1 105</td><td>Общая электротехника и силовая электроника (PyPSA, VeraGrid, GElectric). Щитов почти нет</td></tr>
+<tr><td><code>topic:control-cabinet</code><br><code>topic:panel-building</code></td><td>0 / 0</td><td>Таких топиков на GitHub просто не существует — ещё одно подтверждение, что сообщество щитовиков там не живёт</td></tr>
+</tbody>
+</table>
+
+<div class="empty"><b>Английские запросы, давшие ноль</b> (дополнение к русским): <code>kompas cabinet</code>, <code>kompas 3d cabinet</code>, <code>kompas3d cabinet</code>, <code>kompas electrical cabinet</code>, <code>kompas switchgear</code>, <code>kompas distribution board</code>, <code>kompas3d electrical</code>, <code>kompas3d library</code>, <code>ascon cad</code>, <code>topic:control-cabinet</code>, <code>topic:panel-building</code>.<br><br><b>Вывод третьей волны:</b> гипотеза «русские щитовики просто не выкладывают код на GitHub» не подтвердилась полностью — дело не в языке. По-английски щитовых проектов тоже нет ни под КОМПАС, ни в принципе в заметном количестве. Единственные живые щитовые инструменты — те, что делают коммерсанты для себя (<code>cabinet-layout-generator</code>, <code>TaCP</code>, <code>lv-panel-designer-pro</code>).</div>
+
+<h2>Что это значит для KOMPAS-3D MCP</h2>
+<div class="tldr">
+  <ul>
+    <li><b>Ниша подтверждена пустотой.</b> Семь целых запросов вида «КОМПАС + щит/шкаф/НКУ/электрощит» — ноль репозиториев. При этом щитовики в РФ массово сидят на КОМПАС. Открытой параметрической библиотеки корпусов, DIN-реечного оборудования и УГО под КОМПАС просто не существует.</li>
+    <li><b>Архитектуру берите у <code>cabinet-layout-generator-v2</code>:</b> одна валидированная JSON-модель раскладки → один рендерер → DXF/PDF/чертёж. Правило «код ничего не угадывает, неизвестное флагуется» спасает от дорогих ошибок в цеху.</li>
+    <li><b>Домен берите у <code>TaCP</code>:</b> дерево шкафов, составные корпуса, секционирование по ГОСТ IEC 61439-2, проверки совместимости (автомат↔шина, ПЛК без БП 24 В и т.п.), конфигуратор ПЛК. Это готовое ТЗ на модуль «собрать щит».</li>
+    <li><b>Мост к CAD делайте по образцу <code>covagashi/eplan-rag-mcp</code>:</b> MCP-сервер + RAG по SDK + агентский skill. У EPLAN это уже работает (96 ★); у КОМПАС — три зачаточных проекта (<code>geomwright</code>, <code>hymaxo/kompas3d-mcp</code>, <code>EMX302/AI-to-CAD-Bridge-SW-</code>), ни один не закрепился.</li>
+    <li><b>Базу для инструментов берите у <code>nikitamamay/KompasAPI-01</code></b> (типизированная обёртка + стабы) — иначе каждый инструмент MCP придётся писать вслепую по COM.</li>
+    <li><b>Параметрическую сборку</b> пока негде подсмотреть, кроме <code>baalp/TheScrewdriverGenerator</code> — это единственный найденный пример программной сборки изделия в КОМПАС по параметрам.</li>
+  </ul>
+</div>
+
+<h3>Как искать дальше</h3>
+<p class="sub">Рабочие запросы (GitHub Search API, по имени/описанию/README):</p>
+<p><b>По-русски:</b> <code>компас api</code> · <code>КОМПАС-3D библиотека</code> · <code>НКУ</code> · <code>АСУ ТП</code> · <code>АСУТП</code> · <code>КИПиА</code> · <code>мнемосхема</code> · <code>сборка щитов</code></p>
+<p><b>По-английски:</b> <code>kompas 3d</code> · <code>kompas automation</code> · <code>kompas sdk</code> · <code>EPLAN</code> · <code>eplan pro panel</code> · <code>electrical cabinet</code> · <code>switchgear</code> · <code>busbar</code> · <code>electrical panel layout</code> · <code>LV switchboard</code> · <code>motor control center</code> · <code>cabinet configurator</code> · <code>cad mcp server</code> · <code>topic:kompas-3d</code> · <code>topic:solidworks</code> · <code>topic:switchgear</code></p>
+<div class="empty"><b>Обязательное правило:</b> прогонять <b>все варианты написания</b>, а не один язык. Для КОМПАС это <code>компас</code> · <code>КОМПАС-3D</code> · <code>kompas</code> · <code>kompas3d</code> · <code>kompas 3d</code> · <code>kompas-3d</code> · <code>compas</code> · <code>compas3d</code> · <code>compas 3d</code> · <code>ascon</code> · <code>ascon kompas</code>, и отдельно <code>topic:</code> для каждого. Проверено на этой задаче: запрос <code>kompas3d</code> дал 62 результата, а <code>kompas 3d</code> — 96, и именно во втором нашёлся самый звёздный MCP-клиент.</div>
+<div class="empty"><b>Запросы, давшие ноль</b> (и потому подтверждающие пустоту ниши). По-русски: <code>компас щит</code>, <code>компас шкаф</code>, <code>компас НКУ</code>, <code>компас электрощит</code>, <code>компас электромонтаж</code>, <code>электрощит</code>, <code>щит управления</code>, <code>шкаф управления</code>, <code>щит АСУ ТП</code>, <code>низковольтное комплектное устройство</code>, <code>КОМПАС-Электрик</code>. По-английски: <code>kompas cabinet</code>, <code>kompas 3d cabinet</code>, <code>kompas3d cabinet</code>, <code>kompas electrical cabinet</code>, <code>kompas switchgear</code>, <code>kompas distribution board</code>, <code>kompas3d electrical</code>, <code>kompas3d library</code>, <code>ascon cad</code>, <code>topic:control-cabinet</code>, <code>topic:panel-building</code>.</div>
+
+<footer>
+Сырые данные поиска: <code>research/gh_results.json</code>, <code>gh_results2.json</code>, <code>gh_results3.json</code>, <code>gh_enriched.json</code>, <code>gh_enriched3.json</code>.<br>
+Скрипты: <code>research/gh_search.py</code>, <code>gh_search2.py</code>, <code>gh_search3.py</code>, <code>gh_enrich.py</code>, <code>gh_enrich3.py</code>.<br>
+Данные собраны 19 сентября 2026 через GitHub Search API (без токена, лимит 10 запросов/мин — поэтому запросы идут с паузами). Три волны: русские термины → прицельные и EPLAN → варианты написания и английские термины.<br>
+Связанный документ: <code>shity_domain_layer_spec.html</code> — ТЗ на щитовой доменный слой по разбору исходников <code>cabinet-layout-generator-v2</code> и <code>TaCP</code>.
+</footer>
+
+</div>
+
+<script>
+document.querySelectorAll('.filters button').forEach(function(b){
+  b.addEventListener('click', function(){
+    document.querySelectorAll('.filters button').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on');
+    var f = b.getAttribute('data-f');
+    document.querySelectorAll('tbody tr').forEach(function(tr){
+      tr.style.display = (f === 'all' || tr.getAttribute('data-g') === f) ? '' : 'none';
+    });
+  });
+});
+</script>
+</body>
+</html>

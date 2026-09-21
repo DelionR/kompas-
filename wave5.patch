@@ -1,0 +1,1557 @@
+diff --git a/VERSION.json b/VERSION.json
+index 624be40..d8b9235 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 42,
++  "mcp_tool_count": 46,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -37,6 +37,10 @@
+     "kompas_dialogs",
+     "kompas_version_check",
+     "kompas_export",
++    "kompas_drawing_info",
++    "kompas_stamp_read",
++    "kompas_stamp_write",
++    "kompas_specification_read",
+     "kompas_checkpoints",
+     "kompas_model_bbox",
+     "kompas_set_view",
+diff --git b/docs/WAVE5_CHANGES.md b/docs/WAVE5_CHANGES.md
+new file mode 100644
+index 0000000..cd95809
+--- /dev/null
++++ b/docs/WAVE5_CHANGES.md
+@@ -0,0 +1,118 @@
++# Волна 5: 2D-документы, основная надпись, спецификация
++
++Поверхность инструментов: **42 → 46**.
++
++Патч `wave5.patch` накладывается поверх `wave1` + `wave2` + `wave3` + `wave4`.
++
++## Зачем
++
++Мост закрывал 3D полностью, а 2D-сторона КОМПАСа — чертежи, фрагменты,
++основная надпись, спецификация — не была доступна агенту вообще. При этом
++унаследованный код в `src/capabilities.py` **умел** читать листы и штамп:
++действия `sheet.info`, `stamp.read` и `stamp.write` там есть. Но ни один
++инструмент каталога на них не ссылался, то есть через MCP они были
++недостижимы. Это не «новая функциональность», а выведенная из тени
++существующая — с нормальной валидацией и проверкой записи, которой в
++унаследованном виде не было.
++
++Отдельная проблема: спецификация вообще не существовала. `kompas_bom_read`
++давал состав сборки, но не раскладывал его по разделам ГОСТ.
++
++## Что добавлено
++
++### `src/drawing_tools.py`
++
++| Инструмент | Действие | Что делает |
++|---|---|---|
++| `kompas_drawing_info` | `drawing.info` | Листы, формат каждого листа, инвентарь видов |
++| `kompas_stamp_read` | `stamp.read` | Чтение ячеек основной надписи по номерам |
++| `kompas_stamp_write` | `stamp.write` | Запись ячеек с проверкой и откатом |
++
++### `src/spec_tools.py`
++
++| Инструмент | Действие | Что делает |
++|---|---|---|
++| `kompas_specification_read` | `specification.read` | Раскладка спецификации по разделам ГОСТ |
++
++## Ключевые решения
++
++**Мост не называет ячейки основной надписи.** Нумерация зависит от стиля
++основной надписи в конкретном шаблоне. Выдуманный словарь «1 = наименование»
++дал бы правдоподобную, но неверную картину на чужом шаблоне — и агент начал
++бы писать «наименование» в ячейку, которая означает совсем другое. Поэтому
++инструменты работают номерами: `kompas_stamp_read` без аргументов читает
++первые 60 ячеек, чтобы оператор один раз сопоставил номера своему шаблону.
++Метки можно объявить в конфиге, по умолчанию их нет.
++
++**Запись в штамп использует контрольные точки из волны 4.** Перед записью
++снимается снимок, затем: запись → чтение всех ячеек обратно → Save → Close →
++Reopen → чтение снова. Любое расхождение — откат файла из снимка, в тексте
++ошибки указан id снимка и признак `rolled_back`. Это первая мутирующая
++операция в проекте, у которой есть настоящий откат, а не только обнаружение.
++
++**Отказ от 3D-документа явный.** Если активен 3D-документ, у него нет
++`LayoutSheets`, и инструмент поднимает
++`active_document_has_no_layout_sheets_not_a_2d_document` с типом документа,
++а не возвращает пустой список листов.
++
++**Несуществующая коллекция видов — это не «видов нет».** Если `CastTo` не
++сработал или коллекция не нашлась, в ответе `views_interface.confirmed = false`
++с перечнем попыток. Пустой список значил бы «видов нет», и недостающую функцию
++приняли бы за пустой чертёж.
++
++**Спецификация помечена как производная.** Мост не читает настоящий документ
++`.spw`: объектная модель спецификации (`ISpcObject` и подобные) не проверена ни
++на одной установке, а угаданная модель хуже честного отказа. Вместо этого
++раздел выводится из нативных признаков вхождений:
++
++- `Standard = true` → Стандартные изделия;
++- `IsBillet = true` → Материалы;
++- есть дочерние вхождения → Сборочные единицы;
++- иначе → Детали;
++
++и количество всегда равно точному числу подходящих вхождений. Позиции
++нумеруются мостом внутри раздела и не являются нативными позициями
++спецификации. Разделы «Документация» и «Комплекты» из дерева сборки не
++выводятся, поэтому никогда не заполняются — об этом сказано в `limits`.
++
++**Перекрёстная проверка.** Производное количество обязано совпасть с
++`eligible_occurrence_count`. Расхождение помечает ответ как недостоверный
++(`cross_check.ok = false`) и добавляет предупреждение, а не выдаёт раскладку
++как верную.
++
++## Границы валидации
++
++- Ячейки: номера 1..200, не более 200 за вызов на чтение.
++- Запись: не более 20 ячеек за вызов, текст до 255 символов, без управляющих
++  символов (перевод строки в ячейке штампа ломает блок).
++- Листы: индекс 0..99, выход за число листов — ошибка.
++- Запись требует сохранённый `_AGENT_COPY` внутри разрешённых корней моста.
++
++## Что изменится для оператора
++
++- Четыре новых инструмента в `tools/list`; число инструментов 46.
++- Ожидания в `tests/test_wave1..4.py` обновлены с 42 на 46 осознанно — это
++  штатный стоп-кран, а не случайная правка.
++- `VERSION.json` приведён к порядку каталога; тест
++  `test_version_json_matches_catalog` теперь сравнивает порядок, а не только
++  множество.
++- Унаследованные `sheet.info` / `stamp.read` / `stamp.write` в
++  `src/capabilities.py` **не удалены** и по-прежнему недоступны через MCP.
++  Новые инструменты их не вызывают.
++
++## Как проверить
++
++```bash
++python -m unittest discover -s tests -p "test_wave5.py" -v
++python tests/test_mcp_stdio.py          # PASS test_mcp_stdio 46
++```
++
++Смоук протокола: `initialize → 2025-11-25`, `tools/list → 46`.
++
++## Что намеренно не сделано
++
++1. Чтение и создание настоящего документа спецификации `.spw`.
++2. Именование ячеек основной надписи «по ГОСТу» — нужен живой шаблон.
++3. Создание видов, размеров и объектов оформления: это отдельная волна.
++4. Подтверждение на живом КОМПАСе: стенда не было, все имена интерфейсов
++   подобраны перебором документированных вариантов с честной деградацией.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index 6886f4c..8d7103e 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -90,6 +90,10 @@ TOOLS = [
+     {"name":"kompas_dialogs","description":"Scan KOMPAS for stuck modal dialogs and report which of them block the bridge. Deliberately avoids COM, because an Automation call would hang on the very dialog being diagnosed. apply=false only reports; apply=true closes at most three informational dialogs whose policy is close. Dialogs that ask to save, choose or confirm are never closed automatically - they are reported for a human to decide.","inputSchema":{"type":"object","properties":{"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
+     {"name":"kompas_version_check","description":"Read the running KOMPAS version and its verdict against the version support matrix from config (kompas.version_matrix): matched pattern, support level, and which actions are guarded. Call it before trusting a write on an unfamiliar KOMPAS build. An empty matrix means 'not verified', not 'supported'. Pass version explicitly to evaluate a build without a running KOMPAS.","inputSchema":{"type":"object","properties":{"version":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_export","description":"Export the active document to STEP, DXF or PDF into the bridge work directory and verify the produced file by its content in the same call. A KOMPAS export method raises nothing even when the file ends up empty or truncated, so a returned call is never treated as proof: the artifact is checked by signature, sections, entity counts or page count, and ok=false means the export failed. apply=false is a dry run that reports the plan and the method names it would try, without any COM call. SaveAs is deliberately excluded from the method list because it overwrites the document itself. When verification fails the file is kept for inspection, not deleted.","inputSchema":{"type":"object","required":["relative_path","format"],"properties":{"relative_path":{"type":"string","minLength":1},"format":{"type":"string","enum":["step","dxf","pdf"]},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++    {"name":"kompas_drawing_info","description":"Read the 2D document inventory of the active drawing or fragment: sheet count, per-sheet format (width, height, format id, name) and the view inventory with name, scale and projection type when the view collection resolves. Use it before any drawing edit to confirm which sheet and which views exist, and to learn the sheet index the stamp tools need. Fails with a clear error when the active document is a 3D model.","inputSchema":{"type":"object","properties":{"sheet_index":{"type":"integer","minimum":0,"maximum":99},"max_views":{"type":"integer","minimum":1,"maximum":200,"default":50},"include_views":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_stamp_read","description":"Read cells of the title block (stamp) of the active 2D document by cell number. Pass explicit cells to read chosen numbers, or omit them to read the first 60 so you can map the block of this template once. Cell numbering follows the title block style of the document, so the bridge reports numbers and values and does not invent names for them. An empty value means empty, not missing.","inputSchema":{"type":"object","properties":{"cells":{"type":"array","items":{"type":"integer","minimum":1,"maximum":200},"minItems":1,"maxItems":200},"sheet_index":{"type":"integer","minimum":0,"maximum":99}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_stamp_write","description":"Write text into title block cells of the active 2D document, at most 20 cells per call, each text up to 255 characters with no control characters. Requires the active document to be a saved _AGENT_COPY inside approved bridge roots. Takes a checkpoint first, writes, reads every cell back, then Save, Close and Reopen and reads back again; any mismatch rolls the file back from the checkpoint and reports the checkpoint id. Set checkpoint to false only if you have another snapshot.","inputSchema":{"type":"object","required":["cells"],"properties":{"cells":{"type":"object","minProperties":1,"maxProperties":20,"additionalProperties":{"type":"string","maxLength":255}},"sheet_index":{"type":"integer","minimum":0,"maximum":99},"checkpoint":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":True,"idempotentHint":True}},
++    {"name":"kompas_specification_read","description":"Report the specification layout of the active assembly, derived from native occurrence data: API7 part tree with the CreateSpcObjects and InheritExclude switches, plus the Standard and IsBillet flags. Groups eligible occurrences into GOST sections (assembly units, details, standard products, materials) with derived positions and exact occurrence quantities, and cross-checks that the derived quantity equals the eligible count. It is derived grouping, not a read of a real .spw specification document: documentation and kits cannot come from the assembly tree and are never filled.","inputSchema":{"type":"object","properties":{"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_checkpoints","description":"Manage the byte snapshots taken before mutating operations. list shows snapshots with target, time and size; prune removes the oldest beyond keep; restore writes one exact snapshot back over its original file and requires the exact id plus the matching target name. Restore never touches files outside approved bridge roots. If KOMPAS holds the file open, close and reopen the document after a restore.","inputSchema":{"type":"object","required":["operation"],"properties":{"operation":{"type":"string","enum":["list","prune","restore","create"]},"id":{"type":"string","minLength":1},"keep":{"type":"integer","minimum":0,"maximum":1000},"target":{"type":"string","minLength":1},"action":{"type":"string","minLength":1,"maxLength":80}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":True}},
+     {"name":"kompas_model_bbox","description":"Read the exact native bounding box of the active top-level model. Use it to sanity-check overall size before and after geometry edits. It is a whole-model measure and is not a substitute for the per-component bounding box returned by kompas_component_info.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+@@ -148,6 +152,10 @@ ACTION_MAP = {
+     "kompas_version_check": ("version.check", lambda a: a),
+     "kompas_export": ("export.file", lambda a: a),
+     "kompas_checkpoints": ("checkpoint.manage", lambda a: a),
++    "kompas_drawing_info": ("drawing.info", lambda a: a),
++    "kompas_stamp_read": ("stamp.read", lambda a: a),
++    "kompas_stamp_write": ("stamp.write", lambda a: a),
++    "kompas_specification_read": ("specification.read", lambda a: a),
+     "kompas_model_bbox": ("model.bbox", lambda a: {}),
+     "kompas_set_view": ("view.set", lambda a: a),
+     "kompas_fit_view": ("view.fit", lambda a: {}),
+diff --git a/skills/kompas-engineering/SKILL.md b/skills/kompas-engineering/SKILL.md
+index 5682881..ee40dc0 100644
+--- a/skills/kompas-engineering/SKILL.md
++++ b/skills/kompas-engineering/SKILL.md
+@@ -59,6 +59,14 @@ Read them from the model/source requirements or explicitly mark them unresolved.
+ - Snapshots accumulate. Run `prune` with a `keep` value as regular maintenance.
+ - A snapshot is file-level. It does not undo a change to a document that KOMPAS still holds open and unsaved.
+ 
++## Drawings, title block, specification
++- A 3D model and a 2D drawing are different documents. Before any drawing work, confirm which document is active with `kompas_active_document`; `kompas_drawing_info` refuses a 3D document with a clear error instead of silently reading nothing.
++- Use `kompas_drawing_info` to learn the sheet count, the format of each sheet and the sheet index the stamp tools need. It also lists views when the view collection resolves; `confirmed: false` means the bridge could not reach the view collection - that is not the same answer as "there are no views".
++- The bridge does **not** name title block cells. Cell numbering depends on the block style of the template, so `kompas_stamp_read` reports numbers and values. Read the first 60 cells once on an unfamiliar template and map them yourself; never assume cell 1 means "name".
++- `kompas_stamp_write` takes at most 20 cells per call, rejects control characters and text over 255 characters, and requires a saved `_AGENT_COPY` inside approved roots. It takes a checkpoint, reads every cell back, then Save, Close, Reopen and reads back again; a mismatch rolls the file back from the checkpoint.
++- `kompas_specification_read` reports a **derived** section layout, not a real `.spw` document: Standard -> standard products, IsBillet -> materials, a component with children -> assembly units, otherwise details. Positions are numbered by the bridge. Documentation and Kits cannot come from the assembly tree and are never filled.
++- If `cross_check.ok` is false, the derived quantity disagrees with the eligible occurrence count - treat the layout as unreliable and inspect the tree instead of reporting it.
++
+ ## Stuck modal dialogs
+ - A stuck modal dialog freezes the whole bridge: COM calls hang and every later tool times out. When a call times out with no obvious cause, run `kompas_dialogs` before retrying anything.
+ - `kompas_dialogs` avoids COM deliberately: an Automation call would hang on the very dialog being diagnosed. It works even when KOMPAS is unresponsive.
+diff --git b/src/drawing_tools.py b/src/drawing_tools.py
+new file mode 100644
+index 0000000..fae9139
+--- /dev/null
++++ b/src/drawing_tools.py
+@@ -0,0 +1,555 @@
++"""2D drawing operations: sheet/format inventory, view inventory, title block (stamp).
++
++Split deliberately:
++* validation and comparison are pure functions, testable without KOMPAS;
++* only the calls that touch Automation are allowed to fail with COM errors.
++
++Cell numbering of a title block depends on the block style in use, so this module
++never guesses a "name" for a cell number. It reads and writes numbers and lets the
++operator declare labels in config if wanted.
++"""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++
++from assembly_insert_tools import _close, _norm, _open_exact, _sha256
++from safety import assert_writable
++import checkpoint as checkpoint_store
++
++MAX_CELL_NUMBER = 200
++MAX_CELLS_PER_CALL = 200
++DEFAULT_READ_CELLS = 60
++MAX_STAMP_WRITES = 20
++MAX_TEXT_LENGTH = 255
++MAX_SHEETS = 100
++MAX_VIEWS_HARD = 200
++DEFAULT_MAX_VIEWS = 50
++
++# --------------------------------------------------------------------------
++# pure validation
++# --------------------------------------------------------------------------
++
++
++def normalize_cell_number(value):
++    if isinstance(value, bool) or not isinstance(value, int):
++        raise ValueError("stamp_cell_number_must_be_integer_in_1_200")
++    if value < 1 or value > MAX_CELL_NUMBER:
++        raise ValueError("stamp_cell_number_out_of_range_1_%d:%s" % (MAX_CELL_NUMBER, value))
++    return int(value)
++
++
++def range_cells(count):
++    try:
++        count = int(count)
++    except Exception as exc:
++        raise ValueError("stamp_read_cells_must_be_integer") from exc
++    if count < 1 or count > MAX_CELL_NUMBER:
++        raise ValueError("stamp_read_cells_out_of_range_1_%d:%s" % (MAX_CELL_NUMBER, count))
++    return list(range(1, count + 1))
++
++
++def normalize_cells(values, default=DEFAULT_READ_CELLS):
++    """Accept None (means "read the first N cells") or a list of cell numbers."""
++    if values is None:
++        return range_cells(default)
++    if isinstance(values, int) and not isinstance(values, bool):
++        return range_cells(values)
++    if not isinstance(values, (list, tuple)) or not values:
++        raise ValueError("stamp_cells_must_be_nonempty_list_of_integers")
++    selected = sorted({normalize_cell_number(item) for item in values})
++    if len(selected) > MAX_CELLS_PER_CALL:
++        raise ValueError(
++            "stamp_cells_exceed_limit_%d:%d" % (MAX_CELLS_PER_CALL, len(selected))
++        )
++    return selected
++
++
++def _as_cell_key(key):
++    if isinstance(key, bool):
++        raise ValueError("stamp_cell_key_must_be_integer_or_numeric_string")
++    if isinstance(key, int):
++        return int(key)
++    if isinstance(key, str) and key.strip().lstrip("+-").isdigit():
++        return int(key.strip())
++    raise ValueError("stamp_cell_key_must_be_integer_or_numeric_string:" + repr(key))
++
++
++def clean_stamp_text(value):
++    if not isinstance(value, str):
++        raise ValueError("stamp_text_must_be_string")
++    if len(value) > MAX_TEXT_LENGTH:
++        raise ValueError("stamp_text_too_long_max_%d:%d" % (MAX_TEXT_LENGTH, len(value)))
++    for char in value:
++        code = ord(char)
++        if code < 0x20 or code == 0x7F:
++            raise ValueError("stamp_text_contains_control_characters")
++    return value
++
++
++def normalize_stamp_writes(cells):
++    if not isinstance(cells, dict) or not cells:
++        raise ValueError("stamp_write_cells_must_be_nonempty_object")
++    if len(cells) > MAX_STAMP_WRITES:
++        raise ValueError(
++            "stamp_write_cells_exceed_limit_%d:%d" % (MAX_STAMP_WRITES, len(cells))
++        )
++    writes = {}
++    for key, value in cells.items():
++        number = normalize_cell_number(_as_cell_key(key))
++        writes[number] = clean_stamp_text(value)
++    return writes
++
++
++def normalize_sheet_index(value, default=0):
++    if value is None:
++        return int(default)
++    if isinstance(value, bool) or not isinstance(value, int):
++        raise ValueError("sheet_index_must_be_integer")
++    if value < 0 or value > MAX_SHEETS - 1:
++        raise ValueError("sheet_index_out_of_range_0_%d:%s" % (MAX_SHEETS - 1, value))
++    return int(value)
++
++
++def normalize_max_views(value, default=DEFAULT_MAX_VIEWS):
++    if value is None:
++        return int(default)
++    if isinstance(value, bool) or not isinstance(value, int):
++        raise ValueError("max_views_must_be_integer")
++    if value < 1 or value > MAX_VIEWS_HARD:
++        raise ValueError("max_views_out_of_range_1_%d:%s" % (MAX_VIEWS_HARD, value))
++    return int(value)
++
++
++def stamp_diff(expected, actual):
++    """Compare requested cell values against what the document actually holds."""
++    missing = []
++    mismatched = []
++    for number in sorted(expected):
++        text = expected[number]
++        if number not in actual:
++            missing.append(number)
++            continue
++        if actual[number] != text:
++            mismatched.append(
++                {"cell": number, "expected": text, "actual": actual[number]}
++            )
++    return {
++        "missing": missing,
++        "mismatched": mismatched,
++        "ok": not missing and not mismatched,
++    }
++
++
++def non_empty_cells(values):
++    return sorted(number for number, text in values.items() if str(text or "").strip())
++
++
++# --------------------------------------------------------------------------
++# Automation access
++# --------------------------------------------------------------------------
++
++
++def _attr(obj, name, default=None):
++    """Read an Automation member. Never call it: COM methods need arguments."""
++    try:
++        return getattr(obj, name)
++    except Exception:
++        return default
++
++
++def _number(value):
++    try:
++        result = float(value)
++    except Exception:
++        return None
++    if result != result or result in (float("inf"), float("-inf")):
++        return None
++    return result
++
++
++def _document(session):
++    doc = session.active()
++    if doc is None:
++        raise RuntimeError("no_active_document")
++    return doc
++
++
++def _layout_sheets(doc):
++    sheets = _attr(doc, "LayoutSheets")
++    if sheets is None:
++        raise RuntimeError(
++            "active_document_has_no_layout_sheets_not_a_2d_document:document_type="
++            + str(_attr(doc, "DocumentType", "") or "")
++        )
++    return sheets
++
++
++def _sheet(sheets, index):
++    count = int(_attr(sheets, "Count", 0) or 0)
++    if count <= 0:
++        raise RuntimeError("document_has_no_layout_sheets")
++    if index >= count:
++        raise RuntimeError("sheet_index_out_of_range:%d_of_%d" % (index, count))
++    return sheets.Item(int(index))
++
++
++def _format_row(sheet):
++    fmt = _attr(sheet, "Format")
++    row = {
++        "index": None,
++        "name": str(_attr(sheet, "Name", "") or ""),
++        "width": None,
++        "height": None,
++        "format": None,
++    }
++    if fmt is not None:
++        row["width"] = _number(_attr(fmt, "Width"))
++        row["height"] = _number(_attr(fmt, "Height"))
++        row["format"] = _attr(fmt, "Format")
++    return row
++
++
++def sheet_rows(doc):
++    sheets = _layout_sheets(doc)
++    count = int(_attr(sheets, "Count", 0) or 0)
++    rows = []
++    for index in range(min(count, MAX_SHEETS)):
++        row = _format_row(sheets.Item(index))
++        row["index"] = index
++        rows.append(row)
++    return rows, count
++
++
++def _views(doc, max_views):
++    """Read the view inventory. Degrades honestly instead of returning []."""
++    attempts = []
++    try:
++        import win32com.client as wc
++    except Exception as exc:
++        return [], {
++            "confirmed": False,
++            "access": None,
++            "attempts": ["import:win32com.client"],
++            "error": type(exc).__name__ + ":" + str(exc),
++        }
++
++    try:
++        flat = wc.CastTo(doc, "IKompasDocument2D")
++    except Exception as exc:
++        return [], {
++            "confirmed": False,
++            "access": None,
++            "attempts": ["CastTo:IKompasDocument2D"],
++            "error": type(exc).__name__ + ":" + str(exc),
++        }
++
++    for path in ("ViewsAndLayersManager.Views", "Views"):
++        node = flat
++        ok = True
++        for part in path.split("."):
++            node = _attr(node, part)
++            if node is None:
++                ok = False
++                break
++        if not ok:
++            attempts.append(path)
++            continue
++        try:
++            count = int(_attr(node, "Count", 0) or 0)
++        except Exception as exc:
++            attempts.append(path + ".Count")
++            continue
++        rows = []
++        for index in range(min(count, max_views)):
++            try:
++                view = node.Item(index)
++            except Exception:
++                continue
++            rows.append(
++                {
++                    "index": index,
++                    "name": str(_attr(view, "Name", "") or ""),
++                    "scale": _number(_attr(view, "Scale")),
++                    "projection_type": _attr(view, "ProjectionType"),
++                    "state": _attr(view, "State"),
++                }
++            )
++        return rows, {
++            "confirmed": True,
++            "access": path,
++            "attempts": attempts,
++            "view_count": count,
++            "error": None,
++        }
++
++    return [], {
++        "confirmed": False,
++        "access": None,
++        "attempts": attempts,
++        "error": "no_view_collection_resolved",
++    }
++
++
++def _stamp(sheet):
++    stamp = _attr(sheet, "Stamp")
++    if stamp is None:
++        raise RuntimeError("sheet_has_no_stamp")
++    return stamp
++
++
++def _read_cells(stamp, numbers):
++    values = {}
++    errors = []
++    for number in numbers:
++        try:
++            cell = stamp.Text(int(number))
++            values[number] = "" if cell is None else str(_attr(cell, "Str", "") or "")
++        except Exception as exc:
++            errors.append(
++                {"cell": number, "error": type(exc).__name__ + ":" + str(exc)}
++            )
++    return values, errors
++
++
++def _write_cells(stamp, writes):
++    applied = {}
++    for number in sorted(writes):
++        cell = stamp.Text(int(number))
++        cell.Str = writes[number]
++        applied[number] = writes[number]
++    return applied
++
++
++# --------------------------------------------------------------------------
++# read operations
++# --------------------------------------------------------------------------
++
++
++def drawing_info(session, sheet_index=None, max_views=DEFAULT_MAX_VIEWS, include_views=True):
++    doc = _document(session)
++    index = normalize_sheet_index(sheet_index)
++    rows, count = sheet_rows(doc)
++    if index >= count:
++        raise RuntimeError("sheet_index_out_of_range:%d_of_%d" % (index, count))
++    result = {
++        "requested_action": {
++            "sheet_index": index,
++            "max_views": normalize_max_views(max_views),
++            "include_views": bool(include_views),
++            "read_only": True,
++        },
++        "active_document": str(session.active_path() or ""),
++        "document_type": str(_attr(doc, "DocumentType", "") or ""),
++        "sheet_count": count,
++        "sheets": rows,
++        "requested_sheet_index": index,
++        "interface": {"confirmed": True, "access": "IKompasDocument.LayoutSheets"},
++        "read_only": True,
++        "saved": False,
++        "save_required": False,
++    }
++    if include_views:
++        view_rows, view_meta = _views(doc, normalize_max_views(max_views))
++        result["views"] = view_rows
++        result["views_interface"] = view_meta
++    return result
++
++
++def stamp_read(session, cells=None, sheet_index=None):
++    doc = _document(session)
++    index = normalize_sheet_index(sheet_index)
++    sheets = _layout_sheets(doc)
++    sheet = _sheet(sheets, index)
++    stamp = _stamp(sheet)
++    wanted = normalize_cells(cells)
++    values, errors = _read_cells(stamp, wanted)
++    return {
++        "requested_action": {
++            "cells": wanted,
++            "sheet_index": index,
++            "read_only": True,
++        },
++        "active_document": str(session.active_path() or ""),
++        "document_type": str(_attr(doc, "DocumentType", "") or ""),
++        "sheet_index": index,
++        "sheet_count": int(_attr(sheets, "Count", 0) or 0),
++        "requested_cell_count": len(wanted),
++        "read_cell_count": len(values),
++        "non_empty_cell_count": len(non_empty_cells(values)),
++        "non_empty_cells": non_empty_cells(values),
++        "cells": {str(number): values[number] for number in sorted(values)},
++        "read_errors": errors,
++        "interface": {"confirmed": True, "access": "ILayoutSheet.Stamp.Text(n).Str"},
++        "limits": [
++            "Cell numbering depends on the title block style of this document; this tool reports numbers, it does not name them.",
++            "An empty cell is reported as an empty string - it does not prove the cell does not exist in the block.",
++        ],
++        "read_only": True,
++        "saved": False,
++        "save_required": False,
++    }
++
++
++# --------------------------------------------------------------------------
++# write operation
++# --------------------------------------------------------------------------
++
++
++def _rollback(root, row, target):
++    if row is None:
++        return False
++    try:
++        checkpoint_store.restore(root, row["id"], expected_target=target)
++        return True
++    except Exception:
++        return False
++
++
++def stamp_write(session, cells, sheet_index=None, use_checkpoint=True):
++    writes = normalize_stamp_writes(cells)
++    index = normalize_sheet_index(sheet_index)
++
++    app = session.connect()
++    doc = session.active()
++    if doc is None:
++        raise RuntimeError("no_active_document")
++    raw_target = str(session.active_path() or "")
++    if not raw_target:
++        raise RuntimeError("stamp_write_requires_a_saved_active_document")
++    target = Path(raw_target).resolve()
++    if not target.is_file():
++        raise RuntimeError("stamp_write_target_is_not_a_file:" + str(target))
++    if "_agent_copy" not in target.stem.lower():
++        raise RuntimeError("active_document_not_safe_AGENT_COPY:" + str(target))
++    assert_writable(target, session.root)
++
++    root = Path(session.root)
++    snapshot_row = None
++    if use_checkpoint:
++        snapshot_row = checkpoint_store.create(root, target, action="stamp.write")
++    before_hash = _sha256(target)
++
++    sheets = _layout_sheets(doc)
++    sheet = _sheet(sheets, index)
++    stamp = _stamp(sheet)
++    before_values, _ = _read_cells(stamp, sorted(writes))
++
++    reopened = None
++    saved = False
++    closed_active = False
++    try:
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError(
++                "active_document_is_not_the_write_target:"
++                + str(session.active_path() or "")
++            )
++        _write_cells(stamp, writes)
++        try:
++            update_return = stamp.Update()
++        except Exception:
++            update_return = None
++
++        after_write, _ = _read_cells(stamp, sorted(writes))
++        diff_before = stamp_diff(writes, after_write)
++        if not diff_before["ok"]:
++            raise RuntimeError(
++                "stamp_values_readback_mismatch_before_save:"
++                + json.dumps(diff_before, ensure_ascii=False)
++            )
++
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError(
++                "active_document_changed_before_Save:" + str(session.active_path() or "")
++            )
++        save_result = doc.Save()
++        if save_result is False:
++            raise RuntimeError("IKompasDocument.Save_returned_false")
++        saved = True
++
++        _close(doc)
++        closed_active = True
++        reopened = _open_exact(app, target)
++        if _norm(session.active_path() or "") != _norm(target):
++            raise RuntimeError(
++                "reopened_stamp_target_not_exact_active:"
++                + str(session.active_path() or "")
++            )
++        reopened_sheets = _layout_sheets(reopened)
++        reopened_sheet = _sheet(reopened_sheets, index)
++        after_values, _ = _read_cells(_stamp(reopened_sheet), sorted(writes))
++        diff_after = stamp_diff(writes, after_values)
++        if not diff_after["ok"]:
++            raise RuntimeError(
++                "stamp_values_readback_mismatch_after_reopen:"
++                + json.dumps(diff_after, ensure_ascii=False)
++            )
++        after_hash = _sha256(target)
++
++        return {
++            "requested_action": {
++                "cells": {str(k): writes[k] for k in sorted(writes)},
++                "sheet_index": index,
++            },
++            "active_document": str(session.active_path() or ""),
++            "target": str(target),
++            "before": {
++                "cells": {str(k): before_values.get(k) for k in sorted(writes)},
++                "sha256": before_hash,
++            },
++            "after": {
++                "cells": {str(k): after_values.get(k) for k in sorted(writes)},
++                "sha256": after_hash,
++            },
++            "changed": before_hash != after_hash,
++            "saved": saved,
++            "save_required": False,
++            "checkpoint_id": (snapshot_row or {}).get("id"),
++            "warnings": (
++                []
++                if update_return is not False
++                else [
++                    "IStamp.Update returned false; accepted only because every written cell read back correctly after Save, Close and Reopen."
++                ]
++            ),
++            "verification": {
++                "native_api": "ILayoutSheet.Stamp.Text(n).Str + IStamp.Update",
++                "exact_active_path_before_write": True,
++                "exact_active_path_before_save": True,
++                "readback_before_save_pass": True,
++                "readback_after_reopen_pass": True,
++                "save_close_reopen_verified": True,
++                "checkpoint_created": snapshot_row is not None,
++                "write_count": len(writes),
++                "sheet_index": index,
++                "stamp_update_return": update_return,
++            },
++            "actual": {str(k): after_values.get(k) for k in sorted(writes)},
++            "readback": {str(k): after_values.get(k) for k in sorted(writes)},
++            "limits": [
++                "Cell numbers are not named by the bridge: the style of the title block decides what cell 1 means.",
++                "This writes an existing title block; it does not change the block style or add sheets.",
++            ],
++        }
++
++    except Exception as exc:
++        if reopened is not None:
++            try:
++                _close(reopened)
++            except Exception:
++                pass
++        if not closed_active:
++            try:
++                _close(doc)
++            except Exception:
++                pass
++        rolled_back = _rollback(root, snapshot_row, target)
++        try:
++            _open_exact(app, target)
++        except Exception:
++            pass
++        raise RuntimeError(
++            "stamp_write_failed:%s:rolled_back=%s:checkpoint=%s"
++            % (exc, rolled_back, (snapshot_row or {}).get("id"))
++        ) from None
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 9857d40..ffd1d81 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -23,6 +23,8 @@ from artifact_check import artifact_check
+ from dialogs import classify, describe_policy, dismiss_plan, summarize
+ from version_matrix import classify_version
+ from export_tools import export_file, manage_checkpoints
++from drawing_tools import drawing_info, stamp_read, stamp_write
++from spec_tools import specification_read
+ from view_tools import set_view, fit, rotate, visibility, projections
+ 
+ 
+@@ -165,6 +167,10 @@ def check_artifact(s, p): return ok("artifact.check", artifact_check(s.root, p["
+ 
+ def export_document(s, p): return ok("export.file", export_file(s, p["relative_path"], p["format"], p.get("apply", False)))
+ def checkpoints(s, p): return ok("checkpoint.manage", manage_checkpoints(s.root, p))
++def drawing_information(s, p): return ok("drawing.info", drawing_info(s, p.get("sheet_index"), p.get("max_views", 50), p.get("include_views", True)))
++def stamp_information(s, p): return ok("stamp.read", stamp_read(s, p.get("cells"), p.get("sheet_index")))
++def stamp_update(s, p): return ok("stamp.write", stamp_write(s, p["cells"], p.get("sheet_index"), p.get("checkpoint", True)))
++def specification_report(s, p): return ok("specification.read", specification_read(s, p.get("max_depth", 8)))
+ 
+ 
+ def dialogs_watch(s, p):
+@@ -298,6 +304,10 @@ registry = {
+     "artifact.check": check_artifact,
+     "export.file": export_document,
+     "checkpoint.manage": checkpoints,
++    "drawing.info": drawing_information,
++    "stamp.read": stamp_information,
++    "stamp.write": stamp_update,
++    "specification.read": specification_report,
+     "dialogs.watch": dialogs_watch,
+     "version.check": version_check,
+     "model.bbox": bbox,
+diff --git b/src/spec_tools.py b/src/spec_tools.py
+new file mode 100644
+index 0000000..a3dfb94
+--- /dev/null
++++ b/src/spec_tools.py
+@@ -0,0 +1,208 @@
++"""Specification reporting.
++
++The bridge does not invent a native .spw object model: reading a real
++specification document (ISpcObject and friends) cannot be verified without a live
++KOMPAS install, and a guessed object model is worse than an honest refusal.
++
++What this module does instead: take the *native* assembly occurrence data
++(API7 IPart7 tree with CreateSpcObjects / InheritExclude / Standard / IsBillet),
++derive a GOST section layout from it, and label the result as derived. Section
++assignment is pure logic and fully testable.
++"""
++
++from __future__ import annotations
++
++from collections import OrderedDict
++
++SECTION_ORDER = (
++    "documentation",
++    "assembly_units",
++    "details",
++    "standard_products",
++    "other_products",
++    "materials",
++    "kits",
++)
++
++SECTION_TITLES = {
++    "documentation": "Документация",
++    "assembly_units": "Сборочные единицы",
++    "details": "Детали",
++    "standard_products": "Стандартные изделия",
++    "other_products": "Прочие изделия",
++    "materials": "Материалы",
++    "kits": "Комплекты",
++}
++
++
++def mark_children(rows):
++    """A component is an assembly unit when another occurrence path extends it."""
++    paths = {tuple(row.get("selector_path") or ()) for row in rows}
++    marked = []
++    for row in rows:
++        path = tuple(row.get("selector_path") or ())
++        depth = len(path)
++        has_children = any(
++            len(other) == depth + 1 and other[:depth] == path for other in paths
++        )
++        item = dict(row)
++        item["has_children"] = has_children
++        marked.append(item)
++    return marked
++
++
++def classify(row):
++    """Assign a GOST section from native flags. Order matters."""
++    if row.get("standard_component") is True:
++        return "standard_products"
++    if row.get("is_billet") is True:
++        return "materials"
++    if row.get("has_children"):
++        return "assembly_units"
++    return "details"
++
++
++def _group_key(row):
++    return (
++        str(row.get("source_file") or "").casefold(),
++        str(row.get("designation") or ""),
++        str(row.get("name") or ""),
++        str(row.get("material") or ""),
++    )
++
++
++def group_rows(rows):
++    """Group eligible occurrences into GOST sections with derived positions."""
++    eligible = [row for row in rows if row.get("specification_eligible")]
++    buckets = OrderedDict((key, OrderedDict()) for key in SECTION_ORDER)
++    unclassified = []
++
++    for row in eligible:
++        section = classify(row)
++        if section not in buckets:
++            unclassified.append(row.get("selector_path"))
++            continue
++        key = _group_key(row)
++        item = buckets[section].get(key)
++        if item is None:
++            item = {
++                "designation": str(row.get("designation") or ""),
++                "name": str(row.get("name") or ""),
++                "source_file": str(row.get("source_file") or ""),
++                "material": str(row.get("material") or ""),
++                "standard_component": row.get("standard_component"),
++                "unit_mass": row.get("mass"),
++                "quantity": 0,
++                "selector_paths": [],
++            }
++            buckets[section][key] = item
++        item["quantity"] += 1
++        item["selector_paths"].append(row.get("selector_path"))
++
++    sections = []
++    for key in SECTION_ORDER:
++        items = []
++        for position, item in enumerate(
++            sorted(
++                buckets[key].values(),
++                key=lambda entry: (str(entry["designation"]), str(entry["name"])),
++            ),
++            start=1,
++        ):
++            entry = dict(item)
++            entry["position"] = position
++            entry["section"] = key
++            unit_mass = entry.get("unit_mass")
++            try:
++                entry["total_mass"] = (
++                    round(float(unit_mass) * int(entry["quantity"]), 6)
++                    if unit_mass is not None
++                    else None
++                )
++            except Exception:
++                entry["total_mass"] = None
++            items.append(entry)
++        if not items:
++            continue
++        sections.append(
++            {
++                "key": key,
++                "title": SECTION_TITLES[key],
++                "item_count": len(items),
++                "total_quantity": sum(int(item["quantity"]) for item in items),
++                "items": items,
++            }
++        )
++
++    return {
++        "sections": sections,
++        "section_count": len(sections),
++        "item_count": sum(len(section["items"]) for section in sections),
++        "total_quantity": sum(section["total_quantity"] for section in sections),
++        "unclassified_count": len(unclassified),
++        "unclassified_selector_paths": unclassified,
++    }
++
++
++def specification_read(session, max_depth=8):
++    from bom_tools import bom_read
++
++    depth = int(max_depth)
++    if depth < 1 or depth > 15:
++        raise ValueError("max_depth_must_be_between_1_and_15")
++
++    data = bom_read(session, max_depth=depth)
++    rows = mark_children(data.get("occurrences") or [])
++    grouped = group_rows(rows)
++
++    eligible = int(data.get("eligible_occurrence_count") or 0)
++    derived_quantity = int(grouped["total_quantity"])
++    cross_check_ok = derived_quantity == eligible
++
++    return {
++        "requested_action": {"max_depth": depth, "read_only": True},
++        "active_document": str(session.active_path() or ""),
++        "target": data.get("target") or data.get("active_document") or "",
++        "source": "derived_from_native_assembly_tree",
++        "occurrence_count": int(data.get("occurrence_count") or 0),
++        "eligible_occurrence_count": eligible,
++        "excluded_occurrence_count": int(data.get("excluded_occurrence_count") or 0),
++        "section_count": grouped["section_count"],
++        "item_count": grouped["item_count"],
++        "total_quantity": derived_quantity,
++        "sections": grouped["sections"],
++        "native_specification_descriptions": data.get(
++            "native_specification_descriptions"
++        ),
++        "verification": {
++            "native_assembly_tree": "API7 IPart7.Parts recursion",
++            "native_membership_switch": "IPart7.CreateSpcObjects",
++            "native_exclusion_switch": "IPart7.InheritExclude",
++            "native_standard_flag": "IPart7.Standard",
++            "native_billet_flag": "IPart7.IsBillet",
++            "quantity_is_exact_occurrence_count": True,
++            "cross_check_derived_quantity_equals_eligible": cross_check_ok,
++            "read_only": True,
++        },
++        "cross_check": {
++            "derived_quantity": derived_quantity,
++            "eligible_occurrence_count": eligible,
++            "ok": cross_check_ok,
++        },
++        "warnings": (
++            []
++            if cross_check_ok
++            else [
++                "Derived quantity does not equal the eligible occurrence count; treat the section layout as unreliable and inspect the source tree."
++            ]
++        ),
++        "limits": [
++            "Section assignment is derived from native flags, not read from a specification document: Standard -> standard products, IsBillet -> materials, a component with children -> assembly units, otherwise details.",
++            "Positions are numbered by the bridge inside each section; they are not native specification positions.",
++            "A real .spw specification document is not read or created here - the native specification object model is not verified on any install the bridge was tested against.",
++            "Documentation and Kits sections cannot be derived from the assembly tree and are therefore never filled.",
++        ],
++        "read_only": True,
++        "saved": False,
++        "save_required": False,
++    }
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index 5896f2c..bee4f3a 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,41 +6,47 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/8] Python compileall"
++Write-Host "[1/9] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/8] MCP stdio contract"
++Write-Host "[2/9] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/8] MCP file-routing + image attachment contract"
++Write-Host "[3/9] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/8] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Write-Host "[4/9] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 1 tests failed" }
+-Write-Host "[5/8] Wave 2: assembly mates, artifact verification"
++Write-Host "[5/9] Wave 2: assembly mates, artifact verification"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave2.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 2 tests failed" }
+-Write-Host "[6/8] Wave 3: modal dialog watchdog, version support matrix"
++Write-Host "[6/9] Wave 3: modal dialog watchdog, version support matrix"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave3.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 3 tests failed" }
+-Write-Host "[7/8] Wave 4: verified export, checkpoints"
++Write-Host "[7/9] Wave 4: verified export, checkpoints"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave4.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 4 tests failed" }
+-Write-Host "[8/8] Required files"
+-$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\checkpoint.py","src\export_tools.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\test_wave4.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[8/9] Wave 5: drawings, stamp, specification"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave5.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 5 tests failed" }
++Write-Host "[9/9] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\checkpoint.py","src\export_tools.py","src\drawing_tools.py","src\spec_tools.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\test_wave4.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index c4fb77f..4378298 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 42, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 46, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 004b14d..2726afe 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -321,7 +321,7 @@ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 42)
++        self.assertEqual(len(tools_catalog.TOOLS), 46)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index a490b57..f58a621 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -315,7 +315,7 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ class TestCatalogWave3(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 42)
++        self.assertEqual(len(tools_catalog.TOOLS), 46)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index fe08191..b5abb46 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -317,7 +317,7 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ class TestCatalogWave4(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 42)
++        self.assertEqual(len(tools_catalog.TOOLS), 46)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git b/tests/test_wave5.py b/tests/test_wave5.py
+new file mode 100644
+index 0000000..5bcbedc
+--- /dev/null
++++ b/tests/test_wave5.py
+@@ -0,0 +1,435 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 5»: 2D-документы (листы, штамп) и спецификация.
++
++Все тесты работают без КОМПАСа, без COM и без сети. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave5.py" -v
++
++Что проверяется по существу:
++
++* мост не выдумывает названия ячеек штампа: нумерация зависит от стиля
++  основной надписи, поэтому инструмент возвращает номера и значения;
++* запись в штамп отклоняет управляющие символы, слишком длинный текст и
++  превышение лимита ячеек - до всякого обращения к КОМПАСу;
++* чтение не «угадывает» интерфейс: если коллекция видов не нашлась, в ответе
++  честно стоит `confirmed: false`, а не пустой список;
++* разделы спецификации выводятся из нативных признаков: Standard ->
++  стандартные изделия, IsBillet -> материалы, наличие детей -> сборочная
++  единица. Классификация - чистая функция и проверяется целиком;
++* производное количество обязано совпасть с числом подходящих вхождений,
++  иначе ответ помечен как недостоверный.
++"""
++from __future__ import annotations
++
++import sys
++import unittest
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import drawing_tools  # noqa: E402
++import spec_tools     # noqa: E402
++import tools_catalog  # noqa: E402
++
++
++class FakeStampCell:
++    def __init__(self, value=""):
++        self.Str = value
++
++
++class FakeStamp:
++    """Минимальная модель основной надписи: ячейки 1..N, часть - недоступна."""
++
++    def __init__(self, values=None, broken=()):
++        self._values = dict(values or {})
++        self._broken = set(broken)
++        self.update_calls = 0
++
++    def Text(self, number):
++        if int(number) in self._broken:
++            raise AttributeError("no such cell")
++        return FakeStampCell(str(self._values.get(int(number), "")))
++
++    def Update(self):
++        self.update_calls += 1
++        return True
++
++
++class FakeFormat:
++    def __init__(self, width=210.0, height=297.0, fmt=4):
++        self.Width = width
++        self.Height = height
++        self.Format = fmt
++
++
++class FakeSheet:
++    def __init__(self, name="Sheet", stamp=None, fmt=None):
++        self.Name = name
++        self.Format = fmt or FakeFormat()
++        self.Stamp = stamp if stamp is not None else FakeStamp()
++
++
++class FakeSheets:
++    def __init__(self, sheets):
++        self._sheets = sheets
++        self.Count = len(sheets)
++
++    def Item(self, index):
++        return self._sheets[int(index)]
++
++
++class FakeDocument:
++    def __init__(self, sheets=None, document_type=1):
++        self.LayoutSheets = FakeSheets(sheets or [])
++        self.DocumentType = document_type
++
++    def Save(self):
++        return True
++
++    def Close(self, *args):
++        return True
++
++
++class FakeDocument3D:
++    """3D-документ: LayoutSheets отсутствует, как и в КОМПАСе."""
++
++    def __init__(self):
++        self.DocumentType = 5
++
++
++class FakeSession:
++    def __init__(self, document, path=""):
++        self.doc = document
++        self.path = path
++        self.root = REPO_ROOT
++
++    def active(self):
++        return self.doc
++
++    def active_path(self):
++        return self.path
++
++
++class TestCellValidation(unittest.TestCase):
++    """Границы ячеек - первая линия защиты до всякого COM-вызова."""
++
++    def test_cell_number_must_be_integer(self):
++        for bad in ("1", 1.0, None, True):
++            with self.assertRaises(ValueError):
++                drawing_tools.normalize_cell_number(bad)
++
++    def test_cell_number_range(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_cell_number(0)
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_cell_number(201)
++        self.assertEqual(drawing_tools.normalize_cell_number(1), 1)
++        self.assertEqual(drawing_tools.normalize_cell_number(200), 200)
++
++    def test_omitted_cells_read_the_first_sixty(self):
++        cells = drawing_tools.normalize_cells(None)
++        self.assertEqual(cells[0], 1)
++        self.assertEqual(cells[-1], drawing_tools.DEFAULT_READ_CELLS)
++
++    def test_integer_argument_means_a_range(self):
++        self.assertEqual(drawing_tools.normalize_cells(5), [1, 2, 3, 4, 5])
++
++    def test_cells_are_deduplicated_and_sorted(self):
++        self.assertEqual(drawing_tools.normalize_cells([5, 1, 3, 1]), [1, 3, 5])
++
++    def test_empty_cell_list_is_rejected(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_cells([])
++
++    def test_too_many_cells_is_rejected(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_cells(list(range(1, 203)))
++
++
++class TestStampWriteValidation(unittest.TestCase):
++    def test_writes_accept_integer_and_numeric_string_keys(self):
++        writes = drawing_tools.normalize_stamp_writes({"1": "A", 2: "B"})
++        self.assertEqual(writes, {1: "A", 2: "B"})
++
++    def test_empty_write_set_is_rejected(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_stamp_writes({})
++
++    def test_more_than_twenty_cells_is_rejected(self):
++        cells = {str(index): "text" for index in range(1, 22)}
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_stamp_writes(cells)
++
++    def test_non_numeric_key_is_rejected(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_stamp_writes({"designation": "value"})
++
++    def test_text_must_be_a_string(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_stamp_writes({1: 42})
++
++    def test_control_characters_are_rejected(self):
++        for bad in ("line\nbreak", "tab\there", "bell\x07"):
++            with self.assertRaises(ValueError):
++                drawing_tools.normalize_stamp_writes({1: bad})
++
++    def test_text_length_is_bounded(self):
++        with self.assertRaises(ValueError):
++            drawing_tools.normalize_stamp_writes({1: "x" * 256})
++        self.assertEqual(
++            drawing_tools.normalize_stamp_writes({1: "x" * 255}), {1: "x" * 255}
++        )
++
++
++class TestStampDiff(unittest.TestCase):
++    def test_matching_values_pass(self):
++        diff = drawing_tools.stamp_diff({1: "A", 2: "B"}, {1: "A", 2: "B"})
++        self.assertTrue(diff["ok"])
++        self.assertEqual(diff["missing"], [])
++        self.assertEqual(diff["mismatched"], [])
++
++    def test_missing_cell_is_reported(self):
++        diff = drawing_tools.stamp_diff({7: "A"}, {1: "A"})
++        self.assertFalse(diff["ok"])
++        self.assertEqual(diff["missing"], [7])
++
++    def test_mismatch_carries_expected_and_actual(self):
++        diff = drawing_tools.stamp_diff({1: "A"}, {1: "B"})
++        self.assertFalse(diff["ok"])
++        self.assertEqual(
++            diff["mismatched"], [{"cell": 1, "expected": "A", "actual": "B"}]
++        )
++
++    def test_extra_cells_in_the_document_are_not_a_failure(self):
++        diff = drawing_tools.stamp_diff({1: "A"}, {1: "A", 9: "Z"})
++        self.assertTrue(diff["ok"])
++
++
++class TestSheetAndViewInventory(unittest.TestCase):
++    def test_sheet_inventory_is_reported(self):
++        doc = FakeDocument([FakeSheet("First"), FakeSheet("Second")])
++        session = FakeSession(doc, "C:/work/drawing_AGENT_COPY.cdw")
++        result = drawing_tools.drawing_info(session, include_views=False)
++        self.assertEqual(result["sheet_count"], 2)
++        self.assertEqual([row["name"] for row in result["sheets"]], ["First", "Second"])
++        self.assertTrue(result["interface"]["confirmed"])
++        self.assertTrue(result["read_only"])
++
++    def test_three_d_document_is_refused_explicitly(self):
++        session = FakeSession(FakeDocument3D(), "C:/work/part_AGENT_COPY.m3d")
++        with self.assertRaises(RuntimeError) as ctx:
++            drawing_tools.drawing_info(session)
++        self.assertIn("no_layout_sheets", str(ctx.exception))
++
++    def test_sheet_index_out_of_range_is_refused(self):
++        doc = FakeDocument([FakeSheet("Only")])
++        session = FakeSession(doc, "C:/work/drawing_AGENT_COPY.cdw")
++        with self.assertRaises(RuntimeError):
++            drawing_tools.drawing_info(session, sheet_index=3, include_views=False)
++
++    def test_missing_view_collection_is_not_an_empty_list(self):
++        """Пустой список читается как «видов нет»; это другой ответ."""
++        doc = FakeDocument([FakeSheet("First")])
++        session = FakeSession(doc, "C:/work/drawing_AGENT_COPY.cdw")
++        result = drawing_tools.drawing_info(session)
++        meta = result["views_interface"]
++        self.assertFalse(meta["confirmed"])
++        self.assertIsNone(meta["access"])
++        self.assertTrue(meta["attempts"])
++
++
++class TestStampRead(unittest.TestCase):
++    def setUp(self):
++        self.stamp = FakeStamp({1: "Наименование", 2: "АБВГ.123456.001", 5: "1.2"})
++        self.doc = FakeDocument([FakeSheet("First", stamp=self.stamp)])
++        self.session = FakeSession(self.doc, "C:/work/drawing_AGENT_COPY.cdw")
++
++    def test_read_returns_numbers_and_values(self):
++        result = drawing_tools.stamp_read(self.session, cells=[1, 2, 3])
++        self.assertEqual(result["cells"]["1"], "Наименование")
++        self.assertEqual(result["cells"]["2"], "АБВГ.123456.001")
++        self.assertEqual(result["cells"]["3"], "")
++
++    def test_empty_cell_is_not_reported_as_non_empty(self):
++        result = drawing_tools.stamp_read(self.session, cells=[1, 3])
++        self.assertEqual(result["non_empty_cells"], [1])
++        self.assertEqual(result["non_empty_cell_count"], 1)
++
++    def test_unreadable_cells_are_reported_not_swallowed(self):
++        stamp = FakeStamp({1: "A"}, broken=(4,))
++        doc = FakeDocument([FakeSheet("First", stamp=stamp)])
++        session = FakeSession(doc, "C:/work/drawing_AGENT_COPY.cdw")
++        result = drawing_tools.stamp_read(session, cells=[1, 4])
++        self.assertEqual(result["read_cell_count"], 1)
++        self.assertEqual(len(result["read_errors"]), 1)
++        self.assertEqual(result["read_errors"][0]["cell"], 4)
++
++    def test_limits_are_stated(self):
++        result = drawing_tools.stamp_read(self.session, cells=[1])
++        self.assertTrue(any("numbering" in item for item in result["limits"]))
++
++
++class TestSpecificationClassification(unittest.TestCase):
++    def test_children_are_derived_from_paths(self):
++        rows = [
++            {"selector_path": [0]},
++            {"selector_path": [0, 1]},
++            {"selector_path": [1]},
++        ]
++        marked = spec_tools.mark_children(rows)
++        flags = {tuple(row["selector_path"]): row["has_children"] for row in marked}
++        self.assertTrue(flags[(0,)])
++        self.assertFalse(flags[(0, 1)])
++        self.assertFalse(flags[(1,)])
++
++    def test_standard_component_goes_to_standard_products(self):
++        self.assertEqual(
++            spec_tools.classify({"standard_component": True, "has_children": False}),
++            "standard_products",
++        )
++
++    def test_billet_goes_to_materials_before_children(self):
++        self.assertEqual(
++            spec_tools.classify(
++                {"standard_component": False, "is_billet": True, "has_children": True}
++            ),
++            "materials",
++        )
++
++    def test_component_with_children_is_an_assembly_unit(self):
++        self.assertEqual(
++            spec_tools.classify(
++                {"standard_component": False, "is_billet": False, "has_children": True}
++            ),
++            "assembly_units",
++        )
++
++    def test_plain_leaf_is_a_detail(self):
++        self.assertEqual(
++            spec_tools.classify(
++                {"standard_component": False, "is_billet": False, "has_children": False}
++            ),
++            "details",
++        )
++
++    def _occurrence(self, path, **extra):
++        row = {
++            "selector_path": path,
++            "designation": "АБВГ.%06d" % path[-1],
++            "name": "Деталь %d" % path[-1],
++            "source_file": "C:/work/part_%d.m3d" % path[-1],
++            "material": "Ст3",
++            "mass": 1.5,
++            "standard_component": False,
++            "is_billet": False,
++            "specification_eligible": True,
++        }
++        row.update(extra)
++        return row
++
++    def test_grouping_builds_sections_with_positions(self):
++        rows = [
++            self._occurrence([0]),
++            self._occurrence([1]),
++            self._occurrence([0, 0]),
++            self._occurrence([2], standard_component=True),
++            self._occurrence([3], is_billet=True),
++        ]
++        grouped = spec_tools.group_rows(spec_tools.mark_children(rows))
++        keys = [section["key"] for section in grouped["sections"]]
++        self.assertEqual(
++            keys, ["assembly_units", "details", "standard_products", "materials"]
++        )
++        by_key = {section["key"]: section for section in grouped["sections"]}
++        self.assertEqual(by_key["assembly_units"]["items"][0]["position"], 1)
++        self.assertEqual(by_key["details"]["total_quantity"], 2)
++        self.assertEqual(by_key["assembly_units"]["total_quantity"], 1)
++
++    def test_occurrences_are_grouped_and_quantities_added(self):
++        rows = [
++            self._occurrence(
++                [0], source_file="C:/work/same.m3d", designation="X", name="Одинаковая"
++            ),
++            self._occurrence(
++                [1], source_file="C:/work/same.m3d", designation="X", name="Одинаковая"
++            ),
++        ]
++        grouped = spec_tools.group_rows(spec_tools.mark_children(rows))
++        details = grouped["sections"][0]
++        self.assertEqual(details["item_count"], 1)
++        self.assertEqual(details["items"][0]["quantity"], 2)
++        self.assertAlmostEqual(details["items"][0]["total_mass"], 3.0)
++
++    def test_ineligible_occurrences_are_excluded(self):
++        rows = [
++            self._occurrence([0]),
++            self._occurrence([1], specification_eligible=False),
++        ]
++        grouped = spec_tools.group_rows(spec_tools.mark_children(rows))
++        self.assertEqual(grouped["total_quantity"], 1)
++
++    def test_sections_are_in_gost_order(self):
++        rows = [
++            self._occurrence([0], is_billet=True),
++            self._occurrence([1]),
++            self._occurrence([2], standard_component=True),
++        ]
++        grouped = spec_tools.group_rows(spec_tools.mark_children(rows))
++        self.assertEqual(
++            [section["key"] for section in grouped["sections"]],
++            ["details", "standard_products", "materials"],
++        )
++
++    def test_titles_are_russian(self):
++        for key, title in spec_tools.SECTION_TITLES.items():
++            self.assertTrue(any(ord(char) > 127 for char in title), key)
++
++
++class TestCatalogSurface(unittest.TestCase):
++    def test_tool_count_is_46(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 46)
++
++    def test_new_tools_exist_and_route(self):
++        expected = {
++            "kompas_drawing_info": "drawing.info",
++            "kompas_stamp_read": "stamp.read",
++            "kompas_stamp_write": "stamp.write",
++            "kompas_specification_read": "specification.read",
++        }
++        for name, action in expected.items():
++            self.assertIn(name, tools_catalog.TOOL_INDEX)
++            self.assertEqual(tools_catalog.ACTION_MAP[name][0], action)
++
++    def test_write_tool_is_marked_destructive(self):
++        annotations = tools_catalog.TOOL_INDEX["kompas_stamp_write"]["annotations"]
++        self.assertTrue(annotations["destructiveHint"])
++        self.assertFalse(annotations["readOnlyHint"])
++
++    def test_read_tools_are_marked_read_only(self):
++        for name in ("kompas_drawing_info", "kompas_stamp_read", "kompas_specification_read"):
++            self.assertTrue(
++                tools_catalog.TOOL_INDEX[name]["annotations"]["readOnlyHint"], name
++            )
++
++    def test_stamp_write_schema_bounds_match_the_code(self):
++        """Схема не должна расходиться с валидацией."""
++        schema = tools_catalog.TOOL_INDEX["kompas_stamp_write"]["inputSchema"]
++        props = schema["properties"]["cells"]
++        self.assertEqual(props["maxProperties"], drawing_tools.MAX_STAMP_WRITES)
++        self.assertEqual(
++            props["additionalProperties"]["maxLength"], drawing_tools.MAX_TEXT_LENGTH
++        )
++
++    def test_stamp_read_schema_bounds_match_the_code(self):
++        schema = tools_catalog.TOOL_INDEX["kompas_stamp_read"]["inputSchema"]
++        cells = schema["properties"]["cells"]["items"]
++        self.assertEqual(cells["maximum"], drawing_tools.MAX_CELL_NUMBER)
++
++
++if __name__ == "__main__":
++    unittest.main()

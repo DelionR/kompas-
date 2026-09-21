@@ -1,0 +1,1757 @@
+diff --git a/VERSION.json b/VERSION.json
+index a283076..e2c125c 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 53,
++  "mcp_tool_count": 54,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -60,6 +60,7 @@
+     "kompas_cabinet_materialize_plan",
+     "kompas_cabinet_materialize_apply",
+     "kompas_cabinet_bom_reconcile",
++    "kompas_cabinet_calc",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+   ],
+diff --git b/docs/WAVE11_CHANGES.md b/docs/WAVE11_CHANGES.md
+new file mode 100644
+index 0000000..b28f882
+--- /dev/null
++++ b/docs/WAVE11_CHANGES.md
+@@ -0,0 +1,110 @@
++# Волна 11 — электрорасчёт щита
++
++**Поверхность:** 53 → 54 (`kompas_cabinet_calc`).
++**Тесты:** 395 → 455 (60 новых, `tests/test_wave11.py`).
++
++## Что добавлено
++
++`src/cabinet_calc.py` — чистые функции, без COM. Один инструмент
++`kompas_cabinet_calc` с полем `kind` на восемь видов расчёта.
++
++### Считается без таблиц (физика и арифметика)
++
++| `kind` | Что делает | Формула |
++|---|---|---|
++| `current` | ток по мощности | `I = P / (√3 · U · cos φ · η)`, для одной фазы без `√3` |
++| `voltage_drop` | потеря напряжения | `ΔU = √3 · I · (R·cos φ + X·sin φ)`, `R = ρ·L/S` |
++| `fault_current` | ток КЗ | `Iкз = U / (√3 · |Zист + Zлин|)` |
++| `derating` | поправочные коэффициенты | произведение факторов |
++
++Источник для `fault_current` задаётся тремя способами: `source_impedance_ohm`,
++`source_short_circuit_mva` или `transformer{power_mva, uk_percent}`.
++
++### Требует нормативных таблиц (иначе отказ)
++
++| `kind` | Таблица | Строки |
++|---|---|---|
++| `max_demand` | `demand_factors` | `{load_type, kc}` |
++| `cable_size` | `ampacity` | `{section_mm2, current_a}` |
++| `breaker_select` | `breakers` | `{rating_a, trip_curve, breaking_ka, ...}` |
++| `selectivity` | `trip_curves` | `{rating_a, trip_curve, points[{multiple, t_min_s, t_max_s}]}` |
++
++Таблица передаётся в поле `tables`: списком строк или как `{"rows": [...],
++"source": "..."}`. Источник возвращается в `provenance`.
++
++## Ключевое решение: отказ вместо экстраполяции
++
++Нормативных таблиц внутри модуля **нет** — это принципиально. Допустимые токи
++кабелей, каталог аппаратов и время-токовые характеристики суть нормы и каталоги
++производителей; хранить их в коде значило бы превратить отказ в невозможность.
++
++Отсюда три поведения:
++
++1. **Нет таблицы → `refusals`**, пустой `result`, а не подобранное «на глаз»
++   сечение. Пустой ответ полезнее правдоподобного: первый виден сразу.
++2. **Нет данных для критерия → `not_checked`**, а не «прошло». Если предел
++   потери напряжения не задан, сечение выбирается только по току, но ответ
++   об этом сообщает.
++3. **Ток вне характеристики → не экстраполируется.** Селективность возвращает
++   `selective: null` и причину «ток вне диапазона характеристики». Попадание
++   между узлами даёт интерполяцию, помеченную словом `interpolated` с
++   предупреждением, что характеристики логарифмические и линейная интерполяция
++   груба.
++
++Поле `verdict` повторяет логику волны 10: `computed`, `computed_with_gaps`
++(есть непроверенное) или `refused`.
++
++## Что оператор заметит
++
++- Вызов без `tables` для нормативного расчёта вернёт `ok: false` и код
++  `no_table` с названием нужной таблицы в `required_table`.
++- Таблица без `source` считается, но ответ помечает: источник нормы неизвестен,
++  результат нельзя проверить по первоисточнику.
++- Однофазная петля «фаза-нуль» без `zero_sequence_impedance_ohm` не считается
++  вовсе — это не консервативная оценка, а неизвестная величина.
++
++## Честные ограничения
++
++- **Удельное сопротивление** — физическое свойство металла при 20 °C
++  (медь 0.01754, алюминий 0.02899 Ом·мм²/м). Поправка на рабочую температуру,
++  способ прокладки и группировку вносится вызывающей стороной через `factors`.
++- **Расчёт не сверялся с расчётом проектировщика** на реальном щите. Формулы
++  стандартные, но приёмка по проекту остаётся за инженером.
++- **Кабели и аппараты не подбираются «из интернета»**: подбор идёт только по
++  переданному каталогу, что исключает выдуманные артикулы.
++- Модуль **не читает КОМПАС** и не влияет на модель: это калькулятор.
++
++## Дефекты, найденные прогоном
++
++1. `load_current` распаковывал результат `calc_current` как кортеж — любой
++   расчёт сечения по мощности, а не по току, падал с `ValueError`. Поймано
++   тестом, а не чтением кода.
++2. При задании длины без сечения (или наоборот) сопротивление линии молча
++   обнулялось, и ток КЗ получался завышенным. Теперь это отдельное
++   примечание в `notes`.
++3. В строке документации модуля проскочило `по_normе` — поправлено.
++
++Ещё три падения были на неверных ожиданиях в тестах: предел потери в 2 % на
++120 м не проходит даже 6 мм² (это отсутствие решения, а не повод «взять
++побольше»); сравнение по время-токовой характеристике при попадании в узел
++даёт интерполированное время вышестоящего аппарата, а не провал; признак
++«физическое свойство» объявлен в `LIMITS`, а не в строке документации.
++
++## Пример вызова
++
++```json
++{
++  "kind": "cable_size",
++  "power_kw": 15, "voltage_v": 380, "cos_phi": 0.9,
++  "length_m": 40, "material": "copper",
++  "drop_limit_percent": 5.0,
++  "factors": [{"name": "temperature", "value": 0.9}],
++  "tables": {"ampacity": {"source": "ПУЭ 7-е изд., табл. 1.3.4",
++                          "rows": [{"section_mm2": 1.5, "current_a": 23},
++                                   {"section_mm2": 2.5, "current_a": 30},
++                                   {"section_mm2": 4, "current_a": 41}]}}
++}
++```
++
++Ответ: `selected.section_mm2 = 2.5`, `provenance.source = "ПУЭ 7-е изд., табл.
++1.3.4"`, `verdict = computed`.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index e37a21d..731ec9c 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -113,6 +113,7 @@ TOOLS = [
+     {"name":"kompas_cabinet_materialize_plan","description":"Turn a mounting-plate layout into an ordered plan of bridge calls: create bodies, insert into the assembly, position on the DIN rail, multiply batches by linear pattern, mark with positional designations. Batches are split because kompas_component_pattern_linear accepts count 2..20. Steps reference occurrences symbolically ({from_step, field}) because the numeric component index is only known from KOMPAS after insertion. Two body sources: primitive builds a bounding block from the confirmed catalog size, fragment uses a ready *.m3d from fragment_ref. Pure planning - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"assembly_filename":{"type":"string","minLength":1},"body":{"type":"string","enum":["primitive","fragment"]},"layout":{"type":"object"},"mount":{"type":"object"},"options":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_materialize_apply","description":"Execute a materialisation plan against a live KOMPAS assembly. Requires apply=true; without it the plan is returned and nothing is executed. Steps are run in order, component indices are resolved from the response of the preceding insert, and a failure on a critical step stops execution instead of continuing on half-built geometry. Steps marked automated=false (checkpoint, verification, viewport capture) have a different call contract and are returned under deferred for the operator. Writes to the assembly.","inputSchema":{"type":"object","required":["apply"],"properties":{"apply":{"type":"boolean"},"plan":{"type":"object"},"assembly_filename":{"type":"string","minLength":1},"body":{"type":"string","enum":["primitive","fragment"]},"layout":{"type":"object"},"mount":{"type":"object"},"options":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+     {"name":"kompas_cabinet_bom_reconcile","description":"Reconcile the expected cabinet composition against the bill of materials read from KOMPAS. Matching is by part file name, not by positional designation, because under the first_only marking policy a set of 24 terminals carries a single designation in the BOM. Reports missing items, quantity mismatches, unexpected items and designation gaps; a gap is annotated with its cause instead of being counted as an assembly error. Pure comparison over supplied data - the tool does not read KOMPAS itself.","inputSchema":{"type":"object","properties":{"layout":{"type":"object"},"bom":{"type":"object"},"marking_policy":{"type":"string","enum":["first_only","all"]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_calc","description":"Electrical calculation for a low-voltage cabinet, computed by the engine rather than by the model. kind=current derives current from power, voltage and cos phi. kind=voltage_drop computes drop from length, section and conductor resistivity. kind=fault_current computes short-circuit current from source impedance, short-circuit power or transformer nameplate plus line impedance. kind=derating multiplies correction factors. kind=max_demand, cable_size, breaker_select and selectivity require normative tables supplied in the tables field: demand factors, cable ampacity, breaker catalogue and time-current curves. Tables are not built in - when a required table is missing the call is refused instead of being answered with a plausible guess, and any criterion that cannot be checked is reported under not_checked rather than assumed to pass. Each accepted table carries a source string which is echoed in provenance so the result can be traced back to the norm. Pure arithmetic, no COM, no KOMPAS.","inputSchema":{"type":"object","required":["kind"],"properties":{"kind":{"type":"string","enum":["current","max_demand","voltage_drop","fault_current","derating","cable_size","breaker_select","selectivity"]},"tables":{"type":"object","description":"Normative tables: ampacity, breakers, trip_curves, demand_factors. Each is a list of rows or {rows, source}."},"power_w":{"type":"number"},"power_kw":{"type":"number"},"voltage_v":{"type":"number","exclusiveMinimum":0},"cos_phi":{"type":"number","exclusiveMinimum":0,"maximum":1},"phases":{"type":"integer","enum":[1,3]},"efficiency":{"type":"number","exclusiveMinimum":0,"maximum":1},"current_a":{"type":"number"},"length_m":{"type":"number","exclusiveMinimum":0},"section_mm2":{"type":"number","exclusiveMinimum":0},"material":{"type":"string","enum":["copper","aluminium"]},"resistivity_ohm_mm2_per_m":{"type":"number","exclusiveMinimum":0},"reactance_ohm":{"type":"number","minimum":0},"drop_limit_percent":{"type":"number","exclusiveMinimum":0},"derating_product":{"type":"number","exclusiveMinimum":0},"factors":{"type":"array","items":{"type":"object"}},"allowable_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_a":{"type":"number","exclusiveMinimum":0},"fault_current_ka":{"type":"number","exclusiveMinimum":0},"poles":{"type":"integer"},"trip_curve":{"type":"string"},"transformer":{"type":"object"},"source_impedance_ohm":{"type":"number","exclusiveMinimum":0},"source_short_circuit_mva":{"type":"number","exclusiveMinimum":0},"zero_sequence_impedance_ohm":{"type":"number","exclusiveMinimum":0},"loads":{"type":"array","items":{"type":"object"}},"upstream":{"type":"object"},"downstream":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+ # Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
+@@ -181,6 +182,7 @@ ACTION_MAP = {
+     "kompas_cabinet_materialize_plan": ("cabinet.materialize_plan", lambda a: a),
+     "kompas_cabinet_materialize_apply": ("cabinet.materialize_apply", lambda a: a),
+     "kompas_cabinet_bom_reconcile": ("cabinet.bom_reconcile", lambda a: a),
++    "kompas_cabinet_calc": ("cabinet.calc", lambda a: a),
+ }
+ 
+ 
+diff --git b/src/cabinet_calc.py b/src/cabinet_calc.py
+new file mode 100644
+index 0000000..9e6fa7e
+--- /dev/null
++++ b/src/cabinet_calc.py
+@@ -0,0 +1,901 @@
++"""Электрорасчёт щита — чистые функции, без COM и без нормативных таблиц внутри.
++
++Волны 7–10 дали состав, раскладку, материализацию и сверку. Расчёта в них не
++было вовсе: ни выбора сечения, ни падения напряжения, ни тока КЗ. Эта волна его
++добавляет — но не в виде «модель вспоминает таблицу ПУЭ», а как движок.
++
++Два правила, заданные архитектурой:
++
++1. **Считает движок, а не языковая модель.** Здесь только арифметика и физика:
++   ток по мощности, падение напряжения по сопротивлению петли, ток КЗ по
++   сопротивлению источника и линии. Ни одной «типичной цифры из памяти».
++
++2. **Нормативные таблицы приносит вызывающая сторона.** Допустимые токи кабелей,
++   каталог аппаратов, коэффициенты спроса и время-токовые характеристики — это
++   нормы и каталоги производителей. Таблиц внутри модуля нет: они передаются в
++   поле ``tables`` с указанием источника (``source``), и источник возвращается в
++   ответе, чтобы результат можно было проверить по норме, а не на веру.
++
++Из второго правила следует главное поведение: **отказ вместо экстраполяции**.
++Если для критерия нет данных, критерий уходит в ``not_checked``, а не
++считается выполненным. Если нет таблицы — возвращается ``refusals``, а не
++подобранное «на глаз» сечение. Пустой ответ здесь полезнее правдоподобного.
++
++Что считается без таблиц (физика и арифметика):
++
++- ``current`` — ток по мощности, напряжению и cos φ;
++- ``voltage_drop`` — падение напряжения по длине, сечению и удельному
++  сопротивлению;
++- ``fault_current`` — ток КЗ по сопротивлению источника и линии;
++- ``derating`` — произведение поправочных коэффициентов.
++
++Что требует таблиц (иначе отказ):
++
++- ``max_demand`` — коэффициенты спроса;
++- ``cable_size`` — допустимые токи по сечениям;
++- ``breaker_select`` — каталог аппаратов;
++- ``selectivity`` — время-токовые характеристики.
++"""
++
++from __future__ import annotations
++
++import math
++from typing import Any, Dict, List, Optional, Tuple
++
++SQRT3 = math.sqrt(3.0)
++
++KIND_CURRENT = "current"
++KIND_MAX_DEMAND = "max_demand"
++KIND_VOLTAGE_DROP = "voltage_drop"
++KIND_FAULT_CURRENT = "fault_current"
++KIND_DERATING = "derating"
++KIND_CABLE_SIZE = "cable_size"
++KIND_BREAKER_SELECT = "breaker_select"
++KIND_SELECTIVITY = "selectivity"
++
++KINDS = (KIND_CURRENT, KIND_MAX_DEMAND, KIND_VOLTAGE_DROP, KIND_FAULT_CURRENT,
++         KIND_DERATING, KIND_CABLE_SIZE, KIND_BREAKER_SELECT, KIND_SELECTIVITY)
++
++# Удельное сопротивление при 20 °C, Ом·мм²/м. Это физическое свойство металла,
++# а не нормативная таблица: поправка на рабочую температуру, способ прокладки и
++# число кабелей вносится вызывающей стороной через factors.
++RESISTIVITY_OHM_MM2_PER_M = {"copper": 0.01754, "aluminium": 0.02899}
++
++LIMITS = [
++    "Модуль считает только арифметику. Нормативные таблицы (допустимые токи, "
++    "каталог аппаратов, коэффициенты спроса, время-токовые характеристики) "
++    "приносит вызывающая сторона в поле tables и указывает source.",
++    "Отказ вместо экстраполяции: если данных для критерия нет, критерий уходит "
++    "в not_checked, а не считается выполненным.",
++    "Удельное сопротивление — физическое свойство металла при 20 °C "
++    "(медь 0.01754, алюминий 0.02899 Ом·мм²/м). Поправки на температуру, "
++    "способ прокладки и группировку вносит вызывающая сторона.",
++    "Однофазный расчёт и трёхфазный считаются по разным формулам; для однофазной "
++    "петли «фаза-нуль» ток КЗ без сопротивления нулевой последовательности не "
++    "считается — это не консервативная оценка, а отказ.",
++    "Расчёт не сверялся с расчётом проектировщика на реальном щите: формулы "
++    "стандартные, но приёмка по проекту за инженером.",
++]
++
++
++# --------------------------------------------------------------------------
++# разбор
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def _round(value: Optional[float], digits: int = 4) -> Optional[float]:
++    if value is None:
++        return None
++    return round(float(value), digits)
++
++
++def _refusal(code: str, message: str, **extra: Any) -> Dict[str, Any]:
++    item: Dict[str, Any] = {"code": code, "message": message}
++    item.update(extra)
++    return item
++
++
++def _result(kind: str, data: Dict[str, Any], refusals: Optional[List[Dict[str, Any]]] = None,
++            notes: Optional[List[str]] = None, provenance: Optional[List[Dict[str, Any]]] = None,
++            not_checked: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
++    gaps = list(not_checked or [])
++    verdict = ("refused" if refusals else
++               ("computed_with_gaps" if gaps else "computed"))
++    return {
++        "kind": kind,
++        "ok": not refusals,
++        "verdict": verdict,
++        "result": data,
++        "refusals": list(refusals or []),
++        "notes": list(notes or []),
++        "provenance": list(provenance or []),
++        "not_checked": list(not_checked or []),
++        "limits": list(LIMITS),
++    }
++
++
++def _table(payload: Any, name: str) -> Tuple[List[Dict[str, Any]], Optional[str], bool]:
++    """Строки таблицы, её источник и признак «таблица вообще передана».
++
++    Таблица может быть передана списком строк или словарём ``{"rows": [...],
++    "source": "..."}``. Во втором случае источник попадает в ``provenance``:
++    результат без ссылки на норму проверять нечем.
++    """
++    entry = _as_dict(_as_dict(payload).get("tables")).get(name)
++    if entry is None:
++        return [], None, False
++    if isinstance(entry, (list, tuple)):
++        return [r for r in entry if isinstance(r, dict)], None, True
++    if isinstance(entry, dict):
++        rows = _as_list(entry.get("rows") if "rows" in entry else entry.get("data"))
++        return [r for r in rows if isinstance(r, dict)], _text(entry.get("source")) or None, True
++    return [], None, True
++
++
++def _provenance(name: str, source: Optional[str],
++                notes: List[str]) -> List[Dict[str, Any]]:
++    if source:
++        return [{"table": name, "source": source}]
++    notes.append("таблица %s передана без source: источник нормы неизвестен, "
++                 "результат нельзя проверить по первоисточнику" % name)
++    return [{"table": name, "source": None}]
++
++
++def _row_number(row: Dict[str, Any], *keys: str) -> Optional[float]:
++    for key in keys:
++        value = _num(row.get(key))
++        if value is not None:
++            return value
++    return None
++
++
++# --------------------------------------------------------------------------
++# общие входы
++# --------------------------------------------------------------------------
++
++def load_current(payload: Dict[str, Any]) -> Tuple[Optional[float], List[Dict[str, Any]]]:
++    """Ток нагрузки: напрямую или из мощности. Возвращает (ток, отказы)."""
++    direct = _num(payload.get("current_a"))
++    if direct is not None:
++        return direct, []
++    power = _num(payload.get("power_w"))
++    if power is None:
++        kw = _num(payload.get("power_kw"))
++        power = kw * 1000.0 if kw is not None else None
++    if power is None:
++        return None, [_refusal("no_load_current",
++                               "Не задан ток нагрузки: нужно current_a либо "
++                               "power_w/power_kw вместе с напряжением и cos φ.",
++                               required_any=["current_a", "power_w", "power_kw"])]
++    computed = calc_current(dict(payload, power_w=power))
++    value = (computed.get("result") or {}).get("current_a")
++    if value is None:
++        return None, computed.get("refusals") or [
++            _refusal("no_load_current", "Мощность задана, но ток из неё не вычислить.")]
++    return value, []
++
++
++def conductor_resistivity(payload_or_material: Any) -> Tuple[Optional[float], Optional[str]]:
++    """Удельное сопротивление: явно или по материалу."""
++    if isinstance(payload_or_material, dict):
++        explicit = _num(payload_or_material.get("resistivity_ohm_mm2_per_m"))
++        if explicit is not None:
++            return explicit, None
++        material = _text(payload_or_material.get("material")).lower()
++    else:
++        material = _text(payload_or_material).lower()
++    if material in RESISTIVITY_OHM_MM2_PER_M:
++        return RESISTIVITY_OHM_MM2_PER_M[material], material
++    return None, material or None
++
++
++def _sin_cos(cos_phi: float) -> Tuple[float, float]:
++    cos_phi = min(max(cos_phi, 0.0), 1.0)
++    return cos_phi, math.sqrt(max(0.0, 1.0 - cos_phi * cos_phi))
++
++
++def _drop_volts(current: float, resistance: float, reactance: float,
++                cos_phi: float, phases: int) -> float:
++    cos_v, sin_v = _sin_cos(cos_phi)
++    per_conductor = current * (resistance * cos_v + reactance * sin_v)
++    return SQRT3 * per_conductor if phases == 3 else 2.0 * per_conductor
++
++
++# --------------------------------------------------------------------------
++# физика: считается без таблиц
++# --------------------------------------------------------------------------
++
++def calc_current(payload: Any) -> Dict[str, Any]:
++    """Ток по мощности: ``I = P / (√3 · U · cos φ · η)`` для трёх фаз."""
++    data = _as_dict(payload)
++    power = _num(data.get("power_w"))
++    if power is None:
++        kw = _num(data.get("power_kw"))
++        power = kw * 1000.0 if kw is not None else None
++    voltage = _num(data.get("voltage_v"))
++    cos_phi = _num(data.get("cos_phi"), 1.0)
++    phases = int(_num(data.get("phases"), 3.0) or 3)
++    efficiency = _num(data.get("efficiency"), 1.0)
++
++    refusals: List[Dict[str, Any]] = []
++    if power is None:
++        refusals.append(_refusal("no_power", "Не задана мощность: power_w или power_kw."))
++    if voltage is None or voltage <= 0:
++        refusals.append(_refusal("bad_voltage", "Напряжение должно быть положительным.",
++                                 required="voltage_v"))
++    if cos_phi is None or not (0.0 < cos_phi <= 1.0):
++        refusals.append(_refusal("bad_cos_phi", "cos φ должен быть в интервале (0, 1].",
++                                 required="cos_phi"))
++    if phases not in (1, 3):
++        refusals.append(_refusal("bad_phases", "Поддерживаются 1 и 3 фазы.", required="phases"))
++    if efficiency is None or not (0.0 < efficiency <= 1.0):
++        refusals.append(_refusal("bad_efficiency", "КПД должен быть в интервале (0, 1].",
++                                 required="efficiency"))
++    if refusals:
++        return _result(KIND_CURRENT, {}, refusals)
++
++    if phases == 3:
++        current = power / (SQRT3 * voltage * cos_phi * efficiency)
++        formula = "I = P / (√3 · U · cos φ · η)"
++    else:
++        current = power / (voltage * cos_phi * efficiency)
++        formula = "I = P / (U · cos φ · η)"
++    notes = ["Для однофазного расчёта U — фазное напряжение, а не линейное."] if phases == 1 else []
++    return _result(KIND_CURRENT, {
++        "current_a": _round(current, 3),
++        "power_w": power,
++        "voltage_v": voltage,
++        "cos_phi": cos_phi,
++        "phases": phases,
++        "efficiency": efficiency,
++        "formula": formula,
++    }, notes=notes)
++
++
++def calc_voltage_drop(payload: Any) -> Dict[str, Any]:
++    """Падение напряжения по длине линии, сечению и удельному сопротивлению."""
++    data = _as_dict(payload)
++    refusals: List[Dict[str, Any]] = []
++
++    current = _num(data.get("current_a"))
++    if current is None:
++        current, derived = load_current(data)
++        refusals.extend(derived)
++    if current is None:
++        if not refusals:
++            refusals.append(_refusal("no_current", "Не задан ток линии."))
++        return _result(KIND_VOLTAGE_DROP, {}, refusals)
++
++    length = _num(data.get("length_m"))
++    section = _num(data.get("section_mm2"))
++    rho, material = conductor_resistivity(data)
++    voltage = _num(data.get("voltage_v"))
++    cos_phi = _num(data.get("cos_phi"), 1.0)
++    reactance = _num(data.get("reactance_ohm"), 0.0)
++    phases = int(_num(data.get("phases"), 3.0) or 3)
++
++    if length is None or length <= 0:
++        refusals.append(_refusal("bad_length", "Длина линии должна быть положительной.",
++                                 required="length_m"))
++    if section is None or section <= 0:
++        refusals.append(_refusal("bad_section", "Сечение должно быть положительным.",
++                                 required="section_mm2"))
++    if rho is None:
++        refusals.append(_refusal("unknown_material",
++                                 "Материал не распознан, а удельное сопротивление не задано.",
++                                 known_materials=sorted(RESISTIVITY_OHM_MM2_PER_M),
++                                 required_any=["material", "resistivity_ohm_mm2_per_m"]))
++    if cos_phi is None or not (0.0 < cos_phi <= 1.0):
++        refusals.append(_refusal("bad_cos_phi", "cos φ должен быть в интервале (0, 1].",
++                                 required="cos_phi"))
++    if phases not in (1, 3):
++        refusals.append(_refusal("bad_phases", "Поддерживаются 1 и 3 фазы.", required="phases"))
++    if refusals:
++        return _result(KIND_VOLTAGE_DROP, {}, refusals)
++
++    resistance = rho * length / section
++    drop_v = _drop_volts(current, resistance, reactance, cos_phi, phases)
++
++    not_checked: List[Dict[str, Any]] = []
++    if voltage is None or voltage <= 0:
++        drop_percent = None
++        not_checked.append({"criterion": "drop_percent",
++                            "reason": "не задано напряжение voltage_v"})
++    else:
++        drop_percent = drop_v / voltage * 100.0
++
++    return _result(KIND_VOLTAGE_DROP, {
++        "current_a": _round(current, 3),
++        "length_m": length,
++        "section_mm2": section,
++        "material": material or "custom",
++        "resistivity_ohm_mm2_per_m": rho,
++        "resistance_ohm": _round(resistance, 6),
++        "reactance_ohm": reactance,
++        "drop_v": _round(drop_v, 3),
++        "drop_percent": _round(drop_percent, 3),
++        "phases": phases,
++        "formula": ("ΔU = √3 · I · (R · cos φ + X · sin φ)" if phases == 3
++                    else "ΔU = 2 · I · (R · cos φ + X · sin φ)"),
++    }, not_checked=not_checked)
++
++
++def calc_fault_current(payload: Any) -> Dict[str, Any]:
++    """Ток КЗ по сопротивлению источника и линии.
++
++    Источник задаётся одним из трёх способов: сопротивлением, мощностью КЗ или
++    паспортом трансформатора. Если не задан ни один — отказ: «взять типичное»
++    здесь значит подменить расчёт правдоподобной цифрой.
++    """
++    data = _as_dict(payload)
++    voltage = _num(data.get("voltage_v"))
++    phases = int(_num(data.get("phases"), 3.0) or 3)
++    refusals: List[Dict[str, Any]] = []
++    if voltage is None or voltage <= 0:
++        refusals.append(_refusal("bad_voltage", "Напряжение должно быть положительным.",
++                                 required="voltage_v"))
++    if phases not in (1, 3):
++        refusals.append(_refusal("bad_phases", "Поддерживаются 1 и 3 фазы.", required="phases"))
++
++    z_source = _num(data.get("source_impedance_ohm"))
++    source_kind = "impedance"
++    if z_source is None:
++        short_circuit_mva = _num(data.get("source_short_circuit_mva"))
++        if short_circuit_mva is not None and short_circuit_mva > 0:
++            z_source = (voltage * voltage) / (short_circuit_mva * 1.0e6)
++            source_kind = "short_circuit_power"
++    if z_source is None:
++        transformer = _as_dict(data.get("transformer"))
++        mva = _num(transformer.get("power_mva"))
++        uk = _num(transformer.get("uk_percent"))
++        if mva is not None and mva > 0 and uk is not None and uk > 0:
++            z_source = (uk / 100.0) * (voltage * voltage) / (mva * 1.0e6)
++            source_kind = "transformer"
++    if z_source is None:
++        refusals.append(_refusal(
++            "no_source_data",
++            "Нет данных об источнике: задайте source_impedance_ohm, "
++            "source_short_circuit_mva или transformer{power_mva, uk_percent}.",
++            required_any=["source_impedance_ohm", "source_short_circuit_mva", "transformer"]))
++    if refusals:
++        return _result(KIND_FAULT_CURRENT, {}, refusals)
++
++    length = _num(data.get("length_m"))
++    section = _num(data.get("section_mm2"))
++    reactance = _num(data.get("reactance_ohm"), 0.0)
++    r_line = None
++    line_notes: List[str] = []
++    if (length is None) != (section is None):
++        line_notes.append("линия задана неполностью (нужны и length_m, и "
++                          "section_mm2): сопротивление линии не учтено, ток КЗ "
++                          "посчитан только по источнику")
++    if length is not None and section is not None:
++        if section <= 0:
++            refusals.append(_refusal("bad_section", "Сечение должно быть положительным.",
++                                     required="section_mm2"))
++        else:
++            rho, _material = conductor_resistivity(data)
++            if rho is None:
++                refusals.append(_refusal(
++                    "unknown_material",
++                    "Задана линия, но материал не распознан и удельное сопротивление не задано.",
++                    known_materials=sorted(RESISTIVITY_OHM_MM2_PER_M)))
++            else:
++                r_line = rho * length / section
++    if refusals:
++        return _result(KIND_FAULT_CURRENT, {}, refusals)
++
++    r_total = (r_line or 0.0)
++    x_total = reactance
++    if phases == 3:
++        z_total = math.sqrt((z_source + r_total) ** 2 + x_total ** 2)
++        current = voltage / (SQRT3 * z_total)
++        formula = "Iкз = U / (√3 · |Zист + Zлин|)"
++    else:
++        loop = _num(data.get("zero_sequence_impedance_ohm"))
++        if loop is None:
++            return _result(KIND_FAULT_CURRENT, {}, [_refusal(
++                "no_zero_sequence_data",
++                "Однофазная петля «фаза-нуль» без сопротивления нулевой "
++                "последовательности не считается: это не консервативная оценка, "
++                "а неизвестная величина.",
++                required="zero_sequence_impedance_ohm")])
++        z_total = math.sqrt((z_source + r_total + loop) ** 2 + x_total ** 2)
++        current = (voltage / SQRT3) / z_total
++        formula = "Iкз = Uф / |Zпетли|"
++
++    return _result(KIND_FAULT_CURRENT, {
++        "fault_current_a": _round(current, 2),
++        "fault_current_ka": _round(current / 1000.0, 3),
++        "source_kind": source_kind,
++        "impedance": {
++            "source_ohm": _round(z_source, 6),
++            "line_r_ohm": _round(r_total, 6),
++            "line_x_ohm": _round(x_total, 6),
++            "total_ohm": _round(z_total, 6),
++        },
++        "voltage_v": voltage,
++        "phases": phases,
++        "formula": formula,
++    }, notes=line_notes + ["Сопротивлением дуги и переходными сопротивлениями "
++                           "контактов расчёт пренебрегает: результат — верхняя "
++                           "оценка."])
++
++
++def calc_derating(payload: Any) -> Dict[str, Any]:
++    """Произведение поправочных коэффициентов на допустимый ток."""
++    data = _as_dict(payload)
++    base = _num(data.get("base_current_a"))
++    refusals: List[Dict[str, Any]] = []
++    if base is None or base <= 0:
++        refusals.append(_refusal("bad_base_current",
++                                 "Нужен положительный базовый ток base_current_a.",
++                                 required="base_current_a"))
++        return _result(KIND_DERATING, {}, refusals)
++
++    raw = data.get("factors")
++    if isinstance(raw, dict):
++        factors = [{"name": key, "value": _num(value)} for key, value in raw.items()]
++    else:
++        factors = [{"name": _text(f.get("name")) or "factor_%d" % i,
++                    "value": _num(f.get("value"))}
++                   for i, f in enumerate(_as_list(raw)) if isinstance(f, dict)]
++
++    notes: List[str] = []
++    product = 1.0
++    applied: List[Dict[str, Any]] = []
++    for factor in factors:
++        value = factor["value"]
++        if value is None:
++            refusals.append(_refusal("bad_factor",
++                                     "Коэффициент %s не числовой." % factor["name"],
++                                     factor=factor["name"]))
++            continue
++        if value <= 0:
++            refusals.append(_refusal("bad_factor",
++                                     "Коэффициент %s должен быть положительным." % factor["name"],
++                                     factor=factor["name"]))
++            continue
++        if value > 1.0:
++            notes.append("коэффициент %s больше единицы: это повышающая поправка, "
++                         "проверьте источник" % factor["name"])
++        product *= value
++        applied.append({"name": factor["name"], "value": _round(value, 4)})
++    if not factors:
++        notes.append("поправочные коэффициенты не заданы: произведение равно 1, "
++                     "ток не снижен")
++
++    if refusals:
++        return _result(KIND_DERATING, {}, refusals, notes=notes)
++    return _result(KIND_DERATING, {
++        "base_current_a": _round(base, 3),
++        "factors": applied,
++        "product": _round(product, 6),
++        "derated_current_a": _round(base * product, 3),
++    }, notes=notes)
++
++
++# --------------------------------------------------------------------------
++# нормы: считается только с переданной таблицей
++# --------------------------------------------------------------------------
++
++def calc_max_demand(payload: Any) -> Dict[str, Any]:
++    """Расчётная нагрузка по установленной мощности и коэффициентам спроса."""
++    data = _as_dict(payload)
++    loads = [l for l in _as_list(data.get("loads")) if isinstance(l, dict)]
++    refusals: List[Dict[str, Any]] = []
++    if not loads:
++        refusals.append(_refusal("no_loads", "Не заданы нагрузки: список loads пуст.",
++                                 required="loads"))
++    rows, source, present = _table(data, "demand_factors")
++    notes: List[str] = []
++    provenance: List[Dict[str, Any]] = []
++    if not present:
++        refusals.append(_refusal("no_table",
++                                 "Нужна таблица коэффициентов спроса demand_factors.",
++                                 required_table="demand_factors"))
++    else:
++        provenance = _provenance("demand_factors", source, notes)
++    if refusals:
++        return _result(KIND_MAX_DEMAND, {}, refusals, notes=notes, provenance=provenance)
++
++    by_type: Dict[str, float] = {}
++    for row in rows:
++        key = _text(row.get("load_type")) or _text(row.get("type"))
++        value = _row_number(row, "demand_factor", "kc", "factor", "value")
++        if key and value is not None:
++            by_type[key.lower()] = value
++
++    per_load: List[Dict[str, Any]] = []
++    unverified: List[Dict[str, Any]] = []
++    installed = 0.0
++    demand = 0.0
++    for index, load in enumerate(loads):
++        power = _num(load.get("power_w"))
++        if power is None:
++            kw = _num(load.get("power_kw"))
++            power = kw * 1000.0 if kw is not None else None
++        count = _num(load.get("count"), 1.0) or 1.0
++        if power is None:
++            unverified.append({"index": index, "reason": "no_power"})
++            continue
++        group = power * count
++        installed += group
++        key = _text(load.get("load_type")).lower()
++        factor = by_type.get(key)
++        if factor is None:
++            unverified.append({"index": index, "load_type": key,
++                               "reason": "no_demand_factor"})
++            continue
++        demand += group * factor
++        per_load.append({"index": index, "load_type": key,
++                         "installed_w": _round(group, 1),
++                         "demand_factor": _round(factor, 4),
++                         "demand_w": _round(group * factor, 1)})
++
++    out: Dict[str, Any] = {
++        "installed_power_w": _round(installed, 1),
++        "demand_power_w": _round(demand, 1),
++        "per_load": per_load,
++        "unverified": unverified,
++    }
++    not_checked: List[Dict[str, Any]] = []
++    voltage = _num(data.get("voltage_v"))
++    cos_phi = _num(data.get("cos_phi"))
++    if voltage and cos_phi:
++        phases = int(_num(data.get("phases"), 3.0) or 3)
++        divisor = SQRT3 * voltage * cos_phi if phases == 3 else voltage * cos_phi
++        out["demand_current_a"] = _round(demand / divisor, 3)
++    else:
++        not_checked.append({"criterion": "demand_current_a",
++                            "reason": "не заданы voltage_v и cos_phi"})
++    return _result(KIND_MAX_DEMAND, out, notes=notes, provenance=provenance,
++                   not_checked=not_checked)
++
++
++def calc_cable_size(payload: Any) -> Dict[str, Any]:
++    """Выбор сечения: перебор кандидатов из таблицы допустимых токов.
++
++    Сечение считается выбранным, только если прошли **все** критерии, которые
++    удалось проверить. Критерий без данных не считается выполненным — он уходит
++    в ``not_checked``.
++    """
++    data = _as_dict(payload)
++    current, refusals = load_current(data)
++    rows, source, present = _table(data, "ampacity")
++    notes: List[str] = []
++    provenance: List[Dict[str, Any]] = []
++    if not present:
++        refusals.append(_refusal("no_table",
++                                 "Нужна таблица допустимых токов ampacity "
++                                 "(строки: section_mm2, current_a).",
++                                 required_table="ampacity"))
++    else:
++        provenance = _provenance("ampacity", source, notes)
++    if refusals:
++        return _result(KIND_CABLE_SIZE, {}, refusals, notes=notes, provenance=provenance)
++
++    derating = _num(data.get("derating_product"))
++    if derating is None:
++        factors = calc_derating({"base_current_a": 1.0,
++                                 "factors": data.get("factors")})
++        derating = (factors.get("result") or {}).get("product", 1.0)
++    if not derating or derating <= 0:
++        derating = 1.0
++
++    length = _num(data.get("length_m"))
++    voltage = _num(data.get("voltage_v"))
++    cos_phi = _num(data.get("cos_phi"), 1.0)
++    phases = int(_num(data.get("phases"), 3.0) or 3)
++    drop_limit = _num(data.get("drop_limit_percent"))
++    reactance = _num(data.get("reactance_ohm"), 0.0)
++    rho, material = conductor_resistivity(data)
++
++    not_checked: List[Dict[str, Any]] = []
++    if drop_limit is None:
++        not_checked.append({"criterion": "voltage_drop",
++                            "reason": "не задан drop_limit_percent"})
++    if rho is None:
++        not_checked.append({"criterion": "voltage_drop",
++                            "reason": "материал не распознан и удельное сопротивление не задано"})
++
++    candidates: List[Dict[str, Any]] = []
++    for row in rows:
++        section = _row_number(row, "section_mm2", "section")
++        table_current = _row_number(row, "current_a", "ampacity_a", "ampacity")
++        if section is None or table_current is None:
++            continue
++        allowable = table_current * derating
++        candidate: Dict[str, Any] = {
++            "section_mm2": section,
++            "table_current_a": _round(table_current, 3),
++            "derating_product": _round(derating, 6),
++            "allowable_current_a": _round(allowable, 3),
++            "passes_current": allowable >= current,
++        }
++        drop_percent = None
++        if length and section > 0 and voltage and voltage > 0 and rho is not None:
++            resistance = rho * length / section
++            drop_v = _drop_volts(current, resistance, reactance, cos_phi, phases)
++            drop_percent = drop_v / voltage * 100.0
++        candidate["drop_percent"] = _round(drop_percent, 3)
++        if drop_percent is None:
++            candidate["passes_drop"] = None
++        elif drop_limit is None:
++            candidate["passes_drop"] = None
++        else:
++            candidate["passes_drop"] = drop_percent <= drop_limit
++        checks = [value for value in (candidate["passes_current"], candidate["passes_drop"])
++                  if value is not None]
++        candidate["passes_all_checked"] = bool(checks) and all(checks)
++        candidates.append(candidate)
++
++    candidates.sort(key=lambda item: item["section_mm2"])
++    selected = next((c for c in candidates if c["passes_all_checked"]), None)
++
++    result: Dict[str, Any] = {
++        "load_current_a": _round(current, 3),
++        "derating_product": _round(derating, 6),
++        "material": material or "custom",
++        "candidates": candidates,
++        "selected": selected,
++    }
++    if selected is None and candidates:
++        result["selection_note"] = ("ни одно сечение из таблицы не прошло проверенные "
++                                    "критерии; увеличите сечение, снизьте нагрузку или "
++                                    "проверьте таблицу")
++    return _result(KIND_CABLE_SIZE, result, notes=notes, provenance=provenance,
++                   not_checked=not_checked)
++
++
++def calc_breaker_select(payload: Any) -> Dict[str, Any]:
++    """Подбор аппарата по каталогу: ток нагрузки, сечение кабеля, ток КЗ."""
++    data = _as_dict(payload)
++    current, refusals = load_current(data)
++    rows, source, present = _table(data, "breakers")
++    notes: List[str] = []
++    provenance: List[Dict[str, Any]] = []
++    if not present:
++        refusals.append(_refusal("no_table",
++                                 "Нужен каталог аппаратов breakers "
++                                 "(строки: rating_a, breaking_ka).",
++                                 required_table="breakers"))
++    else:
++        provenance = _provenance("breakers", source, notes)
++    if refusals:
++        return _result(KIND_BREAKER_SELECT, {}, refusals, notes=notes, provenance=provenance)
++
++    allowable = _num(data.get("allowable_current_a"))
++    fault_ka = _num(data.get("fault_current_ka"))
++    if fault_ka is None:
++        fault_a = _num(data.get("fault_current_a"))
++        fault_ka = fault_a / 1000.0 if fault_a is not None else None
++    poles = _num(data.get("poles"))
++    curve = _text(data.get("trip_curve"))
++
++    not_checked: List[Dict[str, Any]] = []
++    if allowable is None:
++        not_checked.append({"criterion": "cable_protection",
++                            "reason": "не задан allowable_current_a кабеля"})
++    if fault_ka is None:
++        not_checked.append({"criterion": "breaking_capacity",
++                            "reason": "не задан ток КЗ"})
++
++    candidates: List[Dict[str, Any]] = []
++    for row in rows:
++        rating = _row_number(row, "rating_a", "rating", "nominal_current_a")
++        if rating is None:
++            continue
++        if poles is not None and _row_number(row, "poles") not in (None, poles):
++            continue
++        if curve and _text(row.get("trip_curve")) and _text(row.get("trip_curve")).upper() != curve.upper():
++            continue
++        breaking = _row_number(row, "breaking_ka", "breaking_capacity_ka", "icu_ka")
++        passes: Dict[str, Any] = {"passes_load": rating >= current}
++        if allowable is not None:
++            passes["passes_cable"] = rating <= allowable
++        if fault_ka is not None and breaking is not None:
++            passes["passes_breaking"] = breaking >= fault_ka
++        elif fault_ka is not None:
++            passes["passes_breaking"] = None
++            not_checked.append({"criterion": "breaking_capacity",
++                                "reason": "в каталоге нет отключающей способности"})
++        checks = [v for v in passes.values() if v is not None]
++        candidate = {"rating_a": rating,
++                     "trip_curve": _text(row.get("trip_curve")) or None,
++                     "breaking_ka": breaking,
++                     "designation": _text(row.get("designation")) or None,
++                     "passes_all_checked": bool(checks) and all(checks)}
++        candidate.update(passes)
++        candidates.append(candidate)
++
++    candidates.sort(key=lambda item: item["rating_a"])
++    selected = next((c for c in candidates if c["passes_all_checked"]), None)
++    return _result(KIND_BREAKER_SELECT, {
++        "load_current_a": _round(current, 3),
++        "allowable_current_a": allowable,
++        "fault_current_ka": fault_ka,
++        "candidates": candidates,
++        "selected": selected,
++    }, notes=notes, provenance=provenance, not_checked=not_checked)
++
++
++def calc_selectivity(payload: Any) -> Dict[str, Any]:
++    """Селективность по время-токовым характеристикам.
++
++    Сравниваются верхняя граница времени отключения нижестоящего аппарата и
++    нижняя граница вышестоящего: ``t_верх_min > t_низ_max``. Если точка на
++    характеристике не задана, а попадает между точками, результат помечается
++    ``interpolated`` — молча интерполировать и выдавать за расчёт по каталогу
++    здесь нельзя.
++    """
++    data = _as_dict(payload)
++    fault_a = _num(data.get("fault_current_a"))
++    refusals: List[Dict[str, Any]] = []
++    if fault_a is None or fault_a <= 0:
++        refusals.append(_refusal("no_fault_current",
++                                 "Нужен положительный ток КЗ fault_current_a.",
++                                 required="fault_current_a"))
++
++    upstream = _as_dict(data.get("upstream"))
++    downstream = _as_dict(data.get("downstream"))
++    up_rating = _num(upstream.get("rating_a"))
++    down_rating = _num(downstream.get("rating_a"))
++    if up_rating is None or up_rating <= 0:
++        refusals.append(_refusal("no_upstream", "Не задан номинал вышестоящего аппарата.",
++                                 required="upstream.rating_a"))
++    if down_rating is None or down_rating <= 0:
++        refusals.append(_refusal("no_downstream", "Не задан номинал нижестоящего аппарата.",
++                                 required="downstream.rating_a"))
++
++    up_times = (_num(upstream.get("t_min_s")), _num(upstream.get("t_max_s")))
++    down_times = (_num(downstream.get("t_min_s")), _num(downstream.get("t_max_s")))
++
++    rows, source, present = _table(data, "trip_curves")
++    notes: List[str] = []
++    provenance: List[Dict[str, Any]] = []
++    need_table = up_times[0] is None or down_times[1] is None
++    if need_table and not present:
++        refusals.append(_refusal(
++            "no_table",
++            "Время отключения не задано напрямую — нужна таблица trip_curves "
++            "(строки: rating_a, trip_curve, points[{multiple, t_min, t_max}]).",
++            required_table="trip_curves"))
++    elif present:
++        provenance = _provenance("trip_curves", source, notes)
++    if refusals:
++        return _result(KIND_SELECTIVITY, {}, refusals, notes=notes, provenance=provenance)
++
++    def from_curve(rating: float, curve_name: str) -> Tuple[Optional[float], Optional[float], List[str]]:
++        for row in rows:
++            if _row_number(row, "rating_a", "rating") != rating:
++                continue
++            if curve_name and _text(row.get("trip_curve")).upper() != curve_name.upper():
++                continue
++            points = _as_list(row.get("points"))
++            multiple = fault_a / rating if rating else None
++            if multiple is None:
++                return None, None, []
++            ordered = sorted((p for p in points if isinstance(p, dict)
++                              and _num(p.get("multiple")) is not None),
++                             key=lambda p: _num(p.get("multiple")))
++            for point in ordered:
++                if abs(_num(point.get("multiple")) - multiple) < 1e-9:
++                    return _num(point.get("t_min_s")), _num(point.get("t_max_s")), []
++            lower = upper = None
++            for point in ordered:
++                if _num(point.get("multiple")) < multiple:
++                    lower = point
++                elif _num(point.get("multiple")) > multiple and upper is None:
++                    upper = point
++            if lower is None or upper is None:
++                return None, None, ["ток вне диапазона характеристики"]
++            lo_m, hi_m = _num(lower.get("multiple")), _num(upper.get("multiple"))
++            span = hi_m - lo_m
++            flags: List[str] = [
++                "interpolated: ток между узлами характеристики, время получено "
++                "линейной интерполяцией. Характеристики логарифмические, поэтому "
++                "линейная интерполяция груба — для ответственных ответов берите "
++                "узел из каталога"]
++            out_times = []
++            for key in ("t_min_s", "t_max_s"):
++                lo_v, hi_v = _num(lower.get(key)), _num(upper.get(key))
++                if lo_v is None or hi_v is None:
++                    out_times.append(None)
++                    continue
++                out_times.append(lo_v + (hi_v - lo_v) * (multiple - lo_m) / span)
++            return out_times[0], out_times[1], flags
++        return None, None, ["характеристика не найдена"]
++
++    flags: List[str] = []
++    if up_times[0] is None:
++        t_min_up, _t, extra = from_curve(up_rating, _text(upstream.get("trip_curve")))
++        flags.extend(extra)
++        up_times = (t_min_up, up_times[1])
++    if down_times[1] is None:
++        _t, t_max_down, extra = from_curve(down_rating, _text(downstream.get("trip_curve")))
++        flags.extend(extra)
++        down_times = (down_times[0], t_max_down)
++
++    not_checked: List[Dict[str, Any]] = []
++    if up_times[0] is None:
++        not_checked.append({"criterion": "upstream_t_min",
++                            "reason": "нет нижней границы времени вышестоящего аппарата"})
++    if down_times[1] is None:
++        not_checked.append({"criterion": "downstream_t_max",
++                            "reason": "нет верхней границы времени нижестоящего аппарата"})
++
++    selective: Optional[bool] = None
++    margin = None
++    if up_times[0] is not None and down_times[1] is not None:
++        selective = up_times[0] > down_times[1]
++        margin = up_times[0] - down_times[1]
++
++    return _result(KIND_SELECTIVITY, {
++        "fault_current_a": _round(fault_a, 3),
++        "upstream": {"rating_a": up_rating, "t_min_s": _round(up_times[0], 6),
++                     "t_max_s": _round(up_times[1], 6),
++                     "multiple": _round(fault_a / up_rating, 3)},
++        "downstream": {"rating_a": down_rating, "t_min_s": _round(down_times[0], 6),
++                       "t_max_s": _round(down_times[1], 6),
++                       "multiple": _round(fault_a / down_rating, 3)},
++        "selective": selective,
++        "margin_s": _round(margin, 6),
++        "criterion": "t_min(вышестоящий) > t_max(нижестоящий)",
++    }, notes=notes + flags, provenance=provenance, not_checked=not_checked)
++
++
++# --------------------------------------------------------------------------
++# диспетчер
++# --------------------------------------------------------------------------
++
++_DISPATCH = {
++    KIND_CURRENT: calc_current,
++    KIND_MAX_DEMAND: calc_max_demand,
++    KIND_VOLTAGE_DROP: calc_voltage_drop,
++    KIND_FAULT_CURRENT: calc_fault_current,
++    KIND_DERATING: calc_derating,
++    KIND_CABLE_SIZE: calc_cable_size,
++    KIND_BREAKER_SELECT: calc_breaker_select,
++    KIND_SELECTIVITY: calc_selectivity,
++}
++
++
++def calculate(payload: Any) -> Dict[str, Any]:
++    """Единая точка входа: ``{"kind": ..., "tables": {...}}``."""
++    data = _as_dict(payload)
++    kind = _text(data.get("kind")).lower()
++    if kind not in _DISPATCH:
++        return {
++            "kind": kind or None,
++            "ok": False,
++            "verdict": "refused",
++            "result": {},
++            "refusals": [_refusal("unknown_kind",
++                                  "Неизвестный вид расчёта: %s." % (kind or "не задан"),
++                                  known_kinds=list(KINDS))],
++            "notes": [],
++            "provenance": [],
++            "not_checked": [],
++            "limits": list(LIMITS),
++        }
++    return _DISPATCH[kind](data)
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index e30f511..1bf687b 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -16,6 +16,7 @@ from cabinet_build import build_layout
+ from cabinet_materialize import build_plan
+ from cabinet_exec import execute_plan
+ from cabinet_reconcile import reconcile
++from cabinet_calc import calculate
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -50,6 +51,11 @@ def cabinet_materialize_apply(session: Any, params: Dict[str, Any]) -> Dict[str,
+     return ok("cabinet.materialize_apply", execute_plan(session, params))
+ 
+ 
++def cabinet_calc(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Электрорасчёт щита: считает движок, нормативные таблицы передаёт caller."""
++    return ok("cabinet.calc", calculate(params))
++
++
+ def cabinet_bom_reconcile(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     """Сверить ожидаемый состав щита с перечнем, прочитанным из КОМПАС."""
+     return ok("cabinet.bom_reconcile", reconcile(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 672ffa5..1366557 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -29,7 +29,7 @@ from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
+ from cabinet_tools import (cabinet_spec_check, cabinet_layout_check, cabinet_layout_build,
+                            cabinet_materialize_plan, cabinet_materialize_apply,
+-                           cabinet_bom_reconcile)
++                           cabinet_bom_reconcile, cabinet_calc)
+ 
+ 
+ def _doc(s):
+@@ -330,4 +330,5 @@ registry = {
+     "cabinet.materialize_plan": cabinet_materialize_plan,
+     "cabinet.materialize_apply": cabinet_materialize_apply,
+     "cabinet.bom_reconcile": cabinet_bom_reconcile,
++    "cabinet.calc": cabinet_calc,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index df6cc38..cafaeee 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 53, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 54, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave10.py b/tests/test_wave10.py
+index 6230484..13e8f8a 100644
+--- a/tests/test_wave10.py
++++ b/tests/test_wave10.py
+@@ -66,8 +66,8 @@ TERMINALS = [{"id": "c", "lib_key": "term", "qty": 24, "tag_start": "B101",
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_tool_declared(self):
+         self.assertIn("kompas_cabinet_bom_reconcile",
+diff --git b/tests/test_wave11.py b/tests/test_wave11.py
+new file mode 100644
+index 0000000..e5c06a3
+--- /dev/null
++++ b/tests/test_wave11.py
+@@ -0,0 +1,498 @@
++"""Волна 11: электрорасчёт щита как чистые функции.
++
++Проверяется не столько арифметика, сколько дисциплина: движок считает то, что
++считается физикой, и отказывает там, где нужна нормативная таблица. Главный
++класс тестов — отказы: подмена расчёта правдоподобной цифрой здесь страшнее
++недостающей функции, потому что её не видно в ответе.
++"""
++
++from __future__ import annotations
++
++import math
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_calc as cc  # noqa: E402
++
++AMPACITY = {"source": "ПУЭ 7-е изд., табл. 1.3.4", "rows": [
++    {"section_mm2": 1.5, "current_a": 23},
++    {"section_mm2": 2.5, "current_a": 30},
++    {"section_mm2": 4, "current_a": 41},
++    {"section_mm2": 6, "current_a": 50},
++]}
++
++BREAKERS = {"source": "каталог", "rows": [
++    {"designation": "АВ 16А C", "rating_a": 16, "trip_curve": "C", "breaking_ka": 6},
++    {"designation": "АВ 25А C", "rating_a": 25, "trip_curve": "C", "breaking_ka": 6},
++    {"designation": "АВ 32А C", "rating_a": 32, "trip_curve": "C", "breaking_ka": 6},
++    {"designation": "АВ 40А D", "rating_a": 40, "trip_curve": "D", "breaking_ka": 4.5},
++]}
++
++CURVES = {"source": "каталог, характеристики типа C", "rows": [
++    {"rating_a": 16, "trip_curve": "C", "points": [
++        {"multiple": 1.45, "t_min_s": 60, "t_max_s": 3600},
++        {"multiple": 3, "t_min_s": 0.02, "t_max_s": 8},
++        {"multiple": 10, "t_min_s": 0.004, "t_max_s": 0.02}]},
++    {"rating_a": 32, "trip_curve": "C", "points": [
++        {"multiple": 1.45, "t_min_s": 60, "t_max_s": 3600},
++        {"multiple": 3, "t_min_s": 0.02, "t_max_s": 8},
++        {"multiple": 10, "t_min_s": 0.004, "t_max_s": 0.02}]},
++]}
++
++DEMAND = {"source": "справочник", "rows": [
++    {"load_type": "motor", "kc": 0.7},
++    {"load_type": "socket", "kc": 0.3},
++]}
++
++
++class DispatchTests(unittest.TestCase):
++    """Диспетчер и конверт ответа."""
++
++    def test_unknown_kind_is_refused(self):
++        result = cc.calculate({"kind": "ток"})
++        self.assertFalse(result["ok"])
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "unknown_kind")
++        self.assertIn("current", result["refusals"][0]["known_kinds"])
++
++    def test_every_kind_is_dispatchable(self):
++        for kind in cc.KINDS:
++            self.assertIn(kind, cc._DISPATCH)
++
++    def test_limits_are_reported(self):
++        self.assertTrue(cc.calculate({"kind": "current", "power_w": 1000,
++                                      "voltage_v": 380, "cos_phi": 0.9})["limits"])
++
++    def test_verdict_computed_when_nothing_skipped(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 41,
++                               "factors": [{"name": "t", "value": 0.9}]})
++        self.assertEqual(result["verdict"], "computed")
++
++    def test_verdict_gap_when_criterion_not_checkable(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper"})
++        self.assertEqual(result["verdict"], "computed_with_gaps")
++        self.assertIn("drop_percent", [g["criterion"] for g in result["not_checked"]])
++
++
++class CurrentTests(unittest.TestCase):
++    """Физика: ток по мощности."""
++
++    def test_three_phase_matches_hand_calculation(self):
++        result = cc.calculate({"kind": "current", "power_w": 15000,
++                               "voltage_v": 380, "cos_phi": 0.9})
++        expected = 15000.0 / (math.sqrt(3.0) * 380 * 0.9)
++        self.assertAlmostEqual(result["result"]["current_a"], expected, places=3)
++
++    def test_single_phase_uses_no_sqrt3(self):
++        result = cc.calculate({"kind": "current", "power_w": 2300,
++                               "voltage_v": 230, "cos_phi": 1.0, "phases": 1})
++        self.assertAlmostEqual(result["result"]["current_a"], 10.0, places=3)
++
++    def test_power_kw_is_accepted(self):
++        result = cc.calculate({"kind": "current", "power_kw": 15,
++                               "voltage_v": 380, "cos_phi": 0.9})
++        self.assertAlmostEqual(result["result"]["current_a"], 25.322, places=2)
++
++    def test_efficiency_increases_current(self):
++        base = cc.calculate({"kind": "current", "power_w": 15000,
++                             "voltage_v": 380, "cos_phi": 0.9})
++        with_eta = cc.calculate({"kind": "current", "power_w": 15000,
++                                 "voltage_v": 380, "cos_phi": 0.9,
++                                 "efficiency": 0.9})
++        self.assertGreater(with_eta["result"]["current_a"], base["result"]["current_a"])
++
++    def test_cos_phi_out_of_range_is_refused(self):
++        result = cc.calculate({"kind": "current", "power_w": 1000,
++                               "voltage_v": 380, "cos_phi": 1.4})
++        self.assertFalse(result["ok"])
++        self.assertIn("bad_cos_phi", [r["code"] for r in result["refusals"]])
++
++    def test_zero_voltage_is_refused(self):
++        result = cc.calculate({"kind": "current", "power_w": 1000, "voltage_v": 0})
++        self.assertIn("bad_voltage", [r["code"] for r in result["refusals"]])
++
++
++class VoltageDropTests(unittest.TestCase):
++    """Физика: падение напряжения."""
++
++    def test_resistance_matches_rho_l_over_s(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper", "voltage_v": 380,
++                               "cos_phi": 0.9})
++        self.assertAlmostEqual(result["result"]["resistance_ohm"],
++                               0.01754 * 40 / 4, places=6)
++
++    def test_three_phase_drop_formula(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper", "voltage_v": 380,
++                               "cos_phi": 1.0})
++        expected = math.sqrt(3.0) * 25 * (0.01754 * 40 / 4)
++        self.assertAlmostEqual(result["result"]["drop_v"], expected, places=3)
++
++    def test_single_phase_doubles_the_drop(self):
++        single = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper", "voltage_v": 230,
++                               "cos_phi": 1.0, "phases": 1})
++        expected = 2.0 * 25 * (0.01754 * 40 / 4)
++        self.assertAlmostEqual(single["result"]["drop_v"], expected, places=3)
++
++    def test_aluminium_drops_more_than_copper(self):
++        copper = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper", "voltage_v": 380})["result"]
++        alu = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                            "length_m": 40, "section_mm2": 4,
++                            "material": "aluminium", "voltage_v": 380})["result"]
++        self.assertGreater(alu["drop_v"], copper["drop_v"])
++
++    def test_unknown_material_is_refused(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "серебро"})
++        self.assertIn("unknown_material", [r["code"] for r in result["refusals"]])
++
++    def test_explicit_resistivity_beats_material(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 100, "section_mm2": 10,
++                               "material": "copper",
++                               "resistivity_ohm_mm2_per_m": 0.02,
++                               "voltage_v": 380})
++        self.assertAlmostEqual(result["result"]["resistance_ohm"], 0.2, places=6)
++
++    def test_percent_needs_voltage(self):
++        result = cc.calculate({"kind": "voltage_drop", "current_a": 25,
++                               "length_m": 40, "section_mm2": 4,
++                               "material": "copper"})
++        self.assertIsNone(result["result"]["drop_percent"])
++
++
++class FaultCurrentTests(unittest.TestCase):
++    """Физика: ток КЗ. Отказ вместо «типичного» источника."""
++
++    def test_three_phase_from_impedance(self):
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "source_impedance_ohm": 0.1})
++        self.assertAlmostEqual(result["result"]["fault_current_a"],
++                               380 / (math.sqrt(3.0) * 0.1), places=2)
++
++    def test_transformer_nameplate(self):
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "transformer": {"power_mva": 0.63,
++                                               "uk_percent": 5.5}})
++        z = 0.055 * 380 * 380 / 630000.0
++        self.assertAlmostEqual(result["result"]["impedance"]["source_ohm"], z, places=6)
++        self.assertEqual(result["result"]["source_kind"], "transformer")
++
++    def test_short_circuit_power(self):
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "source_short_circuit_mva": 10})
++        self.assertEqual(result["result"]["source_kind"], "short_circuit_power")
++
++    def test_line_resistance_is_added(self):
++        bare = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                             "source_impedance_ohm": 0.1})["result"]
++        with_line = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                                  "source_impedance_ohm": 0.1, "length_m": 40,
++                                  "section_mm2": 4, "material": "copper"})["result"]
++        self.assertLess(with_line["fault_current_a"], bare["fault_current_a"])
++        self.assertAlmostEqual(with_line["impedance"]["line_r_ohm"],
++                               0.01754 * 40 / 4, places=6)
++
++    def test_missing_source_is_refused(self):
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380})
++        self.assertFalse(result["ok"])
++        refusal = result["refusals"][0]
++        self.assertEqual(refusal["code"], "no_source_data")
++        self.assertIn("transformer", refusal["required_any"])
++
++    def test_single_phase_without_zero_sequence_is_refused(self):
++        """Петля «фаза-нуль» не считается без данных о нулевой последовательности."""
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "phases": 1, "source_impedance_ohm": 0.1})
++        self.assertFalse(result["ok"])
++        self.assertIn("no_zero_sequence_data", [r["code"] for r in result["refusals"]])
++
++    def test_single_phase_with_zero_sequence(self):
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "phases": 1, "source_impedance_ohm": 0.1,
++                               "zero_sequence_impedance_ohm": 0.2})
++        self.assertTrue(result["ok"])
++        self.assertAlmostEqual(result["result"]["fault_current_a"],
++                               (380 / math.sqrt(3.0)) / 0.3, places=2)
++
++    def test_half_specified_line_is_noted(self):
++        """Длина без сечения — это не «линии нет», а молча неучтённое сопротивление."""
++        result = cc.calculate({"kind": "fault_current", "voltage_v": 380,
++                               "source_impedance_ohm": 0.1, "length_m": 40})
++        self.assertTrue(result["ok"])
++        self.assertTrue(any("неполностью" in note for note in result["notes"]))
++
++
++class DeratingTests(unittest.TestCase):
++    """Арифметика поправочных коэффициентов."""
++
++    def test_product(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 41,
++                               "factors": [{"name": "temperature", "value": 0.94},
++                                           {"name": "grouping", "value": 0.8}]})
++        self.assertAlmostEqual(result["result"]["product"], 0.752, places=6)
++        self.assertAlmostEqual(result["result"]["derated_current_a"], 30.832, places=3)
++
++    def test_factors_as_dict(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 100,
++                               "factors": {"grouping": 0.7}})
++        self.assertEqual(result["result"]["product"], 0.7)
++
++    def test_no_factors_means_no_reduction(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 41})
++        self.assertEqual(result["result"]["product"], 1.0)
++        self.assertTrue(any("не заданы" in note for note in result["notes"]))
++
++    def test_zero_factor_is_refused(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 41,
++                               "factors": [{"name": "x", "value": 0}]})
++        self.assertIn("bad_factor", [r["code"] for r in result["refusals"]])
++
++    def test_factor_above_one_is_flagged(self):
++        result = cc.calculate({"kind": "derating", "base_current_a": 41,
++                               "factors": [{"name": "x", "value": 1.2}]})
++        self.assertTrue(result["ok"])
++        self.assertTrue(any("больше единицы" in note for note in result["notes"]))
++
++
++class MaxDemandTests(unittest.TestCase):
++    """Норма: коэффициенты спроса."""
++
++    def test_demand_is_lower_than_installed(self):
++        result = cc.calculate({"kind": "max_demand",
++                               "loads": [{"load_type": "motor", "power_kw": 11,
++                                          "count": 2},
++                                         {"load_type": "socket", "power_kw": 2.5,
++                                          "count": 3}],
++                               "tables": {"demand_factors": DEMAND}})["result"]
++        self.assertEqual(result["installed_power_w"], 29500.0)
++        self.assertEqual(result["demand_power_w"], 17650.0)
++
++    def test_unknown_load_type_goes_to_unverified(self):
++        """Нет коэффициента — нагрузка не «считается по единице», а остается непроверенной."""
++        result = cc.calculate({"kind": "max_demand",
++                               "loads": [{"load_type": "heater", "power_kw": 5}],
++                               "tables": {"demand_factors": DEMAND}})["result"]
++        self.assertEqual(result["unverified"][0]["reason"], "no_demand_factor")
++        self.assertEqual(result["demand_power_w"], 0.0)
++
++    def test_missing_table_is_refused(self):
++        result = cc.calculate({"kind": "max_demand",
++                               "loads": [{"load_type": "motor", "power_kw": 11}]})
++        self.assertEqual(result["refusals"][0]["required_table"], "demand_factors")
++
++    def test_table_source_is_echoed(self):
++        result = cc.calculate({"kind": "max_demand",
++                               "loads": [{"load_type": "motor", "power_kw": 11}],
++                               "tables": {"demand_factors": DEMAND}})
++        self.assertEqual(result["provenance"][0]["source"], "справочник")
++
++    def test_table_without_source_is_flagged(self):
++        result = cc.calculate({"kind": "max_demand",
++                               "loads": [{"load_type": "motor", "power_kw": 11}],
++                               "tables": {"demand_factors": DEMAND["rows"]}})
++        self.assertTrue(any("source" in note for note in result["notes"]))
++
++
++class CableSizeTests(unittest.TestCase):
++    """Норма: выбор сечения по таблице допустимых токов."""
++
++    def test_selects_smallest_passing_section(self):
++        result = cc.calculate({"kind": "cable_size", "current_a": 25,
++                               "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertEqual(result["selected"]["section_mm2"], 2.5)
++
++    def test_derating_raises_the_section(self):
++        """Снижение допустимого тока не должно «улучшать» сечение."""
++        plain = cc.calculate({"kind": "cable_size", "current_a": 25,
++                              "tables": {"ampacity": AMPACITY}})["result"]
++        derated = cc.calculate({"kind": "cable_size", "current_a": 25,
++                                "factors": [{"name": "temperature", "value": 0.8}],
++                                "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertGreater(derated["selected"]["section_mm2"],
++                           plain["selected"]["section_mm2"])
++
++    def test_drop_criterion_raises_the_section(self):
++        """По току хватило бы 1.5 мм², по потере напряжения — 6 мм²."""
++        by_current = cc.calculate({"kind": "cable_size", "current_a": 20,
++                                   "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertEqual(by_current["selected"]["section_mm2"], 1.5)
++
++        by_drop = cc.calculate({"kind": "cable_size", "current_a": 20,
++                                "length_m": 120, "material": "copper",
++                                "voltage_v": 380, "cos_phi": 0.9,
++                                "drop_limit_percent": 3.5,
++                                "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertTrue(by_drop["selected"]["passes_drop"])
++        self.assertEqual(by_drop["selected"]["section_mm2"], 6.0)
++
++    def test_no_section_passes_the_drop_limit(self):
++        """Слишком строгий предел — это отсутствие решения, а не «возьмём побольше»."""
++        result = cc.calculate({"kind": "cable_size", "current_a": 20,
++                               "length_m": 120, "material": "copper",
++                               "voltage_v": 380, "cos_phi": 0.9,
++                               "drop_limit_percent": 1.0,
++                               "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertIsNone(result["selected"])
++        self.assertIn("selection_note", result)
++
++    def test_unlimited_drop_is_not_checked_not_passed(self):
++        result = cc.calculate({"kind": "cable_size", "current_a": 25,
++                               "tables": {"ampacity": AMPACITY}})
++        criteria = [g["criterion"] for g in result["not_checked"]]
++        self.assertIn("voltage_drop", criteria)
++
++    def test_no_section_passes_is_a_result_not_a_guess(self):
++        result = cc.calculate({"kind": "cable_size", "current_a": 500,
++                               "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertIsNone(result["selected"])
++        self.assertIn("selection_note", result)
++
++    def test_missing_table_is_refused(self):
++        result = cc.calculate({"kind": "cable_size", "current_a": 25})
++        self.assertEqual(result["refusals"][0]["required_table"], "ampacity")
++        self.assertFalse(result["result"])
++
++    def test_current_derived_from_power(self):
++        result = cc.calculate({"kind": "cable_size", "power_kw": 15,
++                               "voltage_v": 380, "cos_phi": 0.9,
++                               "tables": {"ampacity": AMPACITY}})["result"]
++        self.assertAlmostEqual(result["load_current_a"], 25.322, places=2)
++        self.assertEqual(result["selected"]["section_mm2"], 2.5)
++
++
++class BreakerSelectTests(unittest.TestCase):
++    """Норма: подбор аппарата по каталогу."""
++
++    def test_rating_must_cover_the_load(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 25.3,
++                               "tables": {"breakers": BREAKERS}})["result"]
++        self.assertEqual(result["selected"]["rating_a"], 32.0)
++
++    def test_rating_must_not_exceed_cable(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 20,
++                               "allowable_current_a": 27.0,
++                               "tables": {"breakers": BREAKERS}})["result"]
++        self.assertLessEqual(result["selected"]["rating_a"], 27.0)
++
++    def test_breaking_capacity_is_checked(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 20,
++                               "fault_current_ka": 5.0,
++                               "tables": {"breakers": BREAKERS}})["result"]
++        for candidate in result["candidates"]:
++            if candidate["breaking_ka"] == 4.5:
++                self.assertFalse(candidate["passes_breaking"])
++
++    def test_curve_filter(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 20,
++                               "trip_curve": "D",
++                               "tables": {"breakers": BREAKERS}})["result"]
++        self.assertEqual([c["trip_curve"] for c in result["candidates"]], ["D"])
++
++    def test_missing_catalogue_is_refused(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 20})
++        self.assertEqual(result["refusals"][0]["required_table"], "breakers")
++
++    def test_cable_criterion_without_data_is_not_checked(self):
++        result = cc.calculate({"kind": "breaker_select", "current_a": 20,
++                               "tables": {"breakers": BREAKERS}})
++        self.assertIn("cable_protection",
++                      [g["criterion"] for g in result["not_checked"]])
++
++
++class SelectivityTests(unittest.TestCase):
++    """Норма: селективность по время-токовым характеристикам."""
++
++    def test_exact_times_are_compared(self):
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 100,
++                               "upstream": {"rating_a": 32, "t_min_s": 0.5},
++                               "downstream": {"rating_a": 16, "t_max_s": 0.05}})["result"]
++        self.assertTrue(result["selective"])
++        self.assertAlmostEqual(result["margin_s"], 0.45, places=6)
++
++    def test_no_margin_means_not_selective(self):
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 100,
++                               "upstream": {"rating_a": 32, "t_min_s": 0.02},
++                               "downstream": {"rating_a": 16, "t_max_s": 0.05}})["result"]
++        self.assertFalse(result["selective"])
++
++    def test_curve_point_is_used_when_times_absent(self):
++        """Нижестоящий попадает точно в узел 3×: его время берётся с характеристики."""
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 48,
++                               "upstream": {"rating_a": 32, "trip_curve": "C"},
++                               "downstream": {"rating_a": 16, "trip_curve": "C"},
++                               "tables": {"trip_curves": CURVES}})
++        self.assertTrue(result["ok"])
++        self.assertAlmostEqual(result["result"]["downstream"]["multiple"], 3.0, places=6)
++        self.assertEqual(result["result"]["downstream"]["t_max_s"], 8.0)
++        self.assertIsNotNone(result["result"]["selective"])
++
++    def test_interpolation_is_flagged(self):
++        """Интерполяция — допущение, и она не выдается за расчёт по каталогу."""
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 60,
++                               "upstream": {"rating_a": 32, "trip_curve": "C"},
++                               "downstream": {"rating_a": 16, "trip_curve": "C"},
++                               "tables": {"trip_curves": CURVES}})
++        self.assertTrue(any("interpolated" in note for note in result["notes"]))
++
++    def test_out_of_range_is_not_extrapolated(self):
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 400,
++                               "upstream": {"rating_a": 32, "trip_curve": "C"},
++                               "downstream": {"rating_a": 16, "trip_curve": "C"},
++                               "tables": {"trip_curves": CURVES}})
++        self.assertIsNone(result["result"]["selective"])
++        self.assertTrue(any("вне диапазона" in note for note in result["notes"]))
++        self.assertTrue(result["not_checked"])
++
++    def test_missing_curves_and_times_is_refused(self):
++        result = cc.calculate({"kind": "selectivity", "fault_current_a": 100,
++                               "upstream": {"rating_a": 32},
++                               "downstream": {"rating_a": 16}})
++        self.assertEqual(result["refusals"][0]["required_table"], "trip_curves")
++
++
++class HonestyTests(unittest.TestCase):
++    """То, без чего модуль нельзя было бы считать честным."""
++
++    def test_no_normative_tables_are_built_in(self):
++        """Таблица внутри модуля сделала бы отказ невозможным."""
++        self.assertNotIn("ampacity", cc.__dict__)
++        self.assertNotIn("PUE", cc.__dict__)
++        self.assertNotIn("ПУЭ", cc.__dict__)
++        self.assertTrue(cc.RESISTIVITY_OHM_MM2_PER_M)
++
++    def test_resistivity_is_declared_as_physical_property(self):
++        """Удельное сопротивление — свойство металла, а не нормативная таблица."""
++        joined = " ".join(cc.LIMITS)
++        self.assertIn("физическое свойство", joined)
++
++    def test_refusal_instead_of_default_section(self):
++        """Без таблицы модуль обязан молчать, а не возвращать «4 мм²»."""
++        result = cc.calculate({"kind": "cable_size", "current_a": 25})
++        self.assertFalse(result["ok"])
++        self.assertEqual(result["result"], {})
++
++    def test_module_does_not_import_com(self):
++        path = os.path.join(os.path.dirname(__file__), "..", "src", "cabinet_calc.py")
++        with open(path, encoding="utf-8") as handle:
++            source = handle.read()
++        self.assertNotIn("win32com", source)
++        self.assertNotIn("pythoncom", source)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 9d864a3..f8e5c96 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index f3f83f4..7b24e4c 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -314,8 +314,8 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ 
+ class TestCatalogWave3(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index 19a6e55..eeeb9f3 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -316,8 +316,8 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ 
+ class TestCatalogWave4(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index 9774ef4..7d20523 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -391,8 +391,8 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index 381f005..a565f1c 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -434,8 +434,8 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index b450515..af82efb 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git a/tests/test_wave8.py b/tests/test_wave8.py
+index 26ebf26..a161e2b 100644
+--- a/tests/test_wave8.py
++++ b/tests/test_wave8.py
+@@ -71,8 +71,8 @@ def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None)
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_build_tool_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tests/test_wave9.py b/tests/test_wave9.py
+index 6863b35..17799a5 100644
+--- a/tests/test_wave9.py
++++ b/tests/test_wave9.py
+@@ -100,8 +100,8 @@ class FakeExecutor:
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_53(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 53)
++    def test_tool_count_is_54(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 54)
+ 
+     def test_both_tools_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]

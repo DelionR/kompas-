@@ -1,0 +1,55 @@
+{
+  "bridge_version": "1.1.14_CAP2",
+  "protocol_version": "1.1.11",
+  "kompas_progid": "KOMPAS.Application.7",
+  "api5_progid": "KOMPAS.Application.5",
+  "worker_poll_ms": 120,
+  "mcp_tool_timeout_sec": 90,
+  "job_timeout_max_sec": 300,
+  "compact_threshold_bytes": 60000,
+  "compact_max_items": 200,
+  "viewport": {
+    "capture_method": "api7_document_frame_imagegrab_with_printwindow_fallback",
+    "crop": {
+      "left": 345,
+      "top": 160,
+      "right": 8,
+      "bottom": 10
+    },
+    "allow_full_window_fallback": true
+  },
+  "view": {
+    "projection_indices": {
+      "front": 1,
+      "rear": 2,
+      "top": 3,
+      "bottom": 4,
+      "left": 5,
+      "right": 6,
+      "iso": 7,
+      "dimetric": 8
+    },
+    "allow_keyboard_rotation_fallback": true,
+    "max_rotation_steps_per_call": 12
+  },
+  "kompas": {
+    "version_matrix": {
+      "entries": [],
+      "default_level": "unverified",
+      "guarded_actions": [],
+      "notes": "Формат записи: {\"pattern\": \"25.*\", \"level\": \"certified|targeted|experimental|unsupported\", \"notes\": \"...\"}. Пустая матрица означает «не проверено», а не «поддерживается». Действия из guarded_actions блокируются, пока версия не попадёт в certified или targeted."
+    }
+  },
+  "safety": {
+    "protected_roots": [
+      "C:\\KOMPAS_AI_WORKSPACE\\00_SOURCE",
+      "C:\\KOMPAS_AI_WORKSPACE\\01_CURRENT_CDW",
+      "C:\\KOMPAS_AI_WORKSPACE\\02_3D_V9_STABLE"
+    ],
+    "write_roots": [
+      "{bridge_root}\\work",
+      "C:\\KOMPAS_AI_WORKSPACE\\90_OUTPUT"
+    ],
+    "jobs_subdir": "jobs"
+  }
+}

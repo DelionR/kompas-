@@ -1,0 +1,1866 @@
+diff --git a/VERSION.json b/VERSION.json
+index 9e3bb8f..56b0e17 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 47,
++  "mcp_tool_count": 49,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -54,6 +54,8 @@
+     "kompas_reopen",
+     "kompas_references_qa",
+     "kompas_run_job",
++    "kompas_cabinet_spec_check",
++    "kompas_cabinet_layout_check",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+   ],
+diff --git b/docs/WAVE7_CHANGES.md b/docs/WAVE7_CHANGES.md
+new file mode 100644
+index 0000000..fc4d508
+--- /dev/null
++++ b/docs/WAVE7_CHANGES.md
+@@ -0,0 +1,127 @@
++# Волна 7 — доменный слой щита (НКУ / АСУ ТП)
++
++Поверхность инструментов **47 → 49**. Патч `wave7.patch` накладывается поверх
++`wave1..wave6`.
++
++## Что появилось
++
++Два инструмента и три новых модуля. Оба инструмента — чистые проверки:
++документ не открывается, КОМПАС не требуется, ничего не пишется.
++
++| Инструмент | Действие | Что проверяет |
++|---|---|---|
++| `kompas_cabinet_spec_check` | `cabinet.spec_check` | Состав шкафа, совместимость оборудования, секционирование по ГОСТ IEC 61439-2 |
++| `kompas_cabinet_layout_check` | `cabinet.layout_check` | Раскладку монтажной панели: границы, каналы, позиции, зазоры, переполнение рядов |
++
++Новые файлы:
++
++- `src/cabinet_domain.py` — домен: типы шкафа, категории оборудования, формы
++  разделения, десять инженерных правил, сбор неподтверждённого и
++  непроверяемого.
++- `src/cabinet_layout.py` — геометрия раскладки: миллиметры, начало координат
++  сверху слева, `+y` вниз; повёрнутые габариты, каналы, ряды, зазоры.
++- `src/cabinet_tools.py` — адаптеры к реестру действий.
++- `tests/test_wave7.py` — 43 теста без КОМПАСа.
++
++## Почему это не «ещё два инструмента»
++
++Исследование GitHub (102 запроса, три волны) показало: **открытых библиотек
++щитового оборудования под КОМПАС-3D не существует вовсе**. По-русски ноль
++дают «компас щит», «компас шкаф», «компас НКУ», «компас электрощит»;
++по-английски — «kompas cabinet», «kompas3d cabinet», «kompas switchgear».
++При этом CAD-возможности для генерации щита в мосте уже есть: из 16 шагов
++конвейера проходятся 13.
++
++Не хватало не геометрии, а **домена** — модели щита и инженерных правил.
++Волна 7 закрывает именно его. Правила не выдуманы: они перенесены из
++`postall74/TaCP` (`src/utils/rules.ts`), соглашения раскладки — из
++`Taam4142/cabinet-layout-generator-v2` (`web/src/model/types.ts`,
++`validate.ts`). Оба проекта разобраны по исходникам.
++
++## Десять доменных правил
++
++| № | Код | Уровень | Условие |
++|---|---|---|---|
++| 1 | `BREAKER_OVER_BUS` | error | Номинал отходящего аппарата выше номинала шины. Вводной (самый мощный) исключён из сравнения |
++| 2 | `MANY_BREAKERS_NO_BUS` | info | Три и более автоматов без соединительной шины |
++| 3 | `UZIP_NO_INCOMING` | warn | УЗИП без вводного автомата или рубильника |
++| 4 | `PLC_NO_PSU` | warn | Контроллер без блока питания 24 В в этом шкафу |
++| 5 | `HMI_NO_PLC` | warn | Панель оператора есть, ПЛК нет ни в одном шкафу проекта (межшкафное) |
++| 6 | `EMPTY_CABINET` | info | Шкаф пуст |
++| 7 | `FORM_NO_BUSBAR_SEGMENT` | warn | Форма ≥ 2 без шинного отсека |
++| 8 | `FORM_FEW_SEGMENTS` | warn | Форма ≥ 3 при менее чем двух функциональных отсеках |
++| 9 | `BUSBAR_OVERLOAD` | warn | Сумма номиналов отходящих автоматов выше допустимого тока шины |
++| 10 | `HEAT_NO_THERMOSTAT` | warn | Греющий кабель без терморегулятора (правило на проект) |
++
++Плюс `UNRESOLVED_CATALOG_REF` (error): ссылка на справочник не разрешается —
++позицию нельзя ни проверить, ни разместить.
++
++## Ключевые решения
++
++**Ничего не угадывать — и это проверяется тестами.** Правила 1 и 9 физически
++не могут сработать без номинального тока. Отсутствующий ток — не «ноль» и не
++«проверено»: позиция уходит в `unconfirmed` с причиной
++`rated_current_missing`, а сами правила — в `unverified`. Отдельный тест
++требует, чтобы шкаф с аппаратом без номинала получил вердикт
++`ready_with_unknowns`, а не `ready`.
++
++**Количество в строке состава разворачивается.** «Автомат 40 А, qty 3» — это
++три автомата. Без этого три автомата на шине проходили проверку как один.
++Найдено тестом: `BUSBAR_OVERLOAD` не срабатывал на qty 2.
++
++**Три вердикта, как в волне 6:** `blocked` (есть error),
++`ready_with_unknowns` (есть warn, неподтверждённое или непроверяемое),
++`ready`.
++
++**`error` — структурно невозможно, `warning` — разрешено, но показать.**
++Перенесено из CLG2: пересечение, выход за панель и тесный зазор не блокируют
++запись, но обязаны вернуться в ответе. Ничего не исправляется молча.
++
++**Переворот координат — в одном месте.** Раскладка живёт в системе
++«сверху слева, `+y` вниз». Переход в CAD-систему делает только
++`cabinet_layout.to_cad()`. Размазать этот переворот по коду — значит
++гарантировать перевёрнутый щит.
++
++**Неподтверждённый габарит не заменяется оценкой.** Позиция с
++`confirm: true` уходит в `unconfirmed`, а не в «примерно 90 мм».
++
++## Что оператор заметит
++
++- Два новых инструмента в `tools/list`; оба `readOnlyHint: true`.
++- Вердикты и коды правил в ответе; для каждого правила есть человеческий
++  текст и подсказка, что делать.
++- Поле `limits` в каждом ответе: чем проверка **не** является.
++
++## Чего в волне нет
++
++- **Материализации в КОМПАС.** Волна 7 ничего не строит: это волна 9.
++- **Вставки фрагмента из библиотеки оборудования.** Главный разрыв, под него
++  задумано поле `fragment_ref` в справочнике.
++- **Чтения настоящего `.spw`.** Спецификация по-прежнему производная.
++- **Расчёта токов КЗ, теплового режима и сечений кабелей.** Это отдельные
++  домены со своими нормативами.
++- **Экономики.** Состав и трудозатраты — да; цены, наценки и НДС — нет.
++
++## Проверка
++
++```
++python -m unittest tests.test_wave7                       # 43 теста
++python -m unittest tests.test_wave1 ... tests.test_wave7 \
++                   tests.test_mcp_stdio \
++                   tests.test_mcp_bridge_routing          # 273 теста
++```
++
++Обновлены стоп-краны с числом инструментов: `test_wave1` (49), `test_wave2`,
++`test_wave3`, `test_wave4`, `test_wave5`, `test_wave6`. VERSION.json:
++`mcp_tool_count` 47 → 49, в `mcp_tools` добавлены два имени в порядке
++каталога (порядок сравнивается тестом, а не множество).
++
++Имена тестов-счётчиков в `test_wave5` и `test_wave6` приведены к реальному
++числу: они назывались `is_46` и `is_47` при значении 47.
++
++## Следующие шаги
++
++Волна 8 — раскладка как генератор, а не только проверка: расстановка рядов,
++пайка к каналам, расчёт координат. Волна 9 — материализация через
++`kompas_assembly_insert_component` и `kompas_component_pattern_linear`.
++Волна 10 — сверка спецификации с перечнем и библиотека фрагментов.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index cda6aa2..a302304 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -107,6 +107,8 @@ TOOLS = [
+     {"name":"kompas_reopen","description":"Close and reopen the same active file, verifying that the reopened document is exactly the file that was closed. Set save=true only for a safe COPY or an approved output path; reopening a protected source is refused. Use it as the persistence-verification step before declaring a write successful.","inputSchema":{"type":"object","properties":{"save":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+     {"name":"kompas_references_qa","description":"Read native assembly references recursively and report missing references. Optional package_root also flags dependencies outside the portable package.","inputSchema":{"type":"object","properties":{"package_root":{"type":"string"},"max_depth":{"type":"integer","minimum":1,"maximum":15,"default":8}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_run_job","description":"Run an existing task-specific Python COM job only from KOMPAS_BRIDGE/jobs with a bounded timeout. Use only when the stable tool surface does not cover an engineering operation, then verify through API plus a fresh viewport capture.","inputSchema":{"type":"object","required":["script"],"properties":{"script":{"type":"string"},"timeout_sec":{"type":"integer","minimum":1,"maximum":300,"default":60}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
++    {"name":"kompas_cabinet_spec_check","description":"Validate the engineering composition of a switchgear cabinet (NKU / ASU TP): equipment compatibility, separation form and functional segments to GOST IEC 61439-2. Pure domain check over the supplied JSON - no document is opened and nothing is written. Rules that cannot be evaluated because a rated current or a catalog reference is missing are reported under unverified and unconfirmed instead of being treated as passing.","inputSchema":{"type":"object","properties":{"cabinets":{"type":"array","items":{"type":"object"},"maxItems":200},"catalog":{"type":"array","items":{"type":"object"},"maxItems":5000},"library":{"type":"array","items":{"type":"object"},"maxItems":5000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_layout_check","description":"Validate a control-cabinet mounting-plate layout in millimetres: plate bounds, wire ducts, placed equipment, sets, wiring clearance and row overflow. Coordinates are top-left origin with +y down; conversion to CAD space is done only by to_cad(). Unconfirmed part sizes are reported, never substituted. Pure check - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"plate":{"type":"object"},"defaults":{"type":"object"},"ducts":{"type":"array","items":{"type":"object"},"maxItems":500},"elements":{"type":"array","items":{"type":"object"},"maxItems":5000},"groups":{"type":"array","items":{"type":"object"},"maxItems":1000},"library":{"type":"array","items":{"type":"object"},"maxItems":5000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+ # Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
+@@ -169,6 +171,8 @@ ACTION_MAP = {
+     "kompas_reopen": ("document.reopen", lambda a: a),
+     "kompas_references_qa": ("qa.references", lambda a: a),
+     "kompas_run_job": ("run_job", lambda a: a),
++    "kompas_cabinet_spec_check": ("cabinet.spec_check", lambda a: a),
++    "kompas_cabinet_layout_check": ("cabinet.layout_check", lambda a: a),
+ }
+ 
+ 
+diff --git b/src/cabinet_domain.py b/src/cabinet_domain.py
+new file mode 100644
+index 0000000..1d13f7c
+--- /dev/null
++++ b/src/cabinet_domain.py
+@@ -0,0 +1,616 @@
++"""Доменный слой щита (НКУ / АСУ ТП) — чистые функции, без COM.
++
++Модуль проверяет *инженерную* сторону щита: состав шкафа, секционирование по
++ГОСТ IEC 61439-2 и совместимость оборудования. Он ничего не знает о геометрии
++(это ``cabinet_layout``) и ничего не знает о КОМПАСе.
++
++Главное правило модуля: **ничего не угадывать**. Если правило не может быть
++проверено из-за отсутствующих данных, оно попадает в ``unknowns``, а не
++молча возвращает "всё хорошо". Правдоподобно неверный щит уходит в цех и
++стоит денег — поэтому отсутствующий номинал отличается от нулевого.
++
++Структура входных данных (всё опционально, кроме cabinets)::
++
++    {
++      "cabinets": [
++        {"id": "cab-1", "kind": "Шкаф ПЛК", "name": "...",
++         "form": "2b",
++         "segments": [{"id": "s1", "kind": "input", "name": "...", "partitions": 2}],
++         "items": [{"lineId": "i1", "eqId": "eq-plc110", "qty": 1, "tag": "A1"}]}
++      ],
++      "catalog": [
++        {"id": "eq-plc110", "sku": "ПЛК110-24", "name": "Контроллер",
++         "category": "ПЛК и модули", "ratedCurrent": null}
++      ]
++    }
++
++``catalog`` можно также передать как ``library`` или ``equipment``.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Optional, Sequence
++
++# --------------------------------------------------------------------------
++# справочные константы
++# --------------------------------------------------------------------------
++
++CAT_BREAKER = "Автоматические выключатели"
++CAT_RCD = "УЗО и дифавтоматы"
++CAT_SWITCH = "Рубильники и переключатели"
++CAT_CONTACTOR = "Контакторы и реле"
++CAT_UZIP = "УЗИП и защита"
++CAT_BUS = "Шины и клеммы"
++CAT_PLC = "ПЛК и модули"
++CAT_PSU = "Блоки питания"
++CAT_HMI = "Панели оператора"
++CAT_HEAT = "Греющий кабель"
++CAT_THERMO = "Управление обогревом"
++
++KNOWN_CATEGORIES = (
++    CAT_BREAKER, CAT_RCD, CAT_SWITCH, CAT_CONTACTOR, CAT_UZIP, CAT_BUS,
++    CAT_PLC, CAT_PSU, CAT_HMI, CAT_HEAT, CAT_THERMO,
++)
++
++# Категории, у которых номинальный ток обязателен для правил 1 и 9.
++POWER_CATEGORIES = (CAT_BREAKER, CAT_RCD, CAT_SWITCH, CAT_CONTACTOR)
++
++CABINET_KINDS = (
++    "ГРЩ", "ВРУ", "АВР", "Шкаф ПЛК", "ЩУО", "ЗИП", "Шкаф управления", "Секция",
++)
++
++SEGMENT_KINDS = ("input", "feeders", "control", "busbar", "cable", "custom")
++SEPARATION_FORMS = ("1", "2a", "2b", "3a", "3b", "4a", "4b")
++
++# Ранг формы разделения: 1 < 2a=2b < 3a=3b < 4a=4b.
++FORM_RANK: Dict[str, int] = {
++    "1": 1, "2a": 2, "2b": 2, "3a": 3, "3b": 3, "4a": 4, "4b": 4,
++}
++
++SEVERITY_RANK = {"error": 0, "warn": 1, "info": 2}
++SEVERITY_LABEL = {"error": "Ошибка", "warn": "Внимание", "info": "Подсказка"}
++
++# Ни одного правила не требует знаний о КОМПАСе, поэтому это единственная
++# причина, по которой модуль остаётся COM-free на уровне импорта.
++NO_COM_DEPENDENCIES = True
++
++
++# --------------------------------------------------------------------------
++# разбор и нормализация
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _number(value: Any) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return None
++    if isinstance(value, (int, float)):
++        return float(value)
++    return None
++
++
++def _catalog_of(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
++    for key in ("catalog", "library", "equipment"):
++        if key in payload:
++            return [ _as_dict(x) for x in _as_list(payload[key]) ]
++    return []
++
++
++def load_spec(payload: Any) -> Dict[str, Any]:
++    """Нормализовать запрос. Ничего не отбрасывает молча: неизвестные ключи
++    и нечитаемые значения попадают в ``parse_issues``."""
++    data = _as_dict(payload)
++    parse_issues: List[Dict[str, Any]] = []
++
++    cabinets: List[Dict[str, Any]] = []
++    for raw in _as_list(data.get("cabinets")):
++        cab = _as_dict(raw)
++        if not cab:
++            parse_issues.append({"level": "error", "code": "BAD_CABINET",
++                                 "message": "элемент cabinets не является объектом"})
++            continue
++        cab_id = _text(cab.get("id")) or ("cab-%d" % (len(cabinets) + 1))
++        segments = []
++        for sraw in _as_list(cab.get("segments")):
++            seg = _as_dict(sraw)
++            if not seg:
++                parse_issues.append({"level": "error", "code": "BAD_SEGMENT",
++                                     "message": "элемент segments не является объектом",
++                                     "ref": cab_id})
++                continue
++            segments.append({
++                "id": _text(seg.get("id")),
++                "kind": _text(seg.get("kind")),
++                "name": _text(seg.get("name")),
++                "partitions": _number(seg.get("partitions")) or 0,
++            })
++        items = []
++        for iraw in _as_list(cab.get("items")):
++            item = _as_dict(iraw)
++            if not item:
++                parse_issues.append({"level": "error", "code": "BAD_ITEM",
++                                     "message": "элемент items не является объектом",
++                                     "ref": cab_id})
++                continue
++            qty = _number(item.get("qty"))
++            items.append({
++                "lineId": _text(item.get("lineId")) or _text(item.get("id")),
++                "eqId": _text(item.get("eqId")),
++                "sku": _text(item.get("sku")),
++                "name": _text(item.get("name")),
++                "qty": qty if qty is not None else 1.0,
++                "tag": _text(item.get("tag")),
++            })
++        raw_form = _text(cab.get("form"))
++        if raw_form and raw_form not in SEPARATION_FORMS:
++            parse_issues.append({"level": "error", "code": "BAD_FORM",
++                                 "message": 'форма разделения "%s" не из перечня %s'
++                                            % (raw_form, ", ".join(SEPARATION_FORMS)),
++                                 "ref": cab_id})
++        cabinets.append({
++            "id": cab_id,
++            "kind": _text(cab.get("kind")),
++            "name": _text(cab.get("name")) or cab_id,
++            "form": raw_form if raw_form in SEPARATION_FORMS else None,
++            "segments": segments,
++            "items": items,
++        })
++
++    catalog: List[Dict[str, Any]] = []
++    for raw in _catalog_of(data):
++        eq = _as_dict(raw)
++        if not eq:
++            parse_issues.append({"level": "error", "code": "BAD_EQUIPMENT",
++                                 "message": "элемент справочника не является объектом"})
++            continue
++        catalog.append({
++            "id": _text(eq.get("id")),
++            "sku": _text(eq.get("sku")),
++            "name": _text(eq.get("name")),
++            "brand": _text(eq.get("brand")),
++            "category": _text(eq.get("category")),
++            "ratedCurrent": _number(eq.get("ratedCurrent")),
++            "width_mm": _number(eq.get("width_mm")),
++            "height_mm": _number(eq.get("height_mm")),
++            "confirm": bool(eq.get("confirm")),
++        })
++
++    return {"cabinets": cabinets, "catalog": catalog, "parse_issues": parse_issues}
++
++
++# --------------------------------------------------------------------------
++# доступ к справочнику
++# --------------------------------------------------------------------------
++
++def _by_id(catalog: Sequence[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
++    out: Dict[str, Dict[str, Any]] = {}
++    for eq in catalog:
++        if eq["id"]:
++            out[eq["id"]] = eq
++    return out
++
++
++def _by_sku(catalog: Sequence[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
++    out: Dict[str, Dict[str, Any]] = {}
++    for eq in catalog:
++        if eq["sku"] and eq["sku"] not in out:
++            out[eq["sku"]] = eq
++    return out
++
++
++def resolve_equipment(item: Dict[str, Any], catalog: Sequence[Dict[str, Any]],
++                      by_id: Dict[str, Dict[str, Any]],
++                      by_sku: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
++    """Позиция строки состава -> карточка справочника. Порядок: eqId, затем sku."""
++    if item["eqId"] and item["eqId"] in by_id:
++        return by_id[item["eqId"]]
++    if item["sku"] and item["sku"] in by_sku:
++        return by_sku[item["sku"]]
++    return None
++
++
++def is_busbar(eq: Optional[Dict[str, Any]]) -> bool:
++    """Шина, а не клемма и не DIN-рейка: имя начинается с «Шина» или артикул
++    из семейства ШИ/PS/ШМ/ШМТ."""
++    if not eq or eq.get("category") != CAT_BUS:
++        return False
++    name = eq.get("name") or ""
++    sku = eq.get("sku") or ""
++    return name.lower().startswith("шина") or sku.upper().startswith(("ШИ", "PS", "ШМ", "ШМТ"))
++
++
++def is_device(eq: Optional[Dict[str, Any]]) -> bool:
++    """Силовой аппарат с номинальным током."""
++    return bool(eq) and eq.get("ratedCurrent") is not None and eq.get("category") in POWER_CATEGORIES
++
++
++def is_breaker(eq: Optional[Dict[str, Any]]) -> bool:
++    return bool(eq) and eq.get("category") in (CAT_BREAKER, CAT_RCD)
++
++
++def expand_items(pairs, predicate) -> List[Dict[str, Any]]:
++    """Развернуть позиции по количеству.
++
++    Строка состава «автомат 40 А, qty 3» — это три автомата, а не один.
++    Правила по токам обязаны это учитывать, иначе три автомата на шине
++    пройдут проверку как один.
++    """
++    out: List[Dict[str, Any]] = []
++    for item, eq in pairs:
++        if eq is None or not predicate(eq):
++            continue
++        qty = item.get("qty") or 1.0
++        count = int(qty) if float(qty) == int(qty) else int(qty) + 1
++        out.extend([eq] * max(count, 1))
++    return out
++
++
++def is_plc(eq: Optional[Dict[str, Any]]) -> bool:
++    if not eq or eq.get("category") != CAT_PLC:
++        return False
++    blob = ((eq.get("name") or "") + " " + (eq.get("sku") or "")).lower()
++    return "контроллер" in blob or "плк" in blob
++
++
++# --------------------------------------------------------------------------
++# выдача
++# --------------------------------------------------------------------------
++
++def _issue(code: str, severity: str, message: str, hint: str = "",
++           ref: Optional[str] = None, cabinet: Optional[Dict[str, Any]] = None
++           ) -> Dict[str, Any]:
++    out: Dict[str, Any] = {
++        "code": code,
++        "severity": severity,
++        "message": message,
++    }
++    if hint:
++        out["hint"] = hint
++    if ref:
++        out["ref"] = ref
++    if cabinet is not None:
++        out["cabinetId"] = cabinet.get("id")
++        out["cabinetName"] = cabinet.get("name")
++    return out
++
++
++def _sorted(issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
++    return sorted(issues, key=lambda i: (SEVERITY_RANK.get(i["severity"], 9), i["code"]))
++
++
++# --------------------------------------------------------------------------
++# правила на один шкаф
++# --------------------------------------------------------------------------
++
++def rule_breaker_over_bus(cab, ctx) -> List[Dict[str, Any]]:
++    """1. Отходящий аппарат мощнее шины. Вводной (самый мощный) исключается:
++    шины питают отходящие группы, ввод подключается напрямую."""
++    devices = expand_items(ctx["resolved"], is_device)
++    buses = [eq for _it, eq in ctx["resolved"] if is_busbar(eq) and eq.get("ratedCurrent") is not None]
++    if len(devices) < 2 or not buses:
++        return []
++    ordered = sorted(devices, key=lambda eq: eq["ratedCurrent"], reverse=True)
++    dev = ordered[1]
++    bus = min(buses, key=lambda eq: eq["ratedCurrent"])
++    if dev["ratedCurrent"] > bus["ratedCurrent"]:
++        return [_issue(
++            "BREAKER_OVER_BUS", "error",
++            '%s (%.4g А) — номинал выше, чем у шины %s (%.4g А).'
++            % (dev["name"] or dev["sku"], dev["ratedCurrent"],
++               bus["name"] or bus["sku"], bus["ratedCurrent"]),
++            "Замените шину на более мощную или снизьте номинал отходящего аппарата.",
++            cabinet=cab)]
++    return []
++
++
++def rule_many_breakers_no_bus(cab, ctx) -> List[Dict[str, Any]]:
++    """2. Много автоматов, но нет соединительной шины."""
++    breakers = expand_items(ctx["resolved"], is_breaker)
++    any_bus = any(is_busbar(eq) for _it, eq in ctx["resolved"])
++    if len(breakers) >= 3 and not any_bus:
++        return [_issue(
++            "MANY_BREAKERS_NO_BUS", "info",
++            "%d автомата(ов) без соединительной шины — монтаж перемычками менее надёжен."
++            % len(breakers),
++            "Добавьте гребёнку или медную шину.",
++            cabinet=cab)]
++    return []
++
++
++def rule_uzip_no_breaker(cab, ctx) -> List[Dict[str, Any]]:
++    """3. УЗИП без вводного автомата или рубильника."""
++    has_uzip = any(eq and eq.get("category") == CAT_UZIP for _it, eq in ctx["resolved"])
++    has_in = any(eq and eq.get("category") in (CAT_BREAKER, CAT_SWITCH) for _it, eq in ctx["resolved"])
++    if has_uzip and not has_in:
++        return [_issue(
++            "UZIP_NO_INCOMING", "warn",
++            "УЗИП установлен без вводного автомата или рубильника.",
++            "Перед УЗИП нужен вводной АВ/рубильник — иначе его нельзя безопасно отключить для замены.",
++            cabinet=cab)]
++    return []
++
++
++def rule_plc_no_psu(cab, ctx) -> List[Dict[str, Any]]:
++    """4. ПЛК в шкафу без блока питания 24 В."""
++    has_plc = any(is_plc(eq) for _it, eq in ctx["resolved"])
++    has_psu = any(eq and eq.get("category") == CAT_PSU for _it, eq in ctx["resolved"])
++    if has_plc and not has_psu:
++        return [_issue(
++            "PLC_NO_PSU", "warn",
++            "Контроллер установлен без блока питания 24 В DC в этом шкафу.",
++            "Добавьте блок питания 24 В — ПЛК и модули питаются от него.",
++            cabinet=cab)]
++    return []
++
++
++def rule_busbar_overload(cab, ctx) -> List[Dict[str, Any]]:
++    """9. Суммарный номинал отходящих автоматов выше допустимого тока шины."""
++    devices = expand_items(ctx["resolved"], is_device)
++    buses = [eq for _it, eq in ctx["resolved"] if is_busbar(eq) and eq.get("ratedCurrent") is not None]
++    if len(devices) < 2 or not buses:
++        return []
++    ordered = sorted(devices, key=lambda eq: eq["ratedCurrent"], reverse=True)
++    total = sum(eq["ratedCurrent"] for eq in ordered[1:])
++    bus = min(buses, key=lambda eq: eq["ratedCurrent"])
++    if total > 0 and total > bus["ratedCurrent"]:
++        return [_issue(
++            "BUSBAR_OVERLOAD", "warn",
++            "Суммарный номинал отходящих автоматов (%.4g А) превышает допустимый ток шины %s (%.4g А)."
++            % (total, bus["name"] or bus["sku"], bus["ratedCurrent"]),
++            "Проверьте коэффициент неодновременности или выберите шину большего сечения.",
++            cabinet=cab)]
++    return []
++
++
++def rule_empty(cab, ctx) -> List[Dict[str, Any]]:
++    """6. Пустой шкаф."""
++    if not cab["items"]:
++        return [_issue("EMPTY_CABINET", "info",
++                       "Шкаф пока пуст — оборудование ещё не добавлено.",
++                       cabinet=cab)]
++    return []
++
++
++def rule_form_no_busbar(cab, ctx) -> List[Dict[str, Any]]:
++    """7. Заявлена форма >= 2, а шинного отсека нет."""
++    form = cab.get("form")
++    if not form or FORM_RANK.get(form, 1) < 2:
++        return []
++    if any(seg["kind"] == "busbar" for seg in cab["segments"]):
++        return []
++    return [_issue(
++        "FORM_NO_BUSBAR_SEGMENT", "warn",
++        "Форма разделения %s требует отделения шин, но шинного отсека в шкафу нет." % form,
++        "Добавьте «Шинный отсек» в секционировании этого шкафа.",
++        cabinet=cab)]
++
++
++def rule_form_few_segments(cab, ctx) -> List[Dict[str, Any]]:
++    """8. Форма >= 3 при менее чем двух функциональных отсеках."""
++    form = cab.get("form")
++    if not form or FORM_RANK.get(form, 1) < 3:
++        return []
++    functional = [s for s in cab["segments"] if s["kind"] != "busbar"]
++    if len(functional) >= 2:
++        return []
++    return [_issue(
++        "FORM_FEW_SEGMENTS", "warn",
++        "Форма %s отделяет функциональные блоки друг от друга, а отсеков всего %d."
++        % (form, len(functional)),
++        "Разбейте шкаф минимум на два функциональных отсека.",
++        cabinet=cab)]
++
++
++PER_CABINET_RULES = (
++    rule_breaker_over_bus,
++    rule_many_breakers_no_bus,
++    rule_uzip_no_breaker,
++    rule_plc_no_psu,
++    rule_busbar_overload,
++)
++
++
++# --------------------------------------------------------------------------
++# правила на весь проект
++# --------------------------------------------------------------------------
++
++def rule_heat_no_thermostat(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """10. Греющий кабель есть, терморегулятора нет."""
++    cats = set()
++    for cab in spec["cabinets"]:
++        for _it, eq in _resolved_for(cab, spec):
++            if eq is not None:
++                cats.add(eq.get("category"))
++    if CAT_HEAT in cats and CAT_THERMO not in cats:
++        return [_issue(
++            "HEAT_NO_THERMOSTAT", "warn",
++            "В проекте есть греющий кабель, но нет ни одного терморегулятора.",
++            "Без регулирования кабель будет греть постоянно — добавьте терморегулятор.")]
++    return []
++
++
++def rule_hmi_no_plc(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """5. Панель оператора есть, а ПЛК нет ни в одном шкафу проекта."""
++    plc_somewhere = False
++    hmi_cabinets: List[Dict[str, Any]] = []
++    for cab in spec["cabinets"]:
++        pairs = _resolved_for(cab, spec)
++        if any(eq is not None and eq.get("category") == CAT_PLC for _it, eq in pairs):
++            plc_somewhere = True
++        if any(eq is not None and eq.get("category") == CAT_HMI for _it, eq in pairs):
++            hmi_cabinets.append(cab)
++    if not hmi_cabinets or plc_somewhere:
++        return []
++    return [_issue(
++        "HMI_NO_PLC", "warn",
++        "Панель оператора есть, а контроллера нет ни в одном шкафу проекта.",
++        "Панель работает в паре с ПЛК — добавьте контроллер.",
++        cabinet=hmi_cabinets[0])]
++
++
++# --------------------------------------------------------------------------
++# неподтверждённое и неизвестное
++# --------------------------------------------------------------------------
++
++def _resolved_for(cab: Dict[str, Any], spec: Dict[str, Any]):
++    by_id = spec["_by_id"]
++    by_sku = spec["_by_sku"]
++    out = []
++    for item in cab["items"]:
++        out.append((item, resolve_equipment(item, spec["catalog"], by_id, by_sku)))
++    return out
++
++
++def collect_unresolved(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Ссылка на справочник не разрешается — позиция не может быть проверена
++    и не может быть размещена. Это ошибка, а не предупреждение."""
++    issues: List[Dict[str, Any]] = []
++    for cab in spec["cabinets"]:
++        for item, eq in _resolved_for(cab, spec):
++            if eq is None:
++                issues.append(_issue(
++                    "UNRESOLVED_CATALOG_REF", "error",
++                    'позиция %s: ссылка "%s" не найдена в справочнике'
++                    % (item["lineId"] or "?", item["eqId"] or item["sku"] or "?"),
++                    "Передайте catalog с этой позицией или исправьте ссылку.",
++                    ref=item["lineId"] or None, cabinet=cab))
++    return issues
++
++
++def collect_unconfirmed(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Позиции, чьи данные помечены как неподтверждённые (``confirm: true``),
++    и силовые аппараты без номинального тока.
++
++    Правила 1 и 9 физически не могут сработать без ``ratedCurrent``. Разница
++    между «нет данных» и «данных нет, но мы решили, что всё нормально» — это
++    вся разница между проверкой и её имитацией.
++    """
++    out: List[Dict[str, Any]] = []
++    for cab in spec["cabinets"]:
++        for item, eq in _resolved_for(cab, spec):
++            if eq is None:
++                continue
++            if eq.get("confirm"):
++                out.append({
++                    "cabinetId": cab["id"],
++                    "lineId": item["lineId"],
++                    "eqId": eq["id"],
++                    "reason": "confirm",
++                    "detail": "габарит или параметр позиции помечен как неподтверждённый",
++                })
++            elif eq.get("category") in POWER_CATEGORIES and eq.get("ratedCurrent") is None:
++                out.append({
++                    "cabinetId": cab["id"],
++                    "lineId": item["lineId"],
++                    "eqId": eq["id"],
++                    "reason": "rated_current_missing",
++                    "detail": "у силового аппарата нет номинального тока — правила 1 и 9 не проверены",
++                })
++    return out
++
++
++def collect_unknowns(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Что именно осталось непроверенным и почему."""
++    out: List[Dict[str, Any]] = []
++    for cab in spec["cabinets"]:
++        pairs = _resolved_for(cab, spec)
++        devices = expand_items(pairs, is_device)
++        buses = [eq for _it, eq in pairs if is_busbar(eq) and eq.get("ratedCurrent") is not None]
++        if len(devices) < 2 or not buses:
++            out.append({
++                "cabinetId": cab["id"],
++                "rules": ["BREAKER_OVER_BUS", "BUSBAR_OVERLOAD"],
++                "reason": "нужны минимум два силовых аппарата с током и шина с током",
++            })
++        if any(eq is not None and eq.get("category") == CAT_PLC for _it, eq in pairs):
++            # правило 4 проверено; сюда попадает только отсутствие данных по ПЛК
++            pass
++        if not cab.get("form"):
++            out.append({
++                "cabinetId": cab["id"],
++                "rules": ["FORM_NO_BUSBAR_SEGMENT", "FORM_FEW_SEGMENTS"],
++                "reason": "форма разделения не указана",
++            })
++    return out
++
++
++# --------------------------------------------------------------------------
++# публичный API
++# --------------------------------------------------------------------------
++
++def validate_cabinet(cab: Dict[str, Any], spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Проверить один шкаф."""
++    ctx = {"resolved": _resolved_for(cab, spec)}
++    issues: List[Dict[str, Any]] = []
++    for rule in PER_CABINET_RULES:
++        issues.extend(rule(cab, ctx))
++    issues.extend(rule_empty(cab, ctx))
++    issues.extend(rule_form_no_busbar(cab, ctx))
++    issues.extend(rule_form_few_segments(cab, ctx))
++    return _sorted(issues)
++
++
++def validate_project(spec: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Проверить весь проект: все шкафы плюс межшкафные правила."""
++    issues: List[Dict[str, Any]] = []
++    for cab in spec["cabinets"]:
++        issues.extend(validate_cabinet(cab, spec))
++    issues.extend(rule_hmi_no_plc(spec))
++    issues.extend(rule_heat_no_thermostat(spec))
++    issues.extend(collect_unresolved(spec))
++    return _sorted(issues)
++
++
++def summarize(issues: List[Dict[str, Any]]) -> Dict[str, int]:
++    out = {"error": 0, "warn": 0, "info": 0, "total": len(issues)}
++    for i in issues:
++        sev = i.get("severity")
++        if sev in out:
++            out[sev] += 1
++    return out
++
++
++def check_spec(payload: Any) -> Dict[str, Any]:
++    """Точка входа инструмента. Возвращает проверки, неподтверждённое и
++    непроверенное. Ничего не открывает и не пишет."""
++    spec = load_spec(payload)
++    spec["_by_id"] = _by_id(spec["catalog"])
++    spec["_by_sku"] = _by_sku(spec["catalog"])
++    issues = validate_project(spec)
++    unconfirmed = collect_unconfirmed(spec)
++    unknowns = collect_unknowns(spec)
++    summary = summarize(issues)
++
++    verdict = "blocked" if summary["error"] else (
++        "ready_with_unknowns" if (unconfirmed or unknowns or summary["warn"]) else "ready")
++
++    return {
++        "ok": summary["error"] == 0,
++        "verdict": verdict,
++        "summary": summary,
++        "issues": issues,
++        "unconfirmed": unconfirmed,
++        "unverified": unknowns,
++        "parse_issues": spec["parse_issues"],
++        "cabinets": len(spec["cabinets"]),
++        "catalog_entries": len(spec["catalog"]),
++        "rules": [r.__name__ for r in PER_CABINET_RULES]
++                 + ["rule_empty", "rule_form_no_busbar", "rule_form_few_segments",
++                    "rule_hmi_no_plc", "rule_heat_no_thermostat"],
++        "limits": [
++            "Проверка домена, а не геометрии: раскладку монтажной панели проверяет cabinet_layout.",
++            "Результат не является сертификатом соответствия ГОСТ IEC 61439 и не заменяет расчёт "
++            "защиты, кабелей и теплового режима.",
++            "Отсутствующие данные попадают в unverified и unconfirmed, а не считаются допустимыми.",
++        ],
++    }
+diff --git b/src/cabinet_layout.py b/src/cabinet_layout.py
+new file mode 100644
+index 0000000..bcf1888
+--- /dev/null
++++ b/src/cabinet_layout.py
+@@ -0,0 +1,480 @@
++"""Раскладка монтажной панели щита — чистые функции, без COM.
++
++Модель повторяет соглашения, проверенные в ``cabinet-layout-generator-v2``:
++миллиметры, начало координат — **верхний левый** угол панели, ``+y`` вниз.
++Переворот в систему CAD (начало снизу слева, ``+y`` вверх) делается в одной
++функции :func:`to_cad` и нигде больше.
++
++Модуль ничего не выбирает и не подбирает: он проверяет то, что передали.
++Неподтверждённый габарит (``confirm: true``) — не ошибка и не повод подставить
++«примерно 90»: такая позиция уходит в ``unconfirmed``.
++"""
++
++from __future__ import annotations
++
++import math
++from typing import Any, Dict, List, Optional, Sequence, Tuple
++
++# Погрешность сравнения геометрии, мм. Ноль здесь не работает: повёрнутые
++# габариты дают погрешность тригонометрии.
++EPS_MM = 1e-6
++
++# Порог, начиная с которого зазор считается «не проложить провод».
++DEFAULT_CLEARANCE_MM = 20.0
++DEFAULT_GAP_MM = 5.0
++
++SEVERITY_RANK = {"error": 0, "warning": 1, "info": 2}
++
++
++# --------------------------------------------------------------------------
++# разбор
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _number(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def load_layout(payload: Any) -> Dict[str, Any]:
++    """Нормализовать модель раскладки. Нечитаемые элементы не отбрасываются
++    молча — они попадают в ``parse_issues``."""
++    data = _as_dict(payload)
++    parse_issues: List[Dict[str, Any]] = []
++
++    plate_raw = _as_dict(data.get("plate"))
++    plate = {
++        "width_mm": _number(plate_raw.get("width_mm")) or 0.0,
++        "height_mm": _number(plate_raw.get("height_mm")) or 0.0,
++        "origin": _text(plate_raw.get("origin")) or "top_left",
++    }
++
++    defaults_raw = _as_dict(data.get("defaults"))
++    defaults = {
++        "gap_between_equipment_mm": _number(defaults_raw.get("gap_between_equipment_mm"), DEFAULT_GAP_MM),
++        "clearance_equipment_to_duct_mm": _number(
++            defaults_raw.get("clearance_equipment_to_duct_mm"), DEFAULT_CLEARANCE_MM),
++    }
++
++    def parse_point(kind: str) -> List[Dict[str, Any]]:
++        out: List[Dict[str, Any]] = []
++        for raw in _as_list(data.get(kind)):
++            obj = _as_dict(raw)
++            if not obj:
++                parse_issues.append({"level": "error", "code": "BAD_%s" % kind.upper(),
++                                     "message": "элемент %s не является объектом" % kind})
++                continue
++            rec = dict(obj)
++            rec["id"] = _text(obj.get("id"))
++            for key in ("x_mm", "y_mm", "length_mm", "width_mm", "height_mm",
++                        "rot_deg", "gap_before_mm", "clearance_to_duct_mm",
++                        "internal_gap_mm", "count"):
++                if key in obj:
++                    rec[key] = _number(obj.get(key))
++            out.append(rec)
++        return out
++
++    ducts = parse_point("ducts")
++    elements = parse_point("elements")
++    groups = parse_point("groups")
++
++    library: Dict[str, Dict[str, Any]] = {}
++    for raw in _as_list(data.get("library")):
++        item = _as_dict(raw)
++        if not item:
++            parse_issues.append({"level": "error", "code": "BAD_LIBRARY_ITEM",
++                                 "message": "элемент library не является объектом"})
++            continue
++        key = _text(item.get("lib_key"))
++        library[key] = {
++            "lib_key": key,
++            "name": _text(item.get("name")) or key,
++            "width_mm": _number(item.get("width_mm")) or 0.0,
++            "height_mm": _number(item.get("height_mm")) or 0.0,
++            "rail_offset_mm": _number(item.get("rail_offset_mm")),
++            "confirm": bool(item.get("confirm")),
++        }
++
++    return {
++        "plate": plate,
++        "defaults": defaults,
++        "ducts": ducts,
++        "elements": elements,
++        "groups": groups,
++        "library": library,
++        "parse_issues": parse_issues,
++    }
++
++
++# --------------------------------------------------------------------------
++# геометрия
++# --------------------------------------------------------------------------
++
++def rotated_size(width_mm: float, height_mm: float, rot_deg: float) -> Tuple[float, float]:
++    """Габарит повёрнутой детали (AABB)."""
++    a = math.radians((rot_deg or 0.0) % 360.0)
++    c, s = abs(math.cos(a)), abs(math.sin(a))
++    return (width_mm * c + height_mm * s, width_mm * s + height_mm * c)
++
++
++def placed_box(x_mm: float, y_mm: float, width_mm: float, height_mm: float,
++               rot_deg: float = 0.0) -> Dict[str, float]:
++    """Прямоугольник детали в системе панели.
++
++    ``x_mm``/``y_mm`` — левый верхний угол **неповёрнутой** детали. При
++    повороте рамка расширяется вокруг центра, поэтому левый верхний угол
++    сдвигается. Это именно та тонкость, на которой ошибаются при переносе
++    координат в CAD.
++    """
++    w, h = rotated_size(width_mm, height_mm, rot_deg)
++    cx = x_mm + width_mm / 2.0
++    cy = y_mm + height_mm / 2.0
++    return {"x": cx - w / 2.0, "y": cy - h / 2.0, "w": w, "h": h}
++
++
++def to_cad(box: Dict[str, float], plate_height_mm: float) -> Dict[str, float]:
++    """Единственное место перехода в систему CAD: ``+y`` вниз -> ``+y`` вверх.
++
++    Возвращает рамку в координатах с началом снизу слева.
++    """
++    return {
++        "x": box["x"],
++        "y": plate_height_mm - (box["y"] + box["h"]),
++        "w": box["w"],
++        "h": box["h"],
++    }
++
++
++def box_within_plate(box: Dict[str, float], plate: Dict[str, Any]) -> bool:
++    return (box["x"] >= -EPS_MM and box["y"] >= -EPS_MM
++            and box["x"] + box["w"] <= plate["width_mm"] + EPS_MM
++            and box["y"] + box["h"] <= plate["height_mm"] + EPS_MM)
++
++
++def boxes_overlap(a: Dict[str, float], b: Dict[str, float]) -> bool:
++    return (a["x"] < b["x"] + b["w"] - EPS_MM and b["x"] < a["x"] + a["w"] - EPS_MM
++            and a["y"] < b["y"] + b["h"] - EPS_MM and b["y"] < a["y"] + a["h"] - EPS_MM)
++
++
++def box_distance(a: Dict[str, float], b: Dict[str, float]) -> float:
++    """Расстояние между двумя рамками; 0 при касании или пересечении."""
++    dx = max(b["x"] - (a["x"] + a["w"]), a["x"] - (b["x"] + b["w"]), 0.0)
++    dy = max(b["y"] - (a["y"] + a["h"]), a["y"] - (b["y"] + b["h"]), 0.0)
++    return math.hypot(dx, dy)
++
++
++# --------------------------------------------------------------------------
++# примитивы модели -> рамки
++# --------------------------------------------------------------------------
++
++def element_box(el: Dict[str, Any], library: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, float]]:
++    item = library.get(_text(el.get("lib_key")))
++    if item is None:
++        return None
++    return placed_box(_number(el.get("x_mm"), 0.0) or 0.0,
++                      _number(el.get("y_mm"), 0.0) or 0.0,
++                      item["width_mm"], item["height_mm"],
++                      _number(el.get("rot_deg"), 0.0) or 0.0)
++
++
++def group_width(grp: Dict[str, Any], library: Dict[str, Dict[str, Any]]) -> Optional[float]:
++    """Ширина «сета»: N одинаковых деталей, внутренний зазор между ними и
++    необязательные торцевые крышки."""
++    item = library.get(_text(grp.get("lib_key")))
++    if item is None:
++        return None
++    count = int(_number(grp.get("count"), 0.0) or 0.0)
++    if count <= 0:
++        return None
++    gap = _number(grp.get("internal_gap_mm"), 0.0) or 0.0
++    total = count * item["width_mm"] + max(count - 1, 0) * gap
++    for cap_key in (grp.get("cap_start_key"), grp.get("cap_end_key")):
++        cap = library.get(_text(cap_key))
++        if cap is not None:
++            total += cap["width_mm"] + gap
++    return total
++
++
++def group_box(grp: Dict[str, Any], library: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, float]]:
++    item = library.get(_text(grp.get("lib_key")))
++    if item is None:
++        return None
++    width = group_width(grp, library)
++    if width is None:
++        return None
++    return placed_box(_number(grp.get("x_mm"), 0.0) or 0.0,
++                      _number(grp.get("y_mm"), 0.0) or 0.0,
++                      width, item["height_mm"],
++                      _number(grp.get("rot_deg"), 0.0) or 0.0)
++
++
++def duct_box(duct: Dict[str, Any]) -> Dict[str, float]:
++    """Канал: ``length_mm`` вдоль направления, ``width_mm`` поперёк.
++
++    ``label_h_mm`` здесь отсутствует намеренно: вторая цифра в «40x60» — это
++    только подпись, на геометрию она не влияет.
++    """
++    length = _number(duct.get("length_mm"), 0.0) or 0.0
++    width = _number(duct.get("width_mm"), 0.0) or 0.0
++    rot = _number(duct.get("rot_deg"), 0.0) or 0.0
++    vertical = abs((rot % 180.0) - 90.0) < 1e-6
++    w, h = (width, length) if vertical else (length, width)
++    return {"x": _number(duct.get("x_mm"), 0.0) or 0.0,
++            "y": _number(duct.get("y_mm"), 0.0) or 0.0,
++            "w": w, "h": h}
++
++
++# --------------------------------------------------------------------------
++# ряды
++# --------------------------------------------------------------------------
++
++def detect_rows(model: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Сгруппировать оборудование в ряды по положению центра.
++
++    Признак ряда — близость центров по ``y``: два объекта попадают в один ряд,
++    если их центры различаются меньше, чем на половину высоты более крупного.
++    Это эвристика, а не чтение настоящей структуры rows из CAD-модели.
++    """
++    boxes: List[Tuple[str, str, Dict[str, float]]] = []
++    for el in model["elements"]:
++        box = element_box(el, model["library"])
++        if box is not None:
++            boxes.append((_text(el.get("id")), _text(el.get("tag")) or _text(el.get("id")), box))
++    for grp in model["groups"]:
++        box = group_box(grp, model["library"])
++        if box is not None:
++            boxes.append((_text(grp.get("id")), _text(grp.get("tag_start")) or _text(grp.get("id")), box))
++    if not boxes:
++        return []
++
++    boxes.sort(key=lambda p: (p[2]["y"] + p[2]["h"] / 2.0, p[2]["x"]))
++    rows: List[Dict[str, Any]] = []
++    for ident, label, box in boxes:
++        centre = box["y"] + box["h"] / 2.0
++        if rows and abs(centre - rows[-1]["centre_mm"]) <= max(box["h"], rows[-1]["max_h"]) / 2.0:
++            rows[-1]["members"].append({"id": ident, "label": label, "box": box})
++            rows[-1]["max_h"] = max(rows[-1]["max_h"], box["h"])
++        else:
++            rows.append({"index": len(rows), "centre_mm": centre, "max_h": box["h"],
++                         "members": [{"id": ident, "label": label, "box": box}]})
++    for row in rows:
++        row["members"].sort(key=lambda m: m["box"]["x"])
++    return rows
++
++
++def available_row_width(model: Dict[str, Any], row: Dict[str, Any]) -> float:
++    """Доступная ширина ряда: между боковыми (вертикальными) каналами.
++
++    Если вертикальных каналов нет или он один — считается вся ширина панели,
++    и это честно фиксируется в ответе, а не маскируется под точный расчёт.
++    """
++    verticals = []
++    for duct in model["ducts"]:
++        rot = _number(duct.get("rot_deg"), 0.0) or 0.0
++        if abs((rot % 180.0) - 90.0) < 1e-6:
++            verticals.append(duct_box(duct))
++    if len(verticals) < 2:
++        return model["plate"]["width_mm"]
++    xs = sorted(v["x"] + v["w"] for v in verticals)
++    lefts = sorted(v["x"] for v in verticals)
++    return max(min(lefts[1:]) - max(xs[:-1]), 0.0) if len(verticals) >= 2 else model["plate"]["width_mm"]
++
++
++def row_overflow_mm(model: Dict[str, Any], row: Dict[str, Any]) -> float:
++    """Насколько ряд не влезает, в мм. 0 — влезает."""
++    gap = model["defaults"]["gap_between_equipment_mm"] or 0.0
++    total = sum(m["box"]["w"] for m in row["members"])
++    total += gap * max(len(row["members"]) - 1, 0)
++    return max(total - available_row_width(model, row), 0.0)
++
++
++# --------------------------------------------------------------------------
++# проверки
++# --------------------------------------------------------------------------
++
++def _issue(level: str, code: str, message: str, ref: Optional[str] = None) -> Dict[str, Any]:
++    out = {"level": level, "code": code, "message": message}
++    if ref:
++        out["ref"] = ref
++    return out
++
++
++def collect_unconfirmed(model: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Позиции с неподтверждённым габаритом: их нельзя честно разместить."""
++    out: List[Dict[str, Any]] = []
++    for el in model["elements"]:
++        item = model["library"].get(_text(el.get("lib_key")))
++        if item is not None and (item.get("confirm") or item["width_mm"] <= 0 or item["height_mm"] <= 0):
++            out.append({"id": _text(el.get("id")), "lib_key": item["lib_key"],
++                        "reason": "unconfirmed_size" if item.get("confirm") else "zero_size"})
++    for grp in model["groups"]:
++        item = model["library"].get(_text(grp.get("lib_key")))
++        if item is not None and (item.get("confirm") or item["width_mm"] <= 0):
++            out.append({"id": _text(grp.get("id")), "lib_key": item["lib_key"],
++                        "reason": "unconfirmed_size" if item.get("confirm") else "zero_size"})
++    return out
++
++
++def validate_layout(model: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Проверить раскладку. ``error`` — структурно невозможно,
++    ``warning`` — разрешено, но показать. Ничего не исправляется."""
++    issues: List[Dict[str, Any]] = []
++    plate = model["plate"]
++    library = model["library"]
++
++    if plate["origin"] != "top_left":
++        issues.append(_issue("error", "BAD_ORIGIN",
++                             'plate.origin должен быть "top_left", получен "%s"' % plate["origin"],
++                             "plate"))
++    if plate["width_mm"] <= 0 or plate["height_mm"] <= 0:
++        issues.append(_issue("error", "BAD_PLATE_SIZE",
++                             "ширина и высота панели должны быть больше нуля", "plate"))
++
++    seen: set = set()
++    for kind in ("ducts", "elements", "groups"):
++        for obj in model[kind]:
++            ident = _text(obj.get("id"))
++            if not ident:
++                issues.append(_issue("error", "MISSING_ID", "у объекта %s нет id" % kind))
++                continue
++            if ident in seen:
++                issues.append(_issue("error", "DUPLICATE_ID", 'повторяющийся id "%s"' % ident, ident))
++            seen.add(ident)
++
++    for duct in model["ducts"]:
++        if (_number(duct.get("length_mm"), 0.0) or 0.0) <= 0 or (_number(duct.get("width_mm"), 0.0) or 0.0) <= 0:
++            issues.append(_issue("error", "BAD_DUCT_SIZE",
++                                 "длина и ширина канала должны быть больше нуля",
++                                 _text(duct.get("id"))))
++
++    for el in model["elements"]:
++        key = _text(el.get("lib_key"))
++        item = library.get(key)
++        ident = _text(el.get("id"))
++        if item is None:
++            issues.append(_issue("error", "UNRESOLVED_LIB_KEY",
++                                 'lib_key "%s" не найден в library' % (key or "?"), ident))
++            continue
++        box = element_box(el, library)
++        if box is None or box["w"] <= 0 or box["h"] <= 0:
++            issues.append(_issue("error", "BAD_SIZE", "неположительный габарит позиции", ident))
++            continue
++        if not box_within_plate(box, plate):
++            issues.append(_issue("warning", "OFF_PLATE",
++                                 "позиция выходит за пределы панели (разрешено, но показать)", ident))
++
++    for grp in model["groups"]:
++        key = _text(grp.get("lib_key"))
++        ident = _text(grp.get("id"))
++        if library.get(key) is None:
++            issues.append(_issue("error", "UNRESOLVED_LIB_KEY",
++                                 'lib_key "%s" не найден в library' % (key or "?"), ident))
++            continue
++        count = int(_number(grp.get("count"), 0.0) or 0.0)
++        if count <= 0:
++            issues.append(_issue("error", "BAD_COUNT", "количество в сете должно быть больше нуля", ident))
++            continue
++        box = group_box(grp, library)
++        if box is None:
++            continue
++        if not box_within_plate(box, plate):
++            issues.append(_issue("warning", "OFF_PLATE",
++                                 "сет выходит за пределы панели (разрешено, но показать)", ident))
++
++    # пересечения
++    placed: List[Tuple[str, str, Dict[str, float]]] = []
++    for el in model["elements"]:
++        box = element_box(el, library)
++        if box is not None:
++            placed.append((_text(el.get("id")), _text(el.get("tag")) or _text(el.get("id")), box))
++    for grp in model["groups"]:
++        box = group_box(grp, library)
++        if box is not None:
++            placed.append((_text(grp.get("id")), _text(grp.get("tag_start")) or _text(grp.get("id")), box))
++    for i in range(len(placed)):
++        for j in range(i + 1, len(placed)):
++            if boxes_overlap(placed[i][2], placed[j][2]):
++                issues.append(_issue("warning", "OVERLAP",
++                                     '"%s" пересекается с "%s"' % (placed[i][1], placed[j][1]),
++                                     placed[i][0]))
++
++    # зазор до каналов
++    duct_boxes = [(_text(d.get("id")), duct_box(d)) for d in model["ducts"]]
++    for ident, label, box in placed:
++        need = None
++        for el in model["elements"]:
++            if _text(el.get("id")) == ident:
++                need = _number(el.get("clearance_to_duct_mm"))
++                break
++        clearance = need if need is not None else model["defaults"]["clearance_equipment_to_duct_mm"]
++        for duct_id, dbox in duct_boxes:
++            if box_distance(box, dbox) < (clearance or 0.0) - EPS_MM:
++                issues.append(_issue("warning", "CLEARANCE_TIGHT",
++                                     '"%s" ближе %.4g мм до канала %s' % (label, clearance or 0.0, duct_id),
++                                     ident))
++                break
++
++    # переполнение рядов
++    for row in detect_rows(model):
++        overflow = row_overflow_mm(model, row)
++        if overflow > EPS_MM:
++            issues.append(_issue("warning", "ROW_OVERFLOW",
++                                 "ряд %d не влезает на %.4g мм — оборудование шире, "
++                                 "чем расстояние между боковыми каналами"
++                                 % (row["index"] + 1, overflow)))
++
++    return sorted(issues, key=lambda i: (SEVERITY_RANK.get(i["level"], 9), i["code"]))
++
++
++def summarize(issues: List[Dict[str, Any]]) -> Dict[str, int]:
++    out = {"error": 0, "warning": 0, "info": 0, "total": len(issues)}
++    for i in issues:
++        level = i.get("level")
++        if level in out:
++            out[level] += 1
++    return out
++
++
++def check_layout(payload: Any) -> Dict[str, Any]:
++    """Точка входа инструмента. Ничего не открывает и не пишет."""
++    model = load_layout(payload)
++    issues = validate_layout(model)
++    unconfirmed = collect_unconfirmed(model)
++    summary = summarize(issues)
++    rows = detect_rows(model)
++
++    verdict = "blocked" if summary["error"] else (
++        "ready_with_unknowns" if (unconfirmed or summary["warning"]) else "ready")
++
++    return {
++        "ok": summary["error"] == 0,
++        "verdict": verdict,
++        "summary": summary,
++        "issues": issues,
++        "unconfirmed": unconfirmed,
++        "parse_issues": model["parse_issues"],
++        "rows": [{"index": r["index"], "members": len(r["members"]),
++                  "overflow_mm": round(row_overflow_mm(model, r), 6)}
++                 for r in rows],
++        "plate": model["plate"],
++        "limits": [
++            "Начало координат — верхний левый угол, +y вниз; переход в систему CAD "
++            "делает только to_cad().",
++            "Признак ряда — близость центров по y, это эвристика, а не чтение структуры из CAD.",
++            "Неподтверждённый габарит уходит в unconfirmed, а не заменяется оценкой.",
++        ],
++    }
+diff --git b/src/cabinet_tools.py b/src/cabinet_tools.py
+new file mode 100644
+index 0000000..c20487d
+--- /dev/null
++++ b/src/cabinet_tools.py
+@@ -0,0 +1,24 @@
++"""Адаптеры доменного слоя щита к реестру действий моста.
++
++Оба действия — чистые проверки: они не открывают документ, не требуют
++активного КОМПАСа и ничего не пишут. Аргумент ``session`` принимается ради
++единообразия с остальными действиями реестра и не используется.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict
++
++from protocol import ok
++from cabinet_domain import check_spec
++from cabinet_layout import check_layout
++
++
++def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Проверить состав и секционирование щита (НКУ/АСУ ТП)."""
++    return ok("cabinet.spec_check", check_spec(params))
++
++
++def cabinet_layout_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Проверить раскладку монтажной панели в миллиметрах."""
++    return ok("cabinet.layout_check", check_layout(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 7f3a18a..0f41731 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -27,6 +27,7 @@ from drawing_tools import drawing_info, stamp_read, stamp_write
+ from spec_tools import specification_read
+ from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
++from cabinet_tools import cabinet_spec_check, cabinet_layout_check
+ 
+ 
+ def _doc(s):
+@@ -321,4 +322,6 @@ registry = {
+     "view.rotate": view_rotate,
+     "view.visibility": view_visibility,
+     "viewport.capture": viewport_capture,
++    "cabinet.spec_check": cabinet_spec_check,
++    "cabinet.layout_check": cabinet_layout_check,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index 195aaf5..afa60c6 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 47, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 49, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index c2c13fe..5e03985 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -321,7 +321,7 @@ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 47)
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index 8d02a07..ae0dcd7 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -315,7 +315,7 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ class TestCatalogWave3(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 47)
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index ae45997..1efe35f 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -317,7 +317,7 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ class TestCatalogWave4(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 47)
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index eb863ea..b9e3693 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -391,8 +391,8 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_46(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 47)
++    def test_tool_count_is_49(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index 29b3b97..461d673 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -434,8 +434,8 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_47(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 47)
++    def test_tool_count_is_49(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git b/tests/test_wave7.py b/tests/test_wave7.py
+new file mode 100644
+index 0000000..85adf66
+--- /dev/null
++++ b/tests/test_wave7.py
+@@ -0,0 +1,444 @@
++"""Волна 7: доменный слой щита — состав, секционирование, раскладка.
++
++Всё здесь работает без КОМПАСа: модули чистые, COM не импортируется даже
++на уровне модуля (иначе их нельзя было бы проверить в статических тестах).
++"""
++
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_domain as cd          # noqa: E402
++import cabinet_layout as cl          # noqa: E402
++import tools_catalog                 # noqa: E402
++
++ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
++
++
++# --------------------------------------------------------------------------
++# фикстуры
++# --------------------------------------------------------------------------
++
++def eq(ident, name, category, rated=None, sku=None, **extra):
++    row = {"id": ident, "sku": sku or ident, "name": name,
++           "category": category, "ratedCurrent": rated}
++    row.update(extra)
++    return row
++
++
++# Шкаф ПЛК, собранный правильно: вводной самый мощный, отходящий слабее шины,
++# у контроллера есть блок питания, форма 2b с шинным отсеком.
++GOOD_CABINET = {
++    "id": "cab-1",
++    "kind": "Шкаф ПЛК",
++    "name": "Шкаф управления",
++    "form": "2b",
++    "segments": [
++        {"id": "s1", "kind": "input", "name": "Вводной отсек", "partitions": 2},
++        {"id": "s2", "kind": "control", "name": "Управление", "partitions": 2},
++        {"id": "s3", "kind": "busbar", "name": "Шинный отсек", "partitions": 1},
++    ],
++    "items": [
++        {"lineId": "i1", "eqId": "eq-in", "qty": 1},
++        {"lineId": "i2", "eqId": "eq-brk", "qty": 3},
++        {"lineId": "i3", "eqId": "eq-bus", "qty": 1},
++        {"lineId": "i4", "eqId": "eq-plc", "qty": 1},
++        {"lineId": "i5", "eqId": "eq-psu", "qty": 1},
++    ],
++}
++
++GOOD_CATALOG = [
++    eq("eq-in", "Рубильник вводной", cd.CAT_SWITCH, 100),
++    eq("eq-brk", "Автомат 40 А", cd.CAT_BREAKER, 40),
++    eq("eq-bus", "Шина ШМТ 25x3", cd.CAT_BUS, 160, sku="ШМТ-25x3"),
++    eq("eq-plc", "Контроллер ПЛК110-24", cd.CAT_PLC),
++    eq("eq-psu", "БП DRP-120-24", cd.CAT_PSU),
++]
++
++
++def spec_of(cabinets, catalog=None):
++    return {"cabinets": cabinets, "catalog": catalog if catalog is not None else GOOD_CATALOG}
++
++
++def codes(report_or_issues):
++    items = report_or_issues if isinstance(report_or_issues, list) \
++        else report_or_issues["issues"]
++    return [i["code"] for i in items]
++
++
++# --------------------------------------------------------------------------
++# базовые свойства модулей
++# --------------------------------------------------------------------------
++
++class TestPureModules(unittest.TestCase):
++    """Модули должны оставаться COM-free — иначе их не проверить статически."""
++
++    def test_no_com_import(self):
++        for name in ("cabinet_domain.py", "cabinet_layout.py", "cabinet_tools.py"):
++            path = os.path.join(ROOT, "src", name)
++            with open(path, encoding="utf-8") as fh:
++                body = fh.read()
++            self.assertNotIn("win32com", body, name)
++            self.assertNotIn("import pythoncom", body, name)
++
++    def test_modules_import_without_com(self):
++        self.assertNotIn("win32com", sys.modules)
++        self.assertNotIn("pythoncom", sys.modules)
++
++
++# --------------------------------------------------------------------------
++# домен: правила срабатывают там, где должны
++# --------------------------------------------------------------------------
++
++class TestDomainRules(unittest.TestCase):
++
++    def test_good_cabinet_is_clean(self):
++        report = cd.check_spec(spec_of([GOOD_CABINET]))
++        self.assertEqual(report["summary"]["error"], 0)
++        self.assertEqual(report["verdict"], "ready", report["issues"])
++
++    def test_breaker_over_bus(self):
++        """Отходящий аппарат мощнее шины. Вводной — самый мощный, он исключён."""
++        cabinets = [{
++            "id": "c1", "items": [
++                {"lineId": "a", "eqId": "eq-in", "qty": 1},
++                {"lineId": "b", "eqId": "eq-brk80", "qty": 1},
++                {"lineId": "c", "eqId": "eq-bus63", "qty": 1},
++            ]}]
++        catalog = [
++            eq("eq-in", "Рубильник", cd.CAT_SWITCH, 100),
++            eq("eq-brk80", "Автомат 80 А", cd.CAT_BREAKER, 80),
++            eq("eq-bus63", "Шина ШМТ", cd.CAT_BUS, 63, sku="ШМТ-63"),
++        ]
++        report = cd.check_spec(spec_of(cabinets, catalog))
++        self.assertIn("BREAKER_OVER_BUS", codes(report))
++        self.assertEqual(report["summary"]["error"], 1)
++
++    def test_busbar_overload(self):
++        """Сумма отходящих выше допустимого тока шины."""
++        cabinets = [{
++            "id": "c1", "items": [
++                {"lineId": "a", "eqId": "eq-in", "qty": 1},
++                {"lineId": "b", "eqId": "eq-b40", "qty": 2},
++                {"lineId": "c", "eqId": "eq-bus63", "qty": 1},
++            ]}]
++        catalog = [
++            eq("eq-in", "Рубильник", cd.CAT_SWITCH, 100),
++            eq("eq-b40", "Автомат 40 А", cd.CAT_BREAKER, 40),
++            eq("eq-bus63", "Шина ШМТ", cd.CAT_BUS, 63, sku="ШМТ-63"),
++        ]
++        report = cd.check_spec(spec_of(cabinets, catalog))
++        # 40 + 40 = 80 > 63
++        self.assertIn("BUSBAR_OVERLOAD", codes(report))
++
++    def test_uzip_without_incoming(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-uzip", "qty": 1}]}]
++        catalog = [eq("eq-uzip", "УЗИП", cd.CAT_UZIP)]
++        self.assertIn("UZIP_NO_INCOMING", codes(cd.check_spec(spec_of(cabinets, catalog))))
++
++    def test_plc_without_psu(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-plc", "qty": 1}]}]
++        catalog = [eq("eq-plc", "Контроллер ПЛК110", cd.CAT_PLC)]
++        self.assertIn("PLC_NO_PSU", codes(cd.check_spec(spec_of(cabinets, catalog))))
++
++    def test_hmi_without_plc_in_whole_project(self):
++        """Межшкафное правило: ПЛК ищется во всех шкафах, а не только в этом."""
++        cabinets = [
++            {"id": "c1", "items": [{"lineId": "a", "eqId": "eq-hmi", "qty": 1}]},
++            {"id": "c2", "items": [{"lineId": "b", "eqId": "eq-plc", "qty": 1}]},
++        ]
++        catalog = [eq("eq-hmi", "Панель оператора", cd.CAT_HMI),
++                   eq("eq-plc", "Контроллер ПЛК110", cd.CAT_PLC)]
++        self.assertNotIn("HMI_NO_PLC", codes(cd.check_spec(spec_of(cabinets, catalog))))
++
++        alone = [cabinets[0]]
++        self.assertIn("HMI_NO_PLC", codes(cd.check_spec(spec_of(alone, catalog))))
++
++    def test_heat_without_thermostat(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-heat", "qty": 1}]}]
++        catalog = [eq("eq-heat", "Греющий кабель", cd.CAT_HEAT)]
++        self.assertIn("HEAT_NO_THERMOSTAT", codes(cd.check_spec(spec_of(cabinets, catalog))))
++
++    def test_empty_cabinet(self):
++        self.assertIn("EMPTY_CABINET", codes(cd.check_spec(spec_of([{"id": "c1", "items": []}]))))
++
++    def test_form_requires_busbar_segment(self):
++        cabinets = [{"id": "c1", "form": "2b",
++                     "segments": [{"id": "s", "kind": "input", "name": "Ввод"}],
++                     "items": []}]
++        self.assertIn("FORM_NO_BUSBAR_SEGMENT", codes(cd.check_spec(spec_of(cabinets))))
++
++    def test_form3_requires_two_functional_segments(self):
++        cabinets = [{"id": "c1", "form": "3a",
++                     "segments": [{"id": "s1", "kind": "input", "name": "Ввод"},
++                                  {"id": "s3", "kind": "busbar", "name": "Шины"}],
++                     "items": []}]
++        self.assertIn("FORM_FEW_SEGMENTS", codes(cd.check_spec(spec_of(cabinets))))
++
++    def test_many_breakers_without_bus(self):
++        cabinets = [{"id": "c1", "items": [
++            {"lineId": "a", "eqId": "eq-brk", "qty": 1},
++            {"lineId": "b", "eqId": "eq-brk", "qty": 1},
++            {"lineId": "c", "eqId": "eq-brk", "qty": 1},
++        ]}]
++        self.assertIn("MANY_BREAKERS_NO_BUS", codes(cd.check_spec(spec_of(cabinets))))
++
++
++# --------------------------------------------------------------------------
++# домен: честность — отсутствующие данные не считаются пройденной проверкой
++# --------------------------------------------------------------------------
++
++class TestDomainHonesty(unittest.TestCase):
++
++    def test_unresolved_catalog_reference_is_an_error(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-missing", "qty": 1}]}]
++        report = cd.check_spec(spec_of(cabinets))
++        self.assertIn("UNRESOLVED_CATALOG_REF", codes(report))
++        self.assertEqual(report["summary"]["error"], 1)
++        self.assertFalse(report["ok"])
++
++    def test_missing_rated_current_goes_to_unconfirmed_not_ok(self):
++        """Силовой аппарат без номинала: правила 1 и 9 физически не могут
++        сработать. Это обязано попасть в unconfirmed, а не в «проверено»."""
++        cabinets = [{"id": "c1", "items": [
++            {"lineId": "a", "eqId": "eq-norating", "qty": 1},
++            {"lineId": "b", "eqId": "eq-brk", "qty": 1},
++            {"lineId": "c", "eqId": "eq-bus", "qty": 1},
++        ]}]
++        catalog = [
++            eq("eq-norating", "Автомат без номинала", cd.CAT_BREAKER, None),
++            eq("eq-brk", "Автомат 40 А", cd.CAT_BREAKER, 40),
++            eq("eq-bus", "Шина ШМТ", cd.CAT_BUS, 100, sku="ШМТ-1"),
++        ]
++        report = cd.check_spec(spec_of(cabinets, catalog))
++        self.assertTrue(any(u["reason"] == "rated_current_missing" for u in report["unconfirmed"]))
++        self.assertEqual(report["verdict"], "ready_with_unknowns")
++
++    def test_confirm_flag_goes_to_unconfirmed(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-guess", "qty": 1}]}]
++        catalog = [eq("eq-guess", "Модуль", cd.CAT_PLC, confirm=True)]
++        report = cd.check_spec(spec_of(cabinets, catalog))
++        self.assertTrue(any(u["reason"] == "confirm" for u in report["unconfirmed"]))
++
++    def test_unverifiable_rules_are_listed(self):
++        """Один силовой аппарат и нет шины — правила 1 и 9 не выполнены,
++        и это надо показать, а не промолчать."""
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-brk", "qty": 1}]}]
++        report = cd.check_spec(spec_of(cabinets))
++        names = set()
++        for item in report["unverified"]:
++            names.update(item["rules"])
++        self.assertIn("BREAKER_OVER_BUS", names)
++        self.assertIn("BUSBAR_OVERLOAD", names)
++
++    def test_bad_form_is_a_parse_error(self):
++        cabinets = [{"id": "c1", "form": "9z", "items": []}]
++        report = cd.check_spec(spec_of(cabinets))
++        self.assertTrue(any(p["code"] == "BAD_FORM" for p in report["parse_issues"]))
++
++    def test_verdict_blocked_on_error(self):
++        cabinets = [{"id": "c1", "items": [{"lineId": "a", "eqId": "eq-missing", "qty": 1}]}]
++        self.assertEqual(cd.check_spec(spec_of(cabinets))["verdict"], "blocked")
++
++
++# --------------------------------------------------------------------------
++# раскладка: геометрия
++# --------------------------------------------------------------------------
++
++class TestLayoutGeometry(unittest.TestCase):
++
++    def test_rotated_size_swaps_dimensions(self):
++        w, h = cl.rotated_size(18.0, 90.0, 90.0)
++        self.assertAlmostEqual(w, 90.0, places=6)
++        self.assertAlmostEqual(h, 18.0, places=6)
++
++    def test_rotated_size_is_symmetric(self):
++        w0, h0 = cl.rotated_size(20.0, 60.0, 0.0)
++        self.assertAlmostEqual(w0, 20.0, places=6)
++        self.assertAlmostEqual(h0, 60.0, places=6)
++
++    def test_to_cad_flips_y_only(self):
++        box = {"x": 10.0, "y": 0.0, "w": 20.0, "h": 100.0}
++        cad = cl.to_cad(box, plate_height_mm=600.0)
++        self.assertAlmostEqual(cad["x"], 10.0, places=9)
++        self.assertAlmostEqual(cad["y"], 500.0, places=9)   # 600 - (0 + 100)
++        self.assertAlmostEqual(cad["h"], 100.0, places=9)
++
++    def test_box_within_plate(self):
++        plate = {"width_mm": 800.0, "height_mm": 600.0, "origin": "top_left"}
++        self.assertTrue(cl.box_within_plate({"x": 0, "y": 0, "w": 10, "h": 10}, plate))
++        self.assertFalse(cl.box_within_plate({"x": -1, "y": 0, "w": 10, "h": 10}, plate))
++        self.assertFalse(cl.box_within_plate({"x": 795, "y": 0, "w": 10, "h": 10}, plate))
++
++    def test_box_distance_is_zero_when_touching(self):
++        a = {"x": 0.0, "y": 0.0, "w": 10.0, "h": 10.0}
++        b = {"x": 10.0, "y": 0.0, "w": 10.0, "h": 10.0}
++        self.assertAlmostEqual(cl.box_distance(a, b), 0.0, places=9)
++        self.assertFalse(cl.boxes_overlap(a, b))
++
++    def test_group_width_counts_caps(self):
++        library = {
++            "k": {"lib_key": "k", "name": "k", "width_mm": 10.0, "height_mm": 40.0},
++            "cap": {"lib_key": "cap", "name": "cap", "width_mm": 2.0, "height_mm": 40.0},
++        }
++        grp = {"lib_key": "k", "count": 3, "internal_gap_mm": 1.0, "cap_start_key": "cap"}
++        # 3*10 + 2*1 + (2 + 1) = 35
++        self.assertAlmostEqual(cl.group_width(grp, library), 35.0, places=9)
++
++
++# --------------------------------------------------------------------------
++# раскладка: проверки
++# --------------------------------------------------------------------------
++
++BASE_PLATE = {"width_mm": 800.0, "height_mm": 600.0, "origin": "top_left"}
++BASE_LIB = [{"lib_key": "brk", "name": "Автомат", "width_mm": 18.0, "height_mm": 90.0}]
++
++
++def layout_of(elements=None, ducts=None, groups=None, plate=None, library=None):
++    return {
++        "plate": plate or dict(BASE_PLATE),
++        "defaults": {"gap_between_equipment_mm": 5.0, "clearance_equipment_to_duct_mm": 20.0},
++        "ducts": ducts or [],
++        "elements": elements or [],
++        "groups": groups or [],
++        "library": library or [dict(x) for x in BASE_LIB],
++    }
++
++
++class TestLayoutValidation(unittest.TestCase):
++
++    def test_clean_layout_is_ready(self):
++        report = cl.check_layout(layout_of(elements=[
++            {"id": "e1", "lib_key": "brk", "x_mm": 100.0, "y_mm": 100.0}]))
++        self.assertEqual(report["summary"]["error"], 0)
++        self.assertEqual(report["verdict"], "ready", report["issues"])
++
++    def test_bad_origin(self):
++        report = cl.check_layout(layout_of(plate={"width_mm": 800, "height_mm": 600,
++                                                  "origin": "center"}))
++        self.assertIn("BAD_ORIGIN", codes(report))
++
++    def test_bad_plate_size(self):
++        report = cl.check_layout(layout_of(plate={"width_mm": 0, "height_mm": 600,
++                                                  "origin": "top_left"}))
++        self.assertIn("BAD_PLATE_SIZE", codes(report))
++
++    def test_duplicate_id(self):
++        report = cl.check_layout(layout_of(elements=[
++            {"id": "e1", "lib_key": "brk", "x_mm": 0, "y_mm": 0},
++            {"id": "e1", "lib_key": "brk", "x_mm": 100, "y_mm": 0}]))
++        self.assertIn("DUPLICATE_ID", codes(report))
++
++    def test_unresolved_lib_key(self):
++        report = cl.check_layout(layout_of(elements=[
++            {"id": "e1", "lib_key": "нет-такого", "x_mm": 0, "y_mm": 0}]))
++        self.assertIn("UNRESOLVED_LIB_KEY", codes(report))
++        self.assertFalse(report["ok"])
++
++    def test_overlap_is_a_warning(self):
++        report = cl.check_layout(layout_of(elements=[
++            {"id": "e1", "lib_key": "brk", "x_mm": 100.0, "y_mm": 100.0},
++            {"id": "e2", "lib_key": "brk", "x_mm": 105.0, "y_mm": 100.0}]))
++        overlap = [i for i in report["issues"] if i["code"] == "OVERLAP"]
++        self.assertTrue(overlap)
++        self.assertEqual(overlap[0]["level"], "warning")
++
++    def test_off_plate_is_a_warning(self):
++        report = cl.check_layout(layout_of(elements=[
++            {"id": "e1", "lib_key": "brk", "x_mm": 790.0, "y_mm": 0.0}]))
++        off = [i for i in report["issues"] if i["code"] == "OFF_PLATE"]
++        self.assertTrue(off)
++        self.assertEqual(off[0]["level"], "warning")
++
++    def test_clearance_tight(self):
++        # канал вдоль левой кромки шириной 40, элемент вплотную к нему
++        report = cl.check_layout(layout_of(
++            elements=[{"id": "e1", "lib_key": "brk", "x_mm": 45.0, "y_mm": 100.0}],
++            ducts=[{"id": "d1", "x_mm": 0.0, "y_mm": 0.0, "length_mm": 600.0,
++                    "width_mm": 40.0, "rot_deg": 90.0}]))
++        self.assertIn("CLEARANCE_TIGHT", codes(report))
++
++    def test_clearance_ok_when_far(self):
++        report = cl.check_layout(layout_of(
++            elements=[{"id": "e1", "lib_key": "brk", "x_mm": 300.0, "y_mm": 100.0}],
++            ducts=[{"id": "d1", "x_mm": 0.0, "y_mm": 0.0, "length_mm": 600.0,
++                    "width_mm": 40.0, "rot_deg": 90.0}]))
++        self.assertNotIn("CLEARANCE_TIGHT", codes(report))
++
++    def test_row_overflow(self):
++        """Два боковых канала близко друг к другу — ряд в них не влезает."""
++        library = [{"lib_key": "wide", "name": "Широкий", "width_mm": 100.0, "height_mm": 90.0}]
++        report = cl.check_layout(layout_of(
++            elements=[{"id": "e1", "lib_key": "wide", "x_mm": 10.0, "y_mm": 100.0},
++                      {"id": "e2", "lib_key": "wide", "x_mm": 130.0, "y_mm": 100.0}],
++            ducts=[{"id": "dl", "x_mm": 0.0, "y_mm": 0.0, "length_mm": 600.0,
++                    "width_mm": 10.0, "rot_deg": 90.0},
++                   {"id": "dr", "x_mm": 200.0, "y_mm": 0.0, "length_mm": 600.0,
++                    "width_mm": 10.0, "rot_deg": 90.0}],
++            library=library))
++        overflow = [i for i in report["issues"] if i["code"] == "ROW_OVERFLOW"]
++        self.assertTrue(overflow, report["issues"])
++        # 100 + 5 + 100 = 205, доступно 200 - 10 = 190 -> перебор 15 мм
++        self.assertIn("15", overflow[0]["message"])
++
++    def test_unconfirmed_size_is_reported_not_substituted(self):
++        library = [{"lib_key": "guess", "name": "?", "width_mm": 90.0,
++                    "height_mm": 90.0, "confirm": True}]
++        report = cl.check_layout(layout_of(
++            elements=[{"id": "e1", "lib_key": "guess", "x_mm": 0, "y_mm": 0}],
++            library=library))
++        self.assertTrue(report["unconfirmed"])
++        self.assertEqual(report["verdict"], "ready_with_unknowns")
++
++    def test_set_explodes_into_count(self):
++        report = cl.check_layout(layout_of(groups=[
++            {"id": "g1", "lib_key": "brk", "count": 12, "internal_gap_mm": 0.0,
++             "x_mm": 10.0, "y_mm": 300.0, "rot_deg": 0.0}]))
++        self.assertEqual(report["summary"]["error"], 0)
++
++    def test_bad_count(self):
++        report = cl.check_layout(layout_of(groups=[
++            {"id": "g1", "lib_key": "brk", "count": 0, "x_mm": 10.0, "y_mm": 300.0}]))
++        self.assertIn("BAD_COUNT", codes(report))
++
++
++# --------------------------------------------------------------------------
++# каталог инструментов
++# --------------------------------------------------------------------------
++
++class TestCatalogSurface(unittest.TestCase):
++
++    def test_tools_present(self):
++        for name in ("kompas_cabinet_spec_check", "kompas_cabinet_layout_check"):
++            self.assertIn(name, tools_catalog.TOOL_INDEX)
++
++    def test_tools_are_read_only(self):
++        for name in ("kompas_cabinet_spec_check", "kompas_cabinet_layout_check"):
++            self.assertTrue(tools_catalog.TOOL_INDEX[name]["annotations"]["readOnlyHint"])
++
++    def test_tools_have_a_route(self):
++        for name in ("kompas_cabinet_spec_check", "kompas_cabinet_layout_check"):
++            entry = tools_catalog.ACTION_MAP.get(name)
++            self.assertIsNotNone(entry, name)
++            self.assertEqual(entry[0], {"kompas_cabinet_spec_check": "cabinet.spec_check",
++                                        "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
++
++    def test_surface_grew_to_forty_nine(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 49)
++
++    def test_registry_wired(self):
++        """engineering_capabilities не импортируется статически (win32com),
++        поэтому маршрут проверяем по исходнику."""
++        path = os.path.join(ROOT, "src", "engineering_capabilities.py")
++        with open(path, encoding="utf-8") as fh:
++            body = fh.read()
++        self.assertIn("from cabinet_tools import", body)
++        self.assertIn('"cabinet.spec_check": cabinet_spec_check', body)
++        self.assertIn('"cabinet.layout_check": cabinet_layout_check', body)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

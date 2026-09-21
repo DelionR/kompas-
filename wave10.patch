@@ -1,0 +1,933 @@
+diff --git a/VERSION.json b/VERSION.json
+index d0ca391..a283076 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 52,
++  "mcp_tool_count": 53,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -59,6 +59,7 @@
+     "kompas_cabinet_layout_build",
+     "kompas_cabinet_materialize_plan",
+     "kompas_cabinet_materialize_apply",
++    "kompas_cabinet_bom_reconcile",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+   ],
+diff --git b/docs/WAVE10_CHANGES.md b/docs/WAVE10_CHANGES.md
+new file mode 100644
+index 0000000..64bdb7a
+--- /dev/null
++++ b/docs/WAVE10_CHANGES.md
+@@ -0,0 +1,111 @@
++# Волна 10 — сверка состава щита с перечнем КОМПАС
++
++Волна 9 материализовала раскладку. Волна 10 отвечает на вопрос «а что
++получилось на самом деле»: сравнивает, что собирались поставить, с тем, что
++КОМПАС показывает в перечне.
++
++Поверхность инструментов: **52 → 53**.
++
++## Что добавлено
++
++| Файл | Назначение |
++|---|---|
++| `src/cabinet_reconcile.py` | сверка — чистые функции, без COM |
++| `src/cabinet_tools.py` | адаптер `cabinet_bom_reconcile` |
++| `tests/test_wave10.py` | 34 теста |
++
++### Инструмент
++
++`kompas_cabinet_bom_reconcile` — чистый расчёт (`readOnlyHint: true`). **Не
++читает КОМПАС**: принимает уже готовый результат `kompas_bom_read` и сверяет его
++с моделью раскладки. Поэтому вся волна проверяется без установленного КОМПАСа.
++
++## Ключевое решение: сверка по имени файла, а не по обозначению
++
++Волна 9 маркирует только исходный экземпляр сета — остальные наследуют
++обозначение через линейный массив. Поэтому в перечне у двадцати четырёх клемм
++стоит одно обозначение `B101`.
++
++Если сверять по обозначениям, получится **двадцать три ложных расхождения** на
++одном-единственном сет клемм. Отчёт станет нечитаемым, а инженер перестанет ему
++верить. Поэтому:
++
++- основной ключ — имя файла детали (`source_file`);
++- обозначения — вторичная проверка, и расхождение по ним помечается причиной, а
++  не считается ошибкой сборки.
++
++Политика задаётся параметром `marking_policy`:
++
++- `first_only` (по умолчанию) — от сета ждём ровно одно обозначение;
++- `all` — ждём полную серию `B101…B124`.
++
++Имена файлов сравниваются без учёта регистра: КОМПАС может вернуть
++`Term_AGENT_COPY.M3D` там, где мы ожидаем `term_AGENT_COPY.m3d`.
++
++## Что отчёт показывает
++
++| Поле | Смысл |
++|---|---|
++| `matched` | сошлось и по наличию, и по количеству |
++| `missing_in_bom` | ожидали, в перечне нет |
++| `quantity_mismatch` | есть, но количество другое (с `delta`) |
++| `unexpected_in_bom` | стоит в сборке, но не ожидалось |
++| `designation_gaps` | нет ожидаемых обозначений, с причиной |
++| `unverified` | сверить нельзя (нет имени файла, серия не наращивается) |
++
++Вердикты: `match`, `mismatch`, `match_with_unknowns`. Последний — когда
++расхождений нет, но и полной уверенности нет: часть позиций сверить нечем.
++
++## Имя файла выводится, а не требуется
++
++В библиотеке раскладки поля `filename` обычно нет — его просто неоткуда взять на
++этом этапе. Поэтому имя выводится по правилу моста
++(`cabinet_materialize.part_filename`), а явное значение в библиотеке, если оно
++есть, имеет приоритет.
++
++Обнаружилось живым прогоном: без этого вывода **все** позиции уходили в
++`unverified`.
++
++## Дефекты
++
++### Неполная серия обозначений помечалась полной
++
++`designation_series` возвращала `len(series) < count` — то есть для `QF` с
++запрошенными тремя обозначениями получалось «серия полная». Инверсия. Теперь
++серия, которую не удалось нарастить, возвращает `False`, и позиция уходит в
++`unverified`.
++
++### Три ожидания в тестах были неверны
++
++- причина расхождения проверялась при политике `all`, хотя актуальна она при
++  `first_only`;
++- `match_with_unknowns` проверялся на пустом перечне — там закономерно
++  `mismatch`;
++- явное имя файла проверялось через генератор раскладки, который библиотеку
++  пересобирает и поле `filename` не сохраняет.
++
++## Что осталось за кадром
++
++- **Расхождение по количеству — не всегда ошибка.** Экземпляры, созданные
++  линейным массивом, КОМПАС может учитывать иначе, чем отдельные вставки. Это
++  отмечено в `limits`, а подтвердить можно только на живой сборке.
++- **Сверка не проверяет геометрию.** Она отвечает на вопрос «что стоит», а не
++  «куда поставлено». Позиции сверяет `kompas_model_bbox` и снимок видового
++  экрана — шаги из плана материализации с `automated: false`.
++
++## Проверка
++
++- 395 тестов, все зелёные (34 новых + 361 прежних);
++- `test_mcp_stdio` — 53 инструмента;
++- `compileall src mcp` — без ошибок;
++- стоп-краны обновлены во всех предыдущих тестах; `VERSION.json` — и счётчик, и
++  список `mcp_tools`.
++
++## Что дальше
++
++- **Конвейер STEP → .m3d** — после приёмки, на машине с КОМПАС. План в
++  `docs/STEP_IMPORT_PIPELINE.md`. Как только появится геометрия, поле
++  `fragment_ref` заполняется и режим `body: fragment` вступает в силу без
++  переделки плана материализации.
++- **Библиотека фрагментов** — отдельная задача; opensource-аналога не
++  существует (проверено 27 запросами к GitHub и прямым опросом API `step.parts`).
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index 17a5952..e37a21d 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -112,6 +112,7 @@ TOOLS = [
+     {"name":"kompas_cabinet_layout_build","description":"Compute a mounting-plate layout from a parts list: side wire ducts are generated when none are supplied, lines are placed left to right and wrapped into rows, batches become sets for later linear-array materialisation. Parts are aligned on a DIN rail by rail_offset_mm - the distance from the top edge of the part to the rail axis - so terminals of different heights sit on one line. A line with an unknown lib_key or an unconfirmed size goes to unplaced instead of being placed with a guessed dimension. The result is validated by the same check as kompas_cabinet_layout_check. Pure computation - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"plate":{"type":"object"},"defaults":{"type":"object"},"rail":{"type":"object"},"library":{"type":"array","items":{"type":"object"},"maxItems":5000},"lines":{"type":"array","items":{"type":"object"},"maxItems":5000},"ducts":{"type":"array","items":{"type":"object"},"maxItems":500}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_materialize_plan","description":"Turn a mounting-plate layout into an ordered plan of bridge calls: create bodies, insert into the assembly, position on the DIN rail, multiply batches by linear pattern, mark with positional designations. Batches are split because kompas_component_pattern_linear accepts count 2..20. Steps reference occurrences symbolically ({from_step, field}) because the numeric component index is only known from KOMPAS after insertion. Two body sources: primitive builds a bounding block from the confirmed catalog size, fragment uses a ready *.m3d from fragment_ref. Pure planning - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"assembly_filename":{"type":"string","minLength":1},"body":{"type":"string","enum":["primitive","fragment"]},"layout":{"type":"object"},"mount":{"type":"object"},"options":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_materialize_apply","description":"Execute a materialisation plan against a live KOMPAS assembly. Requires apply=true; without it the plan is returned and nothing is executed. Steps are run in order, component indices are resolved from the response of the preceding insert, and a failure on a critical step stops execution instead of continuing on half-built geometry. Steps marked automated=false (checkpoint, verification, viewport capture) have a different call contract and are returned under deferred for the operator. Writes to the assembly.","inputSchema":{"type":"object","required":["apply"],"properties":{"apply":{"type":"boolean"},"plan":{"type":"object"},"assembly_filename":{"type":"string","minLength":1},"body":{"type":"string","enum":["primitive","fragment"]},"layout":{"type":"object"},"mount":{"type":"object"},"options":{"type":"object"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
++    {"name":"kompas_cabinet_bom_reconcile","description":"Reconcile the expected cabinet composition against the bill of materials read from KOMPAS. Matching is by part file name, not by positional designation, because under the first_only marking policy a set of 24 terminals carries a single designation in the BOM. Reports missing items, quantity mismatches, unexpected items and designation gaps; a gap is annotated with its cause instead of being counted as an assembly error. Pure comparison over supplied data - the tool does not read KOMPAS itself.","inputSchema":{"type":"object","properties":{"layout":{"type":"object"},"bom":{"type":"object"},"marking_policy":{"type":"string","enum":["first_only","all"]}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+ # Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
+@@ -179,6 +180,7 @@ ACTION_MAP = {
+     "kompas_cabinet_layout_build": ("cabinet.layout_build", lambda a: a),
+     "kompas_cabinet_materialize_plan": ("cabinet.materialize_plan", lambda a: a),
+     "kompas_cabinet_materialize_apply": ("cabinet.materialize_apply", lambda a: a),
++    "kompas_cabinet_bom_reconcile": ("cabinet.bom_reconcile", lambda a: a),
+ }
+ 
+ 
+diff --git b/src/cabinet_reconcile.py b/src/cabinet_reconcile.py
+new file mode 100644
+index 0000000..c7eac80
+--- /dev/null
++++ b/src/cabinet_reconcile.py
+@@ -0,0 +1,291 @@
++"""Сверка ожидаемого состава щита с перечнем из КОМПАС — чистые функции, без COM.
++
++Волна 9 материализовала раскладку. Эта волна отвечает на вопрос «а что
++получилось на самом деле»: сравнивает, что мы собирались поставить, с тем, что
++КОМПАС показывает в перечне.
++
++Модуль **не читает КОМПАС**. Он принимает уже готовый результат
++``kompas_bom_read`` (или ``kompas_specification_read``) и сверяет его с моделью
++раскладки. Поэтому всё здесь проверяется без установленного КОМПАСа.
++
++Ключ сверки — **имя файла детали** (``source_file``), а не позиционное
++обозначение. Причина простая: в волне 9 маркируется только исходный экземпляр
++сета, поэтому в перечне у двадцати четырёх клемм стоит одно обозначение ``B101``.
++Сверять по обозначениям значит получить двадцать три ложных расхождения.
++
++Что модуль **не** делает:
++
++- не считает расхождение ошибкой сборки по умолчанию: часть расхождений
++  нормальна и объяснима (та же маркировка), поэтому они помечаются причиной;
++- не подменяет отсутствующие данные: если в перечне нет поля, по которому
++  сверяем, позиция уходит в ``unverified``.
++"""
++
++from __future__ import annotations
++
++import re
++from typing import Any, Dict, List, Optional, Tuple
++
++from cabinet_materialize import part_filename
++
++MARKING_FIRST_ONLY = "first_only"
++MARKING_ALL = "all"
++
++_TRAILING_NUMBER = re.compile(r"^(.*?)(\d+)$")
++
++
++# --------------------------------------------------------------------------
++# разбор
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _number(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def next_designation(tag: str, step: float) -> Optional[str]:
++    """Следующее обозначение: ``B101`` с шагом 1 даёт ``B102``.
++
++    Если числовой части нет, возвращаем ``None`` — наращивать нечего, и молча
++    вернуть исходное обозначение значило бы выдать желаемое за действительное.
++    """
++    match = _TRAILING_NUMBER.match(_text(tag))
++    if not match:
++        return None
++    prefix, digits = match.group(1), match.group(2)
++    step_int = int(step) if float(step) == int(step) else None
++    if step_int is None:
++        return None
++    return "%s%0*d" % (prefix, len(digits), int(digits) + step_int)
++
++
++def designation_series(tag: str, count: int, step: float) -> Tuple[List[str], bool]:
++    """Все обозначения сета. Второй элемент — удалось ли нарастить."""
++    series: List[str] = []
++    current = _text(tag)
++    total = max(int(count), 0)
++    for _ in range(total):
++        if not current:
++            break
++        series.append(current)
++        nxt = next_designation(current, step)
++        if nxt is None:
++            # Нарастить не удалось: серия заведомо неполная, и это надо
++            # показать, а не вернуть «всё в порядке».
++            return series, False
++        current = nxt
++    return series, len(series) == total
++
++
++def expected_designations(obj: Dict[str, Any], policy: str) -> Tuple[List[str], bool]:
++    """Ожидаемые позиционные обозначения одной позиции раскладки.
++
++    Для сета при политике ``first_only`` это ровно одно обозначение: остальные
++    экземпляры наследуют его через паттерн и отдельно в перечень не попадают.
++    """
++    kind = "group" if obj.get("count") else "element"
++    if kind == "element":
++        tag = _text(obj.get("tag"))
++        return ([tag] if tag else []), True
++
++    count = int(_number(obj.get("count"), 0.0) or 0.0)
++    start = _text(obj.get("tag_start"))
++    if not start:
++        return [], True
++    if policy == MARKING_ALL:
++        return designation_series(start, count, _number(obj.get("tag_step"), 1.0) or 1.0)
++    return [start], True        # маркируется только исходный экземпляр
++
++
++# --------------------------------------------------------------------------
++# стороны сверки
++# --------------------------------------------------------------------------
++
++def expected_items(payload: Any) -> List[Dict[str, Any]]:
++    """Ожидаемый состав из модели раскладки."""
++    data = _as_dict(payload)
++    layout = _as_dict(data.get("layout"))
++    library: Dict[str, Dict[str, Any]] = {}
++    for raw in _as_list(layout.get("library")):
++        item = _as_dict(raw)
++        key = _text(item.get("lib_key"))
++        if key:
++            library[key] = item
++
++    policy = _text(data.get("marking_policy")) or MARKING_FIRST_ONLY
++    rows: List[Dict[str, Any]] = []
++
++    for kind, obj in ([("element", e) for e in _as_list(layout.get("elements"))]
++                      + [("group", g) for g in _as_list(layout.get("groups"))]):
++        obj = _as_dict(obj)
++        key = _text(obj.get("lib_key"))
++        item = library.get(key, {})
++        count = (1 if kind == "element"
++                 else int(_number(obj.get("count"), 0.0) or 0.0))
++        tags, complete = expected_designations(obj, policy)
++        rows.append({
++            "id": _text(obj.get("id")) or None,
++            "lib_key": key or None,
++            "name": _text(item.get("name")) or key or None,
++            # Имя файла задаётся правилом моста, а не выдумывается здесь:
++            # в библиотеке раскладки его может не быть вовсе.
++            "filename": (_text(item.get("filename"))
++                         or (part_filename(key) if key else None)),
++            "fragment_ref": _text(item.get("fragment_ref")) or None,
++            "expected_count": count,
++            "expected_designations": tags,
++            "designations_complete": complete,
++        })
++    return rows
++
++
++def bom_index(bom: Any) -> Dict[str, Dict[str, Any]]:
++    """Индекс перечня по имени файла детали.
++
++    Регистр не важен: КОМПАС может вернуть ``Term_AGENT_COPY.M3D``, а мы
++    ожидаем ``term_AGENT_COPY.m3d``.
++    """
++    rows = _as_dict(bom).get("bom_rows")
++    if rows is None:
++        rows = _as_list(bom)
++    index: Dict[str, Dict[str, Any]] = {}
++    for raw in _as_list(rows):
++        row = _as_dict(raw)
++        key = (_text(row.get("source_file"))
++               or _text(row.get("component_filename"))
++               or _text(row.get("filename")))
++        if not key:
++            continue
++        slot = index.setdefault(key.casefold(), {
++            "source_file": key,
++            "occurrence_count": 0,
++            "designations": [],
++            "names": [],
++        })
++        slot["occurrence_count"] += int(_number(row.get("occurrence_count"), 1.0) or 1.0)
++        designation = _text(row.get("designation"))
++        if designation and designation not in slot["designations"]:
++            slot["designations"].append(designation)
++        name = _text(row.get("name"))
++        if name and name not in slot["names"]:
++            slot["names"].append(name)
++    return index
++
++
++def _key_of(row: Dict[str, Any]) -> Optional[str]:
++    """Ключ ожидаемой позиции: файл детали, иначе ссылка на фрагмент."""
++    return _text(row.get("filename")) or _text(row.get("fragment_ref")) or None
++
++
++# --------------------------------------------------------------------------
++# сверка
++# --------------------------------------------------------------------------
++
++def reconcile(payload: Any) -> Dict[str, Any]:
++    """Сверить ожидаемый состав с перечнем КОМПАС."""
++    data = _as_dict(payload)
++    expected = expected_items(data)
++    index = bom_index(data.get("bom"))
++    policy = _text(data.get("marking_policy")) or MARKING_FIRST_ONLY
++
++    matched: List[Dict[str, Any]] = []
++    missing: List[Dict[str, Any]] = []
++    quantity: List[Dict[str, Any]] = []
++    designation_gaps: List[Dict[str, Any]] = []
++    unverified: List[Dict[str, Any]] = []
++    seen: Dict[str, bool] = {}
++
++    for row in expected:
++        key = _key_of(row)
++        if not key:
++            unverified.append({"id": row["id"], "lib_key": row["lib_key"],
++                               "reason": "no_filename"})
++            continue
++        seen[key.casefold()] = True
++        actual = index.get(key.casefold())
++        if actual is None:
++            missing.append({"id": row["id"], "lib_key": row["lib_key"],
++                            "filename": key,
++                            "expected_count": row["expected_count"],
++                            "reason": "absent_in_bom"})
++            continue
++
++        expected_count = row["expected_count"]
++        actual_count = actual["occurrence_count"]
++        if expected_count != actual_count:
++            quantity.append({"id": row["id"], "lib_key": row["lib_key"],
++                             "filename": key,
++                             "expected_count": expected_count,
++                             "actual_count": actual_count,
++                             "delta": actual_count - expected_count})
++        else:
++            matched.append({"id": row["id"], "lib_key": row["lib_key"],
++                            "filename": key, "count": actual_count})
++
++        present = set(actual["designations"])
++        wanted = row["expected_designations"]
++        absent = [tag for tag in wanted if tag not in present]
++        if absent:
++            gap = {"id": row["id"], "lib_key": row["lib_key"],
++                   "missing_designations": absent}
++            if policy == MARKING_FIRST_ONLY and len(wanted) < max(expected_count, 1):
++                gap["reason"] = ("маркируется только исходный экземпляр; "
++                                 "политика first_only")
++            designation_gaps.append(gap)
++        if not row["designations_complete"]:
++            unverified.append({"id": row["id"], "lib_key": row["lib_key"],
++                               "reason": "designation_series_incomplete"})
++
++    unexpected = [{"source_file": slot["source_file"],
++                   "occurrence_count": slot["occurrence_count"]}
++                  for key, slot in index.items() if not seen.get(key)]
++
++    ok = not missing and not quantity and not unexpected and not unverified
++    return {
++        "ok": ok,
++        "verdict": ("match" if ok else
++                    ("mismatch" if (missing or quantity or unexpected) else
++                     "match_with_unknowns")),
++        "marking_policy": policy,
++        "summary": {
++            "expected_items": len(expected),
++            "bom_items": len(index),
++            "matched": len(matched),
++            "missing": len(missing),
++            "quantity_mismatch": len(quantity),
++            "unexpected": len(unexpected),
++            "designation_gaps": len(designation_gaps),
++            "unverified": len(unverified),
++        },
++        "matched": matched,
++        "missing_in_bom": missing,
++        "quantity_mismatch": quantity,
++        "unexpected_in_bom": unexpected,
++        "designation_gaps": designation_gaps,
++        "unverified": unverified,
++        "limits": [
++            "Сверка идёт по имени файла детали: позиционные обозначения "
++            "вторичны, потому что при политике first_only в перечне стоит "
++            "только обозначение исходного экземпляр сета.",
++            "Расхождение по количеству — не всегда ошибка сборки: экземпляры, "
++            "созданные линейным массивом, могут учитываться КОМПАСом иначе.",
++            "Имена файлов сравниваются без учёта регистра.",
++            "Модуль не читает КОМПАС: он сверяет переданный результат "
++            "kompas_bom_read с моделью раскладки.",
++        ],
++    }
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index f703ef9..e30f511 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -15,6 +15,7 @@ from cabinet_layout import check_layout
+ from cabinet_build import build_layout
+ from cabinet_materialize import build_plan
+ from cabinet_exec import execute_plan
++from cabinet_reconcile import reconcile
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -47,3 +48,8 @@ def cabinet_materialize_apply(session: Any, params: Dict[str, Any]) -> Dict[str,
+             "note": "Ничего не выполнено: нужен явный apply=true.",
+         })
+     return ok("cabinet.materialize_apply", execute_plan(session, params))
++
++
++def cabinet_bom_reconcile(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Сверить ожидаемый состав щита с перечнем, прочитанным из КОМПАС."""
++    return ok("cabinet.bom_reconcile", reconcile(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 4ddf558..672ffa5 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -28,7 +28,8 @@ from spec_tools import specification_read
+ from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
+ from cabinet_tools import (cabinet_spec_check, cabinet_layout_check, cabinet_layout_build,
+-                           cabinet_materialize_plan, cabinet_materialize_apply)
++                           cabinet_materialize_plan, cabinet_materialize_apply,
++                           cabinet_bom_reconcile)
+ 
+ 
+ def _doc(s):
+@@ -328,4 +329,5 @@ registry = {
+     "cabinet.layout_build": cabinet_layout_build,
+     "cabinet.materialize_plan": cabinet_materialize_plan,
+     "cabinet.materialize_apply": cabinet_materialize_apply,
++    "cabinet.bom_reconcile": cabinet_bom_reconcile,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index 8be064d..df6cc38 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 52, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 53, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git b/tests/test_wave10.py b/tests/test_wave10.py
+new file mode 100644
+index 0000000..6230484
+--- /dev/null
++++ b/tests/test_wave10.py
+@@ -0,0 +1,300 @@
++"""Волна 10: сверка ожидаемого состава щита с перечнем из КОМПАС.
++
++Модуль чистый: он не читает КОМПАС, а сверяет **переданный** результат
++``kompas_bom_read`` с моделью раскладки. Поэтому всё проверяется без
++установленного КОМПАСа.
++
++Главное требование к тестам — сверка идёт по **имени файла детали**, а не по
++позиционному обозначению. Волна 9 маркирует только исходный экземпляр сета,
++поэтому в перечне у двадцати четырёх клемм стоит одно обозначение. Сверять по
++обозначениям значило бы получить двадцать три ложных расхождения — отдельный
++тест это запрещает.
++"""
++
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_build as cb            # noqa: E402
++import cabinet_reconcile as cr        # noqa: E402
++import cabinet_tools                  # noqa: E402
++import tools_catalog                  # noqa: E402
++
++ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
++
++
++# --------------------------------------------------------------------------
++# фикстуры
++# --------------------------------------------------------------------------
++
++LIBRARY = [
++    {"lib_key": "brk", "name": "Автомат 40А", "width_mm": 36.0,
++     "height_mm": 90.0, "rail_offset_mm": 45.0},
++    {"lib_key": "term", "name": "Клемма", "width_mm": 6.0,
++     "height_mm": 40.0, "rail_offset_mm": 25.0},
++]
++
++
++def layout_of(lines, library=None):
++    return cb.build_layout({
++        "plate": {"width_mm": 600.0, "height_mm": 800.0},
++        "rail": {"first_rail_y_mm": 130.0, "pitch_mm": 170.0},
++        "library": list(library or LIBRARY),
++        "lines": lines,
++    })["layout"]
++
++
++def bom(*rows):
++    return {"bom_rows": list(rows)}
++
++
++def row(source_file, count, designation="", name=""):
++    return {"source_file": source_file, "occurrence_count": count,
++            "designation": designation, "name": name}
++
++
++SIMPLE = [{"id": "a", "lib_key": "brk", "qty": 1, "tag": "QF1"}]
++TERMINALS = [{"id": "c", "lib_key": "term", "qty": 24, "tag_start": "B101",
++              "tag_step": 1, "internal_gap_mm": 1.0}]
++
++
++# --------------------------------------------------------------------------
++# поверхность инструментов
++# --------------------------------------------------------------------------
++
++class ToolSurface(unittest.TestCase):
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
++
++    def test_tool_declared(self):
++        self.assertIn("kompas_cabinet_bom_reconcile",
++                      [t["name"] for t in tools_catalog.TOOLS])
++
++    def test_tool_is_read_only(self):
++        """Сверка ничего не пишет: она сравнивает уже прочитанное."""
++        tool = tools_catalog.TOOL_INDEX["kompas_cabinet_bom_reconcile"]
++        self.assertTrue(tool["annotations"]["readOnlyHint"])
++
++    def test_tool_routed(self):
++        self.assertEqual(
++            tools_catalog.ACTION_MAP["kompas_cabinet_bom_reconcile"][0],
++            "cabinet.bom_reconcile")
++
++    def test_registry_wires_action(self):
++        path = os.path.join(ROOT, "src", "engineering_capabilities.py")
++        with open(path, encoding="utf-8") as fh:
++            body = fh.read()
++        self.assertIn('"cabinet.bom_reconcile": cabinet_bom_reconcile', body)
++
++    def test_adapter_is_pure(self):
++        out = cabinet_tools.cabinet_bom_reconcile(
++            None, {"layout": layout_of(SIMPLE), "bom": bom()})
++        self.assertIn("summary", out["result"])
++
++
++# --------------------------------------------------------------------------
++# позиционные обозначения
++# --------------------------------------------------------------------------
++
++class Designations(unittest.TestCase):
++    def test_next_designation(self):
++        self.assertEqual(cr.next_designation("B101", 1), "B102")
++        self.assertEqual(cr.next_designation("QF1", 1), "QF2")
++        self.assertEqual(cr.next_designation("B101", 2), "B103")
++
++    def test_keeps_zero_padding(self):
++        self.assertEqual(cr.next_designation("B009", 1), "B010")
++
++    def test_no_number_means_no_increment(self):
++        """Молча вернуть исходное значило бы выдать желаемое за расчёт."""
++        self.assertIsNone(cr.next_designation("QF", 1))
++        self.assertIsNone(cr.next_designation("", 1))
++
++    def test_series(self):
++        series, complete = cr.designation_series("B101", 4, 1)
++        self.assertEqual(series, ["B101", "B102", "B103", "B104"])
++        self.assertTrue(complete)
++
++    def test_series_stops_when_no_number(self):
++        series, complete = cr.designation_series("QF", 3, 1)
++        self.assertEqual(series, ["QF"])
++        self.assertFalse(complete)
++
++    def test_element_designation(self):
++        tags, _ = cr.expected_designations({"tag": "QF1"}, cr.MARKING_FIRST_ONLY)
++        self.assertEqual(tags, ["QF1"])
++
++    def test_set_first_only_gives_one_designation(self):
++        """Маркируется только исходный экземпляр — остальные наследуют."""
++        tags, _ = cr.expected_designations(
++            {"count": 24, "tag_start": "B101", "tag_step": 1},
++            cr.MARKING_FIRST_ONLY)
++        self.assertEqual(tags, ["B101"])
++
++    def test_set_all_gives_full_series(self):
++        tags, complete = cr.expected_designations(
++            {"count": 3, "tag_start": "B101", "tag_step": 1}, cr.MARKING_ALL)
++        self.assertEqual(tags, ["B101", "B102", "B103"])
++        self.assertTrue(complete)
++
++
++# --------------------------------------------------------------------------
++# индекс перечня
++# --------------------------------------------------------------------------
++
++class BomIndex(unittest.TestCase):
++    def test_indexed_by_source_file(self):
++        index = cr.bom_index(bom(row("brk_AGENT_COPY.m3d", 3)))
++        self.assertIn("brk_agent_copy.m3d", index)
++        self.assertEqual(index["brk_agent_copy.m3d"]["occurrence_count"], 3)
++
++    def test_case_insensitive(self):
++        """КОМПАС может вернуть имя в другом регистре."""
++        index = cr.bom_index(bom(row("BRK_AGENT_COPY.M3D", 1)))
++        self.assertIn("brk_agent_copy.m3d", index)
++
++    def test_counts_sum(self):
++        index = cr.bom_index(bom(row("term_AGENT_COPY.m3d", 12),
++                                 row("term_AGENT_COPY.m3d", 12)))
++        self.assertEqual(index["term_agent_copy.m3d"]["occurrence_count"], 24)
++
++    def test_designations_collected(self):
++        index = cr.bom_index(bom(row("term_AGENT_COPY.m3d", 1, "B101"),
++                                 row("term_AGENT_COPY.m3d", 1, "B102")))
++        self.assertEqual(index["term_agent_copy.m3d"]["designations"],
++                         ["B101", "B102"])
++
++    def test_rows_without_file_are_skipped(self):
++        index = cr.bom_index(bom({"occurrence_count": 1}))
++        self.assertEqual(index, {})
++
++    def test_plain_list_accepted(self):
++        index = cr.bom_index([row("brk_AGENT_COPY.m3d", 1)])
++        self.assertEqual(len(index), 1)
++
++
++# --------------------------------------------------------------------------
++# сверка
++# --------------------------------------------------------------------------
++
++class Reconciliation(unittest.TestCase):
++    def test_full_match(self):
++        result = cr.reconcile({
++            "layout": layout_of(SIMPLE + TERMINALS),
++            "bom": bom(row("brk_AGENT_COPY.m3d", 1, "QF1"),
++                       row("term_AGENT_COPY.m3d", 24, "B101"))})
++        self.assertEqual(result["verdict"], "match")
++        self.assertTrue(result["ok"])
++        self.assertEqual(result["summary"]["matched"], 2)
++
++    def test_terminals_do_not_produce_false_gaps(self):
++        """Ключевой тест: 24 клеммы, одно обозначение — это не расхождение."""
++        result = cr.reconcile({
++            "layout": layout_of(TERMINALS),
++            "bom": bom(row("term_AGENT_COPY.m3d", 24, "B101"))})
++        self.assertEqual(result["designation_gaps"], [])
++        self.assertEqual(result["verdict"], "match")
++
++    def test_policy_all_exposes_the_gap(self):
++        result = cr.reconcile({
++            "layout": layout_of(TERMINALS),
++            "bom": bom(row("term_AGENT_COPY.m3d", 24, "B101")),
++            "marking_policy": "all"})
++        self.assertEqual(len(result["designation_gaps"]), 1)
++        self.assertIn("B102", result["designation_gaps"][0]["missing_designations"])
++
++    def test_gap_is_annotated_with_cause(self):
++        """Расхождение объясняется, а не выдаётся за ошибку сборки.
++
++        Политика first_only: ждём одно обозначение, в перечне его нет — причина
++        в политике маркировки, а не в том, что клеммы не поставили.
++        """
++        result = cr.reconcile({
++            "layout": layout_of(TERMINALS),
++            "bom": bom(row("term_AGENT_COPY.m3d", 24))})
++        self.assertEqual(len(result["designation_gaps"]), 1)
++        self.assertIn("first_only",
++                      result["designation_gaps"][0].get("reason", ""))
++
++    def test_missing_item(self):
++        result = cr.reconcile({
++            "layout": layout_of(SIMPLE + TERMINALS),
++            "bom": bom(row("brk_AGENT_COPY.m3d", 1, "QF1"))})
++        self.assertEqual(result["verdict"], "mismatch")
++        self.assertEqual(result["summary"]["missing"], 1)
++        self.assertEqual(result["missing_in_bom"][0]["filename"],
++                         "term_AGENT_COPY.m3d")
++
++    def test_quantity_mismatch(self):
++        result = cr.reconcile({
++            "layout": layout_of(TERMINALS),
++            "bom": bom(row("term_AGENT_COPY.m3d", 20, "B101"))})
++        row0 = result["quantity_mismatch"][0]
++        self.assertEqual(row0["expected_count"], 24)
++        self.assertEqual(row0["actual_count"], 20)
++        self.assertEqual(row0["delta"], -4)
++
++    def test_unexpected_item(self):
++        result = cr.reconcile({
++            "layout": layout_of(SIMPLE),
++            "bom": bom(row("brk_AGENT_COPY.m3d", 1, "QF1"),
++                       row("psu_AGENT_COPY.m3d", 1, "G1"))})
++        self.assertEqual(len(result["unexpected_in_bom"]), 1)
++        self.assertEqual(result["unexpected_in_bom"][0]["source_file"],
++                         "psu_AGENT_COPY.m3d")
++
++    def test_filename_derived_from_lib_key(self):
++        """В библиотеке раскладки имени файла нет — оно выводится правилом."""
++        items = cr.expected_items({"layout": layout_of(SIMPLE)})
++        self.assertEqual(items[0]["filename"], "brk_AGENT_COPY.m3d")
++
++    def test_explicit_filename_wins(self):
++        """Явное имя файла в библиотеке важнее выведенного из ключа.
++
++        Проверяем на «сыром» layout: генератор раскладки библиотеку
++        пересобирает и поле filename не сохраняет.
++        """
++        layout = {"plate": {"width_mm": 600.0, "height_mm": 800.0},
++                  "library": [dict(LIBRARY[0], filename="custom_AGENT_COPY.m3d")],
++                  "elements": [{"id": "a", "lib_key": "brk", "tag": "QF1",
++                                "x_mm": 60.0, "y_mm": 85.0}],
++                  "groups": []}
++        items = cr.expected_items({"layout": layout})
++        self.assertEqual(items[0]["filename"], "custom_AGENT_COPY.m3d")
++
++    def test_expected_counts(self):
++        items = cr.expected_items({"layout": layout_of(SIMPLE + TERMINALS)})
++        counts = {i["lib_key"]: i["expected_count"] for i in items}
++        self.assertEqual(counts, {"brk": 1, "term": 24})
++
++    def test_empty_bom_means_all_missing(self):
++        result = cr.reconcile({"layout": layout_of(SIMPLE), "bom": bom()})
++        self.assertEqual(result["summary"]["missing"], 1)
++
++    def test_item_without_lib_key_is_unverified(self):
++        """Позицию без ключа библиотеки сверить нечем — это не «сошлось»."""
++        layout = layout_of(SIMPLE)
++        layout["elements"].append({"id": "z", "lib_key": "", "x_mm": 0.0,
++                                   "y_mm": 0.0})
++        result = cr.reconcile({"layout": layout,
++                               "bom": bom(row("brk_AGENT_COPY.m3d", 1, "QF1"))})
++        reasons = [row["reason"] for row in result["unverified"]]
++        self.assertIn("no_filename", reasons)
++        self.assertEqual(result["verdict"], "match_with_unknowns")
++
++    def test_garbage_does_not_raise(self):
++        for payload in (None, {}, [], "text", 42,
++                        {"layout": "nope", "bom": "nope"}):
++            result = cr.reconcile(payload)
++            self.assertIn("verdict", result)
++
++    def test_limits_explain_the_key_choice(self):
++        result = cr.reconcile({"layout": layout_of(SIMPLE), "bom": bom()})
++        self.assertTrue(any("имени файла" in s for s in result["limits"]))
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 973b663..9d864a3 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index 2850879..f3f83f4 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -314,8 +314,8 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ 
+ class TestCatalogWave3(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index 6a27b5e..19a6e55 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -316,8 +316,8 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ 
+ class TestCatalogWave4(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index 81a0c30..9774ef4 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -391,8 +391,8 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index f5881fb..381f005 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -434,8 +434,8 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index 11b98b6..b450515 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git a/tests/test_wave8.py b/tests/test_wave8.py
+index e23e28b..26ebf26 100644
+--- a/tests/test_wave8.py
++++ b/tests/test_wave8.py
+@@ -71,8 +71,8 @@ def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None)
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_build_tool_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tests/test_wave9.py b/tests/test_wave9.py
+index 57237d4..6863b35 100644
+--- a/tests/test_wave9.py
++++ b/tests/test_wave9.py
+@@ -100,8 +100,8 @@ class FakeExecutor:
+ # --------------------------------------------------------------------------
+ 
+ class ToolSurface(unittest.TestCase):
+-    def test_tool_count_is_52(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 52)
++    def test_tool_count_is_53(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 53)
+ 
+     def test_both_tools_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]

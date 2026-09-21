@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KOMPAS-3D AI Bridge — аудит и план развития</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --ink:#1a1d21; --ink2:#4a5058; --ink3:#7b828b;
+    --line:#e3e6ea; --line2:#eef1f4;
+    --acc:#1f5fa9; --acc-bg:#eaf2fb;
+    --p0:#b3261e; --p0-bg:#fdecea;
+    --p1:#8a5a00; --p1-bg:#fff6e5;
+    --p2:#2e6b3e; --p2-bg:#eaf5ee;
+    --ok:#1f7a3f; --ok-bg:#eaf6ee;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 28px 96px}
+
+  header.top{border-bottom:2px solid var(--ink);padding-bottom:22px;margin-bottom:34px}
+  .kicker{font-size:12.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+  h1{font-size:33px;line-height:1.2;margin:10px 0 12px;letter-spacing:-.02em}
+  .sub{color:var(--ink2);font-size:16.5px;max-width:74ch}
+  .meta{margin-top:16px;font-size:13.5px;color:var(--ink3);font-family:var(--mono)}
+  .meta b{color:var(--ink2);font-weight:600}
+
+  h2{font-size:23px;margin:52px 0 14px;letter-spacing:-.01em;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h2 .num{color:var(--acc);font-family:var(--mono);font-size:18px;margin-right:10px}
+  h3{font-size:17.5px;margin:30px 0 10px}
+  h4{font-size:15.5px;margin:20px 0 8px;color:var(--ink)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);font-size:13.2px;background:#f0f2f5;border:1px solid var(--line);
+    padding:1px 5px;border-radius:4px;color:#243b53}
+  pre{background:#1c2128;color:#e6edf3;padding:15px 17px;border-radius:9px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.8px;line-height:1.55;margin:14px 0}
+  pre code{background:none;border:none;color:inherit;padding:0;font-size:inherit}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:20px 22px;margin:16px 0}
+  .card.tight{padding:16px 18px}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.2px;background:var(--card)}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:#f2f4f7;font-weight:650;font-size:13.2px;letter-spacing:.01em}
+  td code{font-size:12.5px}
+  .scroll{overflow-x:auto}
+
+  .pill{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+    padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+  .pill.p0{background:var(--p0-bg);color:var(--p0)}
+  .pill.p1{background:var(--p1-bg);color:var(--p1)}
+  .pill.p2{background:var(--p2-bg);color:var(--p2)}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)}
+  .pill.info{background:var(--acc-bg);color:var(--acc)}
+
+  .finding{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--acc);
+    border-radius:8px;padding:15px 18px;margin:14px 0}
+  .finding.p0{border-left-color:var(--p0)}
+  .finding.p1{border-left-color:#d9a021}
+  .finding.p2{border-left-color:#4f9463}
+  .finding .fh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:7px}
+  .finding .ft{font-weight:670;font-size:15.5px}
+  .finding .ev{font-family:var(--mono);font-size:12.3px;color:var(--ink3);margin-top:8px;
+    background:#f7f8fa;border:1px solid var(--line2);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:pre-wrap}
+  .finding p{margin:6px 0;font-size:14.6px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+  .good{background:var(--ok-bg);border:1px solid #c9e6d4;border-radius:9px;padding:14px 17px;margin:12px 0}
+  .good b{color:#166534}
+  .warn{background:#fff9ec;border:1px solid #f0dfae;border-radius:9px;padding:14px 17px;margin:12px 0}
+
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:18px 22px}
+  .toc ol{columns:2;column-gap:34px;margin:6px 0 0}
+  @media(max-width:760px){.toc ol{columns:1}}
+  .toc a{color:var(--acc);text-decoration:none;font-size:14.6px}
+  .toc a:hover{text-decoration:underline}
+
+  .wave{display:grid;grid-template-columns:150px 1fr;gap:0;border:1px solid var(--line);
+    border-radius:10px;overflow:hidden;margin:14px 0;background:var(--card)}
+  .wave .wl{background:#f2f4f7;padding:16px 18px;border-right:1px solid var(--line)}
+  .wave .wl b{display:block;font-size:14.5px}
+  .wave .wl span{font-size:12.5px;color:var(--ink3);font-family:var(--mono)}
+  .wave .wb{padding:14px 18px}
+  .wave .wb ul{margin:4px 0;padding-left:20px}
+  @media(max-width:700px){.wave{grid-template-columns:1fr}.wave .wl{border-right:none;border-bottom:1px solid var(--line)}}
+
+  .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:14px 0}
+  @media(max-width:700px){.kpi{grid-template-columns:1fr}}
+  .kpi div{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:13px 16px}
+  .kpi b{display:block;font-size:14.6px;margin-bottom:3px}
+  .kpi span{font-size:13.6px;color:var(--ink2)}
+
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:13.4px;color:var(--ink3)}
+  .src{font-size:13.6px;color:var(--ink2)}
+  .src li{margin:3px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">Технический аудит · предложения по развитию</div>
+  <h1>KOMPAS-3D AI Bridge</h1>
+  <p class="sub">Разбор проекта <code>quja/kompas-3d-ai-bridge</code> (сборка 1.1.14_CAP2) и план улучшений,
+  собранный из практик зрелых MCP-серверов для конструкторских и инженерных САПР: SolidWorks MCP, EPLAN P8 MCP,
+  FreeCAD MCP и параллельного проекта KOMPAS-3D MCP.</p>
+  <div class="meta">
+    <b>Объект:</b> github.com/quja/kompas-3d-ai-bridge · <b>Версия:</b> 1.1.14_CAP2 (18.08.2026)<br>
+    <b>Протокол в коде:</b> MCP 2025-06-18 · <b>Актуальный стабильный:</b> 2025-11-25, вышел 2026-07-28<br>
+    <b>Поверхность:</b> 35 MCP-инструментов · <b>Дата разбора:</b> 18.09.2026
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="kicker" style="margin-bottom:8px">Содержание</div>
+  <ol>
+    <li><a href="#s1">Что это за проект сегодня</a></li>
+    <li><a href="#s2">Что уже сделано хорошо</a></li>
+    <li><a href="#s3">Проблемы, найденные в коде</a></li>
+    <li><a href="#s4">Чему учат MCP для SolidWorks и EPLAN</a></li>
+    <li><a href="#s5">24 конкретных улучшения</a></li>
+    <li><a href="#s6">Дорожная карта: три волны</a></li>
+    <li><a href="#s7">Метрики успеха</a></li>
+    <li><a href="#s8">Источники</a></li>
+  </ol>
+</nav>
+
+<!-- ================= 1 ================= -->
+<h2 id="s1"><span class="num">01</span>Что это за проект сегодня</h2>
+
+<p>Это <b>не</b> обычный MCP-сервер и не набор обёрток над API. Это детерминированный исполнительный слой,
+который физически отделяет «вероятностный» ИИ от «строгого» COM-интерфейса КОМПАС-3D. Идея архитектуры:</p>
+
+<pre><code>AI / LLM / кодирующий агент
+        │  MCP (stdio, JSON-RPC, самописный)
+        ▼
+MCP-сервер ── пишет JSON-файлы в runtime/commands
+        │     и опрашивает runtime/responses каждые 80 мс
+        ▼
+Python-воркер (единственный, кто трогает COM, живёт в интерактивной сессии Windows)
+        ▼
+KOMPAS COM / API7 (+ API5 для видов)
+        ▼
+КОМПАС-3D v25 x64</code></pre>
+
+<p>Ключевое решение: <b>MCP-процесс никогда не обращается к COM напрямую</b>. Он только кладёт структурированный
+запрос в файл. Воркер — отдельный процесс с heartbeat — читает файл и исполняет действие в той же пользовательской
+сессии, где открыт КОМПАС. Это позволяет агенту работать даже из песочницы, не имеющей доступа к COM.</p>
+
+<h3>Состав поверхности (35 инструментов)</h3>
+<div class="scroll">
+<table>
+  <tr><th style="width:190px">Группа</th><th>Инструменты</th></tr>
+  <tr><td><b>Чтение модели</b></td><td><code>kompas_status</code>, <code>kompas_active_document</code>, <code>kompas_model_tree</code>, <code>kompas_component_info</code>, <code>kompas_model_bbox</code>, <code>kompas_references_qa</code></td></tr>
+  <tr><td><b>Геометрия / топология</b></td><td><code>kompas_component_topology</code>, <code>kompas_component_holes</code>, <code>kompas_interference_check</code></td></tr>
+  <tr><td><b>Создание деталей</b></td><td><code>kompas_part_create</code>, <code>kompas_part_add_primitive</code>, <code>kompas_part_add_hole</code></td></tr>
+  <tr><td><b>Сборка</b></td><td><code>kompas_assembly_create</code>, <code>kompas_assembly_insert_component</code>, <code>kompas_component_transform</code>, <code>kompas_component_translate_xy</code>, <code>kompas_component_pattern_linear</code>, <code>kompas_component_properties_read/set</code>, <code>kompas_bom_read</code></td></tr>
+  <tr><td><b>Данные</b></td><td><code>kompas_material_read/set</code>, <code>kompas_pmi_read</code>, <code>kompas_pmi_dimension_create</code></td></tr>
+  <tr><td><b>Визуальная проверка</b></td><td><code>kompas_set_view</code>, <code>kompas_fit_view</code>, <code>kompas_rotate_view</code>, <code>kompas_component_visibility</code>, <code>kompas_viewport_capture</code></td></tr>
+  <tr><td><b>Документ и обход</b></td><td><code>kompas_open_agent_copy</code>, <code>kompas_save</code>, <code>kompas_close</code>, <code>kompas_reopen</code>, <code>kompas_run_job</code></td></tr>
+</table>
+</div>
+
+<div class="warn">
+<b>Первый важный факт.</b> Каталог инструментов существует <b>в двух местах одновременно</b>: 33 инструмента описаны
+в <code>mcp/kompas_mcp_server_core.py</code>, а <code>kompas_open_copy</code> и <code>kompas_component_translate_xy</code>
+дописываются обёрткой <code>mcp/kompas_mcp_server.py</code> — причём путём <b>поиска подстроки</b> в ответе ядра
+на <code>tools/list</code> и в тексте <code>instructions</code>. Это хрупкая конструкция: любое изменение формулировки
+в ядре тихо ломает инъекцию.
+</div>
+
+<!-- ================= 2 ================= -->
+<h2 id="s2"><span class="num">02</span>Что уже сделано хорошо (и что нельзя ломать при рефакторинге)</h2>
+
+<p>У проекта есть несколько решений, которых <b>нет</b> у большинства публичных MCP для САПР. Их надо сохранить:</p>
+
+<div class="good">
+<b>1. Доказательная запись, а не «команда улетела».</b> Каждый мутирующий инструмент делает
+байтовый снапшот → проверку точного активного <code>PathName</code> до записи → <code>Save → Close → Reopen</code> →
+повторное чтение → и только потом объявляет успех. В <code>worker.py</code> даже есть отдельный защитный модуль
+<code>KOMPAS_SAFE_REOPEN_TARGET_FIX_1_1_12B</code>, который запрещает reopen «куда-нибудь» и разрешает открыть
+только ровно тот файл, который был закрыт.
+</div>
+
+<div class="good">
+<b>2. Отказ запускать второй КОМПАС.</b> <code>KompasSession.connect()</code> делает до 8 попыток
+<code>GetActiveObject("KOMPAS.Application.7")</code> и при неудаче падает с диагностикой — вместо того чтобы
+через <code>Dispatch</code> поднять скрытый второй экземпляр и дальше работать не с той моделью. Для САПР это
+критично и реализовано лучше, чем у многих.
+</div>
+
+<div class="good">
+<b>3. Честность инженерных данных.</b> В <code>skills/kompas-engineering/SKILL.md</code> прямым текстом:
+никогда не выдумывать материал, плотность, массу, толщину, допуск, координаты. Инструменты это поддерживают:
+<code>kompas_material_set</code> требует, чтобы материал и плотность <i>совпадали с отдельно прочитанным
+эталонным .m3d</i>, иначе отказ. А <code>kompas_part_add_hole</code> в описании прямо пишет:
+«native IHole3D feature is not claimed» — то есть не выдаёт вырез за «отверстие по ГОСТ».
+</div>
+
+<div class="good">
+<b>4. Двухканальная верификация.</b> API-данные <b>и</b> свежий скриншот вьюпорта, причём в SKILL.md
+зафиксировано: «красивый скриншот не доказывает инженерную корректность, а API PASS не доказывает
+визуальную корректность». Скриншот возвращается прямо в ответе MCP как <code>image/png</code>,
+то есть модель смотрит на <b>текущее</b> состояние, а не на устаревший файл.
+</div>
+
+<div class="good">
+<b>5. Гигиена записи.</b> Работа только на копиях <code>*_AGENT_COPY</code>, защищённые корни источников,
+allow-list каталога <code>jobs/</code>, лимит 300 с, отказ при упоминании защищённых путей, восстановление
+ранее активного документа после операции.
+</div>
+
+<!-- ================= 3 ================= -->
+<h2 id="s3"><span class="num">03</span>Проблемы, найденные в коде</h2>
+
+<p>Ниже — только то, что подтверждается чтением файлов, с указанием места. Разбито по приоритету влияния
+на работоспособность.</p>
+
+<h3>Уровень P0 — мешает работать уже сейчас</h3>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">Конфиг не подключён: политика безопасности захардкожена</span></div>
+  <p>В <code>src/config.py</code> есть функция <code>load_config()</code>, которая читает
+  <code>config/agent_config.json</code> — но она <b>не вызывается нигде</b> в проекте. При этом
+  <code>src/safety.py</code> жёстко прошивает пути <code>C:\KOMPAS_AI_WORKSPACE\00_SOURCE</code>,
+  <code>...\90_OUTPUT</code> и т. д., игнорируя те же самые ключи в конфиге.</p>
+  <p><b>Следствие:</b> файл <code>agent_config.example.json</code> — декорация. Перенос проекта на другую машину
+  или смену структуры каталогов придётся делать правкой исходников. Ключи <code>protected_roots</code> /
+  <code>write_roots</code> / <code>viewport.crop</code> / <code>view.projection_indices</code> не имеют эффекта.</p>
+  <div class="ev">src/config.py:6-11  →  load_config(root) определена
+grep "agent_config" → единственные вызовы в tests/build_cap2_golden.py
+src/safety.py:5-8,18 → Path(r"C:\KOMPAS_AI_WORKSPACE\00_SOURCE") и т.д.</div>
+</div>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">Расход контекста модели не ограничен</span></div>
+  <p><code>kompas_component_topology</code> по умолчанию может вернуть до 5000 граней, 10 000 рёбер и 10 000 вершин;
+  <code>kompas_model_tree</code> — дерево до глубины 12; <code>kompas_pmi_read</code> — до 2000 размеров.
+  Всё это сериализуется с <code>indent=2</code> и целиком уходит в контекст модели.</p>
+  <p><b>Следствие:</b> одна операция «посмотреть топологию сборки» способна съесть контекстное окно и после этого
+  агент начинает «забывать» задачу. Именно эту проблему параллельный проект KOMPAS-3D MCP решает явно:
+  «большие результаты складываются в runtime memory/resources/artifacts, а ответы по умолчанию компактные».</p>
+  <div class="ev">mcp/kompas_mcp_server_core.py:31 → max_faces 5000, max_edges 10000, max_vertices 10000
+mcp/kompas_mcp_server_core.py:126 → json.dumps(response, ensure_ascii=False, indent=2)</div>
+</div>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">Устаревший протокол MCP и отсутствие не-tool примитивов</span></div>
+  <p>Версия протокола прошита константой <code>MCP_PROTOCOL_VERSION = "2025-06-18"</code> и не согласуется
+  с клиентом. Стабильная версия — <b>2025-11-25</b>, а <b>2026-07-28</b> уже выпущена (статeless-ядро,
+  Multi Round-Trip Requests вместо elicitation/sampling, кэширование списков через <code>ttlMs</code>/<code>cacheScope</code>).</p>
+  <p>Кроме того, сервер реализует <b>только</b> <code>tools/*</code>. Нет <code>resources</code> (дерево модели,
+  BOM, скриншоты, журналы <code>runtime/evidence</code> как адресуемые ресурсы), нет <code>prompts</code>
+  (готовые шаблоны «деталь по ТЗ», «проверка сборки», «чертёж + спецификация»), нет механизма подтверждения
+  опасных операций у пользователя.</p>
+  <div class="ev">mcp/kompas_mcp_server_core.py:23 → MCP_PROTOCOL_VERSION = "2025-06-18"
+mcp/kompas_mcp_server_core.py:148-174 → обрабатываются только initialize / tools/list / tools/call / ping
+requirements.txt → pywin32, Pillow, PyMuPDF (официальный SDK "mcp" не подключён)</div>
+</div>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">SKILL.md обещает то, чего нет в инструментах</span></div>
+  <p>Файл правил агента требует: «перед завершением — <code>missing refs = 0</code>; проверить STEP, открыв/импортировав
+  экспортированный STEP, если STEP является результатом» и включает в QA «спецификации и экспорты, когда требуются».
+  Но в поверхности из 35 инструментов <b>нет ни одного инструмента экспорта</b> (STEP/IGES/DXF/PDF) и <b>ни одного
+  инструмента для чертежа или спецификации</b>.</p>
+  <p><b>Следствие:</b> агент, следуя собственным правилам, вынужден уходить в <code>kompas_run_job</code> —
+  то есть в написание произвольного Python — ровно там, где SKILL.md требует стабильного инструмента.
+  Это одновременно дыра в безопасности и источник невоспроизводимости.</p>
+  <div class="ev">skills/kompas-engineering/SKILL.md:46-48 → "verify STEP by opening/importing the exported STEP"
+skills/kompas-engineering/SKILL.md:77 → "specifications and exports when required"
+mcp/kompas_mcp_server_core.py:25-59 → среди 35 имён нет export/step/dxf/drawing/specification</div>
+</div>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">Сборка без сопряжений — модель получается «тупой»</span></div>
+  <p>Единственный способ разместить компонент — <code>kompas_component_transform</code>, задающий
+  <b>абсолютную жёсткую матрицу</b> (origin + три ортонормированные оси) плюс <code>kompas_component_translate_xy</code>
+  с шагом не более 5 мм. Сопряжений (совпадение, соосность, параллельность, расстояние, угол, фиксация) нет вообще.</p>
+  <p><b>Следствие:</b> полученная сборка непараметрическая. Изменили деталь — в сборке ничего не перестроилось.
+  Для реального конструкторского применения это дисквалифицирующий недостаток: у SolidWorks MCP есть
+  <code>AddMateCoincident</code>, <code>AddMateConcentric</code>, <code>AddMateParallel</code>,
+  <code>AddMateDistance</code>, <code>AddMateAngle</code>. В КОМПАС это доступно через
+  <code>IMateConstraint</code> (свойства <code>constraintType</code>, <code>direction</code>,
+  <code>distance</code>, <code>fixed</code> и коллекция <code>IMateConstraintCollection</code>).</p>
+  <div class="ev">mcp/kompas_mcp_server_core.py:39 → kompas_component_transform (origin + axis_x/y/z, det = +1)
+mcp/kompas_mcp_server.py:19 → translate_xy ограничен ±5 мм на вызов
+grep "mate" по src/ и mcp/ → совпадений нет</div>
+</div>
+
+<div class="finding p0">
+  <div class="fh"><span class="pill p0">P0</span><span class="ft">Трассировки стека и локальные пути утекают в ответ MCP</span></div>
+  <p>При любом исключении воркер возвращает <code>traceback.format_exc()</code> целиком. Это и утечка структуры
+  файловой системы наружу, и мусор в контексте модели: вместо «что не так и что делать» агент получает
+  40 строк внутренностей.</p>
+  <div class="ev">src/worker.py:250 → "error": {"code": type(exc).__name__, "message": str(exc), "traceback": traceback.format_exc()}</div>
+</div>
+
+<h3>Уровень P1 — надёжность и безопасность</h3>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">Нет обработки модальных диалогов КОМПАСа</span></div>
+  <p>КОМПАС регулярно показывает модальные окна (запрос на перестроение, «файл изменён извне», предупреждения
+  о ссылках). В проекте есть точечная заплата — политика <code>rebuild_prompt_policy: auto_yes_on_copy_only</code>
+  в <code>kompas_open_copy</code>, — но общего сторожа нет. Модальное окно, которого не ждали, вешает
+  воркер до таймаута, и все последующие запросы выстраиваются в очередь за ним.</p>
+  <p>В EPLAN MCP эта проблема решена явным инструментом <code>eplan_watchdog</code> — «Dismiss pending modal
+  dialogs once», который вызывается в том числе автоматически внутри длинных операций.</p>
+  <div class="ev">mcp/kompas_mcp_server.py:52 → rebuild_prompt_policy (единственное упоминание диалогов)
+grep "dialog\|modal\|watchdog" по src/ → совпадений нет</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">Единственная точка отказа: один воркер, файловый транспорт, без очереди и отмены</span></div>
+  <p>Клиент пишет <code>&lt;uuid&gt;.json</code> в <code>runtime/commands</code> и опрашивает
+  <code>runtime/responses</code> с шагом 80 мс и жёстким таймаутом 90 с. Воркер сортирует файлы по mtime и
+  исполняет <b>последовательно в одном потоке</b>. Нет: глубины очереди, приоритетов, отмены, прогресса,
+  ограничения числа одновременных клиентов.</p>
+  <p><b>Следствие:</b> два клиента (Codex и Claude) на одном мосте — уже гонка; одна длинная COM-операция
+  блокирует всё остальное; таймаут 90 с неотменяем и не сообщает, на каком шаге встал.</p>
+  <p>SolidWorks MCP решает это архитектурно: <b>один Hub</b> владеет общей COM/STA-сессией, клиенты подключаются
+  через <code>--proxy</code>, обмен — по именованным каналам. Это же снимает проблему STA-потока,
+  которую в проекте приходится решать вручную (<code>StaDispatcher</code>).</p>
+  <div class="ev">mcp/kompas_mcp_server_core.py:105-116 → цикл опроса, time.sleep(.08), TimeoutError
+src/worker.py:235-237 → while True: files = sorted(...); один поток; при отсутствии файлов sleep(.12)
+bootstrap/BridgeBootstrap.ps1 → сторож держит ровно один воркер</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft"><code>kompas_run_job</code> — обход всей модели безопасности через произвольный Python</span></div>
+  <p>Защита джобов построена на проверке пути и <b>поиске подстроки</b> защищённых путей в тексте скрипта.
+  Обойти это тривиально: собрать путь из частей, использовать <code>chr()</code>, работать через переменную
+  окружения или просто открыть файл по UNC-пути. Проверка «скрипт не содержит строку
+  <code>c:\kompas_ai_workspace\00_source</code>» не является границей безопасности.</p>
+  <p>При этом сам инструмент описан как «только когда стабильная поверхность не покрывает операцию» —
+  то есть это <b>штатный</b>, а не аварийный путь. Учитывая, что SKILL.md сам отправляет туда агента
+  (см. P0 выше), обход становится регулярным.</p>
+  <div class="ev">src/jobs.py:15-18 → source = script.read_text(...).lower(); if any(str(x).lower() in source for x in PROTECTED)
+src/jobs.py:22 → subprocess.run([sys.executable, str(script)], env=..., timeout=timeout)
+mcp/kompas_mcp_server_core.py:58 → kompas_run_job в публичной поверхности</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">Нет версионной матрицы поддержки КОМПАСа</span></div>
+  <p>Проект заявляет жёстко: «KOMPAS-3D v25 x64», Python 3.11. При этом воркер не проверяет фактическую версию
+  запущенного КОМПАСа перед рискованной операцией. Пользователь на v21/v22/v23 получит не отказ с объяснением,
+  а непредсказуемое поведение в середине записи.</p>
+  <p>SolidWorks MCP сделал из этого формальный механизм: <code>SolidWorksSupportMatrix</code> с уровнями
+  <code>certified</code> / <code>targeted</code> / <code>experimental</code> / <code>unsupported</code> по каждой
+  возможности и <code>CompatibilityPolicy</code>, который <b>блокирует</b> высокорисковые операции на
+  неподтверждённых версиях, возвращая объяснение вместо попытки выполнить.</p>
+  <div class="ev">VERSION.json:43 → "kompas": "KOMPAS-3D v25 x64", "python": "3.11"
+grep "Version" по src/kompas_session.py → версия читается только для отчёта в kompas_status
+bridge/SolidWorksBridge/SolidWorks/CompatibilityPolicy.cs → CreateHighRiskWorkflowGate(...) — блокировка</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">Ссылки на объекты не переживают перестроение</span></div>
+  <p>Селекторы — это индекс верхнего уровня, путь в дереве (<code>0/2/1</code>), имя, обозначение или фрагмент
+  имени файла. Все они «плывут» после перестроения, закрытия/открытия, смены документа или добавления
+  компонента. В коде нет понятия устойчивого идентификатора объекта.</p>
+  <p>Это ровно та проблема, которую признаёт и параллельный проект: «3D-ссылки на объекты могут устаревать
+  после перестроения, закрытия, восстановления или смены документа». Решение — не «аккуратнее обращаться»,
+  а явный handle, который модель видит и передаёт обратно между вызовами.</p>
+  <div class="ev">mcp/kompas_mcp_server_core.py:30 → selector: integer | string | array (индекс / путь / имя)
+grep "handle\|guid\|stable_ref\|persistent" по src/ → совпадений нет</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">Нет checkpoint/rollback и универсального dry-run</span></div>
+  <p>Каждый инструмент делает снапшот <b>сам для себя</b> — это отлично. Но на уровне сессии транзакции нет:
+  если многошаговый сценарий упал на третьем шаге, откатывать первые два агент должен вручную, а инструментов
+  для этого нет (в SolidWorks MCP есть <code>Undo</code>).</p>
+  <p>При этом в проекте уже есть <b>правильный</b> паттерн — <code>apply=false</code> у
+  <code>kompas_component_translate_xy</code> (сухой прогон), — но он не обобщён на остальные мутирующие
+  инструменты.</p>
+  <div class="ev">mcp/kompas_mcp_server.py:19 → "apply":{"type":"boolean","default":False} — только у translate_xy
+grep "checkpoint\|rollback\|undo\|dry_run" по mcp/ → совпадений нет</div>
+</div>
+
+<div class="finding p1">
+  <div class="fh"><span class="pill p1">P1</span><span class="ft">«Спящие» возможности: 5 действий недоступны агенту</span></div>
+  <p>В реестре воркера зарегистрированы действия, для которых <b>нет</b> MCP-инструмента. Агент может дотянуться
+  до них только через произвольный Python:</p>
+  <ul>
+    <li><code>document.activate</code> — активировать конкретный документ</li>
+    <li><code>document.open</code> — открыть документ</li>
+    <li><code>document.info</code> — сведения о документе</li>
+    <li><code>model.components</code> — список компонентов</li>
+    <li><code>view.projections</code> — список проекций</li>
+  </ul>
+  <div class="ev">Сравнение реестра (src/capabilities.py, src/engineering_capabilities.py) с ACTION_MAP:
+document.activate, document.info, document.open, model.components, view.projections — без MCP-обёртки</div>
+</div>
+
+<h3>Уровень P2 — эксплуатация и зрелость</h3>
+
+<div class="finding p2">
+  <div class="fh"><span class="pill p2">P2</span><span class="ft">Кадрирование скриншота задано магическими числами</span></div>
+  <p>Обрезка вьюпорта — <code>left: 345, top: 160, right: 8, bottom: 10</code> пикселей. Это калибровка под одну
+  конкретную раскладку панелей и один DPI. На другом мониторе, при другой теме или развёрнутой панели
+  агент получит обрезанный кадр и будет «видеть» не то, что есть.</p>
+  <p>При этом HWND документа уже получается корректно через API7 <code>DocumentFrames</code> — значит,
+  прямоугольник кадра известен, и магические числа не нужны.</p>
+  <div class="ev">config/agent_config.example.json:11-17 → crop {left:345, top:160, right:8, bottom:10}</div>
+</div>
+
+<div class="finding p2">
+  <div class="fh"><span class="pill p2">P2</span><span class="ft">Нет лицензии, нет CI, нет документации по слоям</span></div>
+  <p>В репозитории отсутствует файл лицензии. Нет каталога <code>.github/workflows</code> — то есть статические
+  тесты и контрактные тесты <b>не запускаются автоматически</b>, и заявленные «35 инструментов» могут
+  разъехаться с реальностью без единого сигнала. Нет <code>SECURITY.md</code>, <code>CHANGELOG</code>,
+  раздельной документации по установке/использованию/архитектуре.</p>
+  <p>Для сравнения: eplan-mcp-oss — Apache-2.0 и три документа <code>docs/INSTALL.md</code>,
+  <code>docs/USAGE.md</code>, <code>docs/ARCHITECTURE.md</code>; SolidWorks MCP — MIT и CI с
+  отдельным self-hosted раннером под интеграционные тесты на живом SolidWorks.</p>
+  <div class="ev">Листинг файлов репозитория: LICENSE отсутствует; .github/ отсутствует
+tests/: RUN_STATIC_TESTS.ps1, test_mcp_stdio.py — запуск только вручную</div>
+</div>
+
+<div class="finding p2">
+  <div class="fh"><span class="pill p2">P2</span><span class="ft">Установка тяжёлая, версия инструментов не фиксируется</span></div>
+  <p>Путь пользователя: распаковать ZIP в <code>C:\KOMPAS_AI_BRIDGE</code>, поставить зависимости вручную,
+  запустить сторож <b>в отдельном окне PowerShell и держать его</b>, отдельным скриптом зарегистрировать
+  MCP в клиенте. Для сравнения: SolidWorks MCP — один <code>.exe</code> с иконкой в трее и экспортом конфига;
+  KOMPAS-3D MCP — один <code>kompas-mcp.exe</code> плюс <code>config.json</code>; EPLAN MCP —
+  <code>pip install "mcp[cli]"</code>.</p>
+  <p>Дополнительно: в репозитории <b>нет снапшота схем инструментов</b>, поэтому клиент не может обнаружить,
+  что сервер молча изменил контракт.</p>
+  <div class="ev">CAP2_SETUP_AND_RUN.md:14-27 → ручной bootstrap + отдельное окно сторожа + отдельная регистрация
+requirements.txt → три строки без версий-пинов</div>
+</div>
+
+<!-- ================= 4 ================= -->
+<h2 id="s4"><span class="num">04</span>Чему учат MCP для SolidWorks, EPLAN и FreeCAD</h2>
+
+<p>Это не «хорошо бы иметь» — это уже проверенные инженерные решения в соседних САПР. Ниже — срез по осям,
+которые важны для КОМПАСа.</p>
+
+<div class="scroll">
+<table>
+  <tr>
+    <th style="width:170px">Ось</th>
+    <th>SolidWorks MCP</th>
+    <th>EPLAN P8 MCP</th>
+    <th>KOMPAS-3D AI Bridge</th>
+  </tr>
+  <tr>
+    <td><b>Изоляция COM-сессии</b></td>
+    <td>Один tray-Hub владеет COM/STA, клиенты — прокси по именованным каналам</td>
+    <td>Add-in <b>внутри</b> EPLAN, MCP-сервер общается через мост по сменяемому транспорту</td>
+    <td>Один воркер + файловый транспорт, опрос раз в 80 мс</td>
+  </tr>
+  <tr>
+    <td><b>Версионная политика</b></td>
+    <td>Матрица <code>certified/targeted/experimental/unsupported</code>, <b>блокировка</b> рискованных операций</td>
+    <td>Не формализована</td>
+    <td>Жёстко «v25», проверки версии перед записью нет</td>
+  </tr>
+  <tr>
+    <td><b>Сопряжения сборки</b></td>
+    <td>Coincident / Concentric / Parallel / Distance / Angle</td>
+    <td>—</td>
+    <td>Нет (только абсолютная матрица)</td>
+  </tr>
+  <tr>
+    <td><b>Одноклик-сценарии</b></td>
+    <td><code>CutFaceByProjectedEdges</code>, <code>ReplaceNestedComponentAndVerifyPersistence</code>, <code>ReviewTargetedStaticInterference</code></td>
+    <td><code>eplan_export_pdf</code>, <code>eplan_rename_tag</code> и др.</td>
+    <td>Есть атомарные операции, составных сценариев почти нет</td>
+  </tr>
+  <tr>
+    <td><b>Диалоги / сбои UI</b></td>
+    <td>Явные тесты поверхности ошибок (<code>ToolErrorSurfaceTests</code>)</td>
+    <td><code>eplan_watchdog</code> — гасит подвисшие модальные окна</td>
+    <td>Только частная заплата для запроса перестроения</td>
+  </tr>
+  <tr>
+    <td><b>Проверка состояния</b></td>
+    <td><code>DiagnoseActiveDocumentHealth</code> — перестроение + диагностика как обязательный шлюз</td>
+    <td><code>eplan_status</code></td>
+    <td>Есть <code>kompas_status</code>, но без диагностики перестроения</td>
+  </tr>
+  <tr>
+    <td><b>Контекст-бюджет</b></td>
+    <td>Структурированные компактные ответы</td>
+    <td>Списки страниц/устройств — короткие</td>
+    <td>Полные дампы до 5000 граней в контекст</td>
+  </tr>
+  <tr>
+    <td><b>Расширяемость</b></td>
+    <td>Слои app / bridge / tests, отдельные сервисы по доменам</td>
+    <td>«Framework»: документированный протокол сообщений + reference add-in</td>
+    <td>Монки-патч реестра (<code>register_geometry_translate</code>) + дописывание инструментов строковым поиском</td>
+  </tr>
+  <tr>
+    <td><b>Упаковка</b></td>
+    <td>Один <code>.exe</code>, иконка в трее, экспорт конфига</td>
+    <td><code>pip install "mcp[cli]"</code></td>
+    <td>ZIP + ручной bootstrap + сторож в отдельном окне</td>
+  </tr>
+  <tr>
+    <td><b>CI</b></td>
+    <td>CI + релизные workflow + self-hosted раннер под интеграционные тесты</td>
+    <td>—</td>
+    <td>Нет workflow</td>
+  </tr>
+  <tr>
+    <td><b>Лицензия</b></td>
+    <td>MIT</td>
+    <td>Apache-2.0</td>
+    <td>Отсутствует</td>
+  </tr>
+</table>
+</div>
+
+<p>Отдельно стоит отметить <b>параллельный проект KOMPAS-3D MCP</b> — он закрывает те же задачи с другой стороны
+и полезен как источник идей, а не как конкурент:</p>
+<ul>
+  <li><b>CAD-as-Code:</b> <code>execute_tdcad_script</code>, <code>execute_geometry_script</code> (компактный DSL),
+  <code>scenario_runner</code> для повторяемых сценариев;</li>
+  <li><b>Экономия контекста:</b> большие результаты уходят в runtime memory / resources / artifacts,
+  ответы по умолчанию компактные;</li>
+  <li><b>Надёжность:</b> preflight-проверки, snapshot/diff, безопасное создание features, selection helpers;</li>
+  <li><b>Покрытие:</b> полноценный 2D (чертежи, виды, слои, размеры, штамп, DXF) — то, чего в разбираемом
+  проекте нет совсем.</li>
+</ul>
+
+<p>А из <b>FreeCAD MCP</b> стоит взять одну вещь: аддон, живущий <b>внутри</b> САПР и поднимающий RPC-сервер.
+Это принципиально устойчивее, чем внешний COM-attach: не нужно угадывать окно, PID и elevation,
+и нет класса ошибок «подключились не к тому экземпляру».</p>
+
+<!-- ================= 5 ================= -->
+<h2 id="s5"><span class="num">05</span>Двадцать четыре конкретных улучшения</h2>
+
+<p>Сгруппировано по пяти блокам. Для каждого пункта указано, что делать и какой практикой это подтверждено.</p>
+
+<h3>Блок A. Протокол и архитектура</h3>
+
+<table>
+  <tr><th style="width:34px">#</th><th style="width:250px">Улучшение</th><th>Что конкретно сделать</th><th style="width:74px">Приоритет</th></tr>
+  <tr>
+    <td>A1</td>
+    <td>Перейти на официальный MCP SDK</td>
+    <td>Заменить самописный JSON-RPC на <code>mcp[cli]</code> / FastMCP. Бесплатно получаете: согласование версии протокола, <code>resources</code>, <code>prompts</code>, прогресс, отмену, структурированный вывод, аннотации. Заодно исчезает обёртка <code>kompas_mcp_server.py</code>, которая дописывает инструменты поиском подстроки.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>A2</td>
+    <td>Один декларативный каталог инструментов</td>
+    <td>Описать все инструменты (имя, схема, аннотации, действие реестра, требуемые права) в одном месте; генерировать из него и <code>tools/list</code>, и <code>ACTION_MAP</code>, и <code>VERSION.json</code>. Добавить контрактный тест-снапшот, чтобы поверхность не могла разъехаться молча.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>A3</td>
+    <td>Актуализировать версию протокола</td>
+    <td>Поддержать <b>2025-11-25</b> как базовую и добавить ветку под <b>2026-07-28</b> (stateless-ядро, MRTR вместо elicitation, <code>ttlMs</code>/<code>cacheScope</code> в ответах списков). Версию согласовывать, а не прошивать.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>A4</td>
+    <td>Отдать состояние как <code>resources</code></td>
+    <td>Опубликовать ресурсы: <code>kompas://doc/active/tree</code>, <code>kompas://doc/active/bom</code>, <code>kompas://doc/active/bbox</code>, <code>kompas://runtime/evidence/&lt;id&gt;</code>, <code>kompas://jobs/allowlist</code>, скриншоты как <code>image/png</code>. Тогда большие дампы читаются по требованию, а не вбрасываются в контекст.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>A5</td>
+    <td>Добавить <code>prompts</code></td>
+    <td>Шаблоны: «деталь по ТЗ», «проверка сборки на пересечения», «чертёж + спецификация», «диагностика почему вырез не виден». Это снимает вариативность и снижает число шагов у модели.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>A6</td>
+    <td>Hub вместо файлового транспорта</td>
+    <td>Один процесс-владелец COM/STA (иконка в трее), клиенты — через именованные каналы. Добавить очередь с приоритетами, отмену, прогресс, ограничение числа клиентов, TTL запроса. По образцу SolidWorks MCP (<code>client → proxy → hub → tools → CAD</code>).</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>A7</td>
+    <td>Реестр возможностей через плагины, а не монки-патч</td>
+    <td>Заменить <code>REGISTRY["x"] = f</code> и <code>register_geometry_translate(REGISTRY, ok)</code> на явный реестр с дескрипторами (имя, схема, права, домен). Тогда <code>geometry_translate.py</code>, <code>jobs.py</code> и остальное подключаются одинаково.</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+</table>
+
+<h3>Блок B. Инженерная полнота</h3>
+
+<table>
+  <tr><th style="width:34px">#</th><th style="width:250px">Улучшение</th><th>Что конкретно сделать</th><th style="width:74px">Приоритет</th></tr>
+  <tr>
+    <td>B1</td>
+    <td><b>Сопряжения сборки</b></td>
+    <td>Добавить семейство: <code>kompas_mate_add</code> (совпадение, параллельность, перпендикулярность, соосность, касание, расстояние, угол, фиксация), <code>kompas_mate_list</code>, <code>kompas_mate_delete</code>, <code>kompas_rebuild</code>. Опорные интерфейсы КОМПАС: <code>IMateConstraint</code> (<code>constraintType</code>, <code>direction</code>, <code>distance</code>, <code>fixed</code>) и <code>IMateConstraintCollection</code>. Это превращает сборку из «набора тел» в параметрический узел.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>B2</td>
+    <td><b>2D-документация: чертёж, штамп, DXF</b></td>
+    <td>Семейство инструментов для CDW: создать чертёж из модели, вставить стандартные виды (спереди/сверху/слева/изометрия), проставить размеры, заполнить штамп, экспортировать в DXF/PDF. В коде уже есть зацепка — <code>LayoutSheets.Item(0).Stamp</code> в <code>capabilities.py</code>. В реальном КБ это и есть основная рутина.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>B3</td>
+    <td><b>Спецификация (SPW)</b></td>
+    <td>Генерация и чтение спецификации: состав из дерева сборки, разделы, обозначения, количества, экспорт. У проекта уже есть корректный <code>kompas_bom_read</code> на базе <code>IPart7</code> + <code>CreateSpcObjects</code>/<code>InheritExclude</code> — остаётся «донести» его до документа спецификации.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>B4</td>
+    <td>Экспорт STEP/IGES + верификация импортом</td>
+    <td>Добавить <code>kompas_export</code> (STEP/IGES/DXF/PDF) и <code>kompas_import_verify</code>. Это закрывает обещание SKILL.md, которое сейчас нечем выполнить, и убирает повод идти в <code>run_job</code>.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>B5</td>
+    <td>Отверстия: грани, цековка, резьба</td>
+    <td>Сейчас <code>kompas_part_add_hole</code> умеет только плоскость XOY и вырез-выдавливанием. Добавить посадку на выбранную грань, типы (цековка, зенковка, резьбовое), серии отверстий, и — где API это позволяет — настоящий <code>IHole3D</code>. Урок SolidWorks: эскиз <b>на грани</b> радикально устойчивее эскиза в свободном пространстве.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>B6</td>
+    <td>Размеры и PMI: расширить семейства</td>
+    <td><code>kompas_pmi_dimension_create</code> сейчас умеет только линейный размер на XOY. Добавить диаметральные, радиальные, угловые, координатные/от-базовые, допуски и шероховатость. Без этого чертёж не выпустить.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>B7</td>
+    <td>Составные «одноклик»-сценарии</td>
+    <td>По образцу <code>CutFaceByProjectedEdges</code>: один инструмент = проверенная последовательность, а не цепочка примитивов, которую модель должна угадать. Кандидаты: «плита с отверстиями по массиву», «втулка», «кронштейн с бобышкой и фаской», «сборка из N компонентов с сопряжениями».</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>B8</td>
+    <td>Выставить «спящие» возможности</td>
+    <td>Оформить инструментами <code>document.activate</code>, <code>document.open</code>, <code>document.info</code>, <code>model.components</code>, <code>view.projections</code> — они уже реализованы в реестре, но недоступны агенту.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+</table>
+
+<h3>Блок C. Надёжность и безопасность</h3>
+
+<table>
+  <tr><th style="width:34px">#</th><th style="width:250px">Улучшение</th><th>Что конкретно сделать</th><th style="width:74px">Приоритет</th></tr>
+  <tr>
+    <td>C1</td>
+    <td>Подключить конфиг к политике безопасности</td>
+    <td>Заставить <code>safety.py</code> читать <code>protected_roots</code>/<code>write_roots</code> из <code>agent_config.json</code> (сейчас <code>load_config()</code> вообще не вызывается). Убрать абсолютные пути из исходников, оставить безопасные значения по умолчанию.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>C2</td>
+    <td>Сторож модальных диалогов</td>
+    <td>Инструмент <code>kompas_dismiss_dialogs</code> + автоматический вызов внутри длинных операций, с записью в evidence того, что и когда было погашено. Прямая аналогия — <code>eplan_watchdog</code>.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>C3</td>
+    <td>Гейт подтверждения для разрушающих операций</td>
+    <td>Через elicitation (2025-11-25) или MRTR (2026-07-28) спрашивать подтверждение перед <code>save</code>, удалением, записью вне <code>work</code>. Аннотации <code>readOnlyHint</code>/<code>destructiveHint</code> у вас уже проставлены — но это лишь подсказки клиенту, а не защита.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>C4</td>
+    <td>Заменить <code>run_job</code> на типизированные операции</td>
+    <td>Убрать произвольный Python из штатной поверхности. Вместо него: (1) явный манифест разрешённых операций вместо поиска подстроки в тексте скрипта; (2) запуск в процессе с белым списком импортов; (3) постепенная замена на «одноклик»-инструменты из B7, чтобы обход стал не нужен. Если CAD-as-Code нужен как продукт — вынести его в отдельный, явно помеченный небезопасный профиль, который пользователь включает осознанно.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>C5</td>
+    <td>Версионная матрица поддержки КОМПАС</td>
+    <td>Таблица уровней (<code>certified</code>/<code>targeted</code>/<code>experimental</code>/<code>unsupported</code>) по версиям КОМПАС и по группам возможностей, с проверкой фактической версии через COM перед рискованной операцией и <b>отказом</b> с понятным текстом на неподтверждённой версии. Прямой перенос <code>CompatibilityPolicy</code> из SolidWorks MCP.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>C6</td>
+    <td>Классификация ошибок и редакция данных</td>
+    <td>Убрать <code>traceback</code> из ответов MCP. Ввести устойчивые коды (<code>kompas_not_attached</code>, <code>path_not_allowed</code>, <code>active_document_mismatch</code>, <code>geometry_verification_failed</code>, <code>timeout_no_progress</code>) плюс поле <code>hint</code> с тем, что делать. Трассировки — только в локальный журнал.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>C7</td>
+    <td>Диагностика как обязательный шлюз</td>
+    <td>Инструмент <code>kompas_health</code> (аналог <code>DiagnoseActiveDocumentHealth</code>): перестроение, число ошибок/предупреждений дерева, возраст heartbeat воркера, глубина очереди, время последней операции, последняя ошибка. SKILL.md уже требует проверять дерево — пусть это будет одна команда.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+</table>
+
+<h3>Блок D. Опыт работы агента</h3>
+
+<table>
+  <tr><th style="width:34px">#</th><th style="width:250px">Улучшение</th><th>Что конкретно сделать</th><th style="width:74px">Приоритет</th></tr>
+  <tr>
+    <td>D1</td>
+    <td><b>Компактные ответы + артефакты</b></td>
+    <td>По умолчанию отдавать сводку (счётчики, габарит, диапазоны) и <code>handle</code> на артефакт; полный дамп — только по запросу. Ввести постраничный вывод для топологии и PMI (курсор + лимит), режимы <code>detail=summary|full</code>. Убрать <code>indent=2</code> для больших ответов.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+  <tr>
+    <td>D2</td>
+    <td><b>Устойчивые ссылки на объекты</b></td>
+    <td>Ввести адресуемые ссылки вида <code>kompas://doc/&lt;docId&gt;/body/3/face/12#&lt;hash&gt;</code>, которые инструменты возвращают, а модель передаёт обратно. Отдельный <code>kompas_resolve</code> для проверки «ссылка ещё жива?» и переразрешения после перестроения. Это ровно та схема, которую MCP рекомендует вместо скрытого состояния в транспорте.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>D3</td>
+    <td>Слой «сначала выбор»</td>
+    <td>Добавить <code>kompas_list_entities</code>, <code>kompas_resolve_selection</code> (по описанию: «верхняя плоская грань», «внутренняя цилиндрическая»), <code>kompas_edit_state</code> (не в режиме ли редактирования эскиза). Урок SolidWorks: перед изменением дерева надо убедиться, что не открыт эскиз, иначе операция портит модель.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>D4</td>
+    <td>Универсальный сухой прогон</td>
+    <td>Распространить паттерн <code>apply=false</code> на <b>все</b> мутирующие инструменты: вернуть план изменений (что, где, на сколько) без записи. Агент сначала показывает план, потом применяет. Дёшево, потому что снапшоты и проверки уже написаны.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>D5</td>
+    <td>Checkpoint / rollback сессии</td>
+    <td>Инструменты <code>kompas_checkpoint</code> / <code>kompas_rollback</code> на уровне воркера, чтобы откатывать многошаговый сценарий одной командой, а не вручную. Аналог <code>Undo</code> в SolidWorks MCP.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>D6</td>
+    <td>Самокалибровка кадра скриншота</td>
+    <td>Вычислять прямоугольник вьюпорта из <code>DocumentFrames</code> вместо чисел 345/160/8/10; учитывать DPI и расположение панелей. Добавить проверку «кадр не пустой и изменился» — она в проекте уже частично есть в <code>kompas_rotate_view</code>, стоит сделать общей.</td>
+    <td><span class="pill p1">P1</span></td>
+  </tr>
+  <tr>
+    <td>D7</td>
+    <td>Обновить SKILL.md под реальную поверхность</td>
+    <td>Пока нет инструментов экспорта и чертежей — либо убрать требования про STEP и спецификации, либо (правильнее) добавить инструменты из B2–B4. Файл правил не должен описывать несуществующие возможности: агент будет искать обход.</td>
+    <td><span class="pill p0">P0</span></td>
+  </tr>
+</table>
+
+<h3>Блок E. Эксплуатация и зрелость проекта</h3>
+
+<table>
+  <tr><th style="width:34px">#</th><th style="width:250px">Улучшение</th><th>Что конкретно сделать</th><th style="width:74px">Приоритет</th></tr>
+  <tr>
+    <td>E1</td>
+    <td>Упаковка в один исполняемый файл</td>
+    <td>Собрать единый <code>.exe</code> с иконкой в трее, автозапуском воркера (служба или задание планировщика), экспортом готового конфига для клиента и режимом <code>--doctor</code> (проверка зависимостей, COM, прав, версии КОМПАСа, доступности каталогов).</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+  <tr>
+    <td>E2</td>
+    <td>CI и контрактные тесты</td>
+    <td>GitHub Actions: статические тесты, линтеры, контрактный тест схемы инструментов (снапшот), smoke-тест MCP-обмена. Для интеграционных — отдельный self-hosted Windows-раннер с установленным КОМПАСом, как сделано у SolidWorks MCP.</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+  <tr>
+    <td>E3</td>
+    <td>Лицензия и документы</td>
+    <td>Добавить <code>LICENSE</code> (MIT или Apache-2.0 — с учётом того, что КОМПАС не ваш продукт, а disclaimer уже есть), <code>SECURITY.md</code>, <code>CHANGELOG.md</code>, и разделить документацию: <code>docs/INSTALL.md</code>, <code>docs/USAGE.md</code>, <code>docs/ARCHITECTURE.md</code>, <code>docs/TOOLS.md</code> (со ссылкой на схему из A2).</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+  <tr>
+    <td>E4</td>
+    <td>Пины зависимостей и журналирование</td>
+    <td>Зафиксировать версии <code>pywin32</code>, <code>Pillow</code>, <code>PyMuPDF</code>; вести структурированный журнал операций (кто, что, когда, результат, длительность) в формате, пригодном для разбора инцидентов, и отдавать его как ресурс.</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+  <tr>
+    <td>E5</td>
+    <td>Двуязычная документация</td>
+    <td>README на русском и английском. Схемы инструментов и описания — на английском (модели работают с ними лучше), пользовательская документация — на русском.</td>
+    <td><span class="pill p2">P2</span></td>
+  </tr>
+</table>
+
+<!-- ================= 6 ================= -->
+<h2 id="s6"><span class="num">06</span>Дорожная карта: три волны</h2>
+
+<p>Порядок выбран так, чтобы каждая волна давала законченный результат, а не полуфабрикат.</p>
+
+<div class="wave">
+  <div class="wl"><b>Волна 1</b><span>Фундамент</span></div>
+  <div class="wb">
+    <b>Цель:</b> перестать терять контекст, убрать утечки, подключить конфиг, честно объявить версию протокола.
+    <ul>
+      <li>A1, A2, A3 — SDK, единый каталог инструментов, актуальный протокол</li>
+      <li>A4 — ресурсы вместо полных дампов</li>
+      <li>D1 — компактные ответы и постраничность</li>
+      <li>C1 — конфиг управляет политикой безопасности</li>
+      <li>C6 — коды ошибок вместо трассировок</li>
+      <li>C2 — сторож модальных диалогов</li>
+      <li>D7 — привести SKILL.md в соответствие с реальностью</li>
+    </ul>
+  </div>
+</div>
+
+<div class="wave">
+  <div class="wl"><b>Волна 2</b><span>Инженерная полнота</span></div>
+  <div class="wb">
+    <b>Цель:</b> проект должен уметь делать то, ради чего конструктор вообще открывает САПР.
+    <ul>
+      <li>B1 — сопряжения сборки (главный приоритет)</li>
+      <li>B2 — чертёж, виды, размеры, штамп, DXF</li>
+      <li>B3 — спецификация</li>
+      <li>B4 — экспорт STEP/IGES + верификация импортом</li>
+      <li>C4 — закрыть <code>run_job</code> типизированными операциями</li>
+      <li>B5, B6 — отверстия по граням и расширенные размеры</li>
+      <li>C5 — версионная матрица</li>
+      <li>C7 — инструмент диагностики</li>
+    </ul>
+  </div>
+</div>
+
+<div class="wave">
+  <div class="wl"><b>Волна 3</b><span>Масштаб и продукт</span></div>
+  <div class="wb">
+    <b>Цель:</b> устойчивость под нагрузкой, переносимость, публичная зрелость.
+    <ul>
+      <li>A6 — Hub с очередью, отменой и прогрессом</li>
+      <li>D2, D3 — устойчивые ссылки и слой выбора</li>
+      <li>D4, D5 — сухой прогон и checkpoint/rollback</li>
+      <li>B7, B8 — составные сценарии и «спящие» возможности</li>
+      <li>D6 — самокалибровка кадра</li>
+      <li>E1–E5 — упаковка, CI, лицензия, документы</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= 7 ================= -->
+<h2 id="s7"><span class="num">07</span>Как измерять, что стало лучше</h2>
+
+<div class="kpi">
+  <div><b>Токенов на типовой сценарий</b><span>Должно упасть кратно после D1 + A4: сейчас один вызов топологии способен отдать десятки тысяч токенов.</span></div>
+  <div><b>Доля сценариев без ручного вмешательства</b><span>От постановки задачи до сохранённого и проверенного результата. Основной барьер сегодня — отсутствие сопряжений и чертёжных инструментов.</span></div>
+  <div><b>Число обращений к <code>run_job</code></b><span>Должно стремиться к нулю. Любой вызов — сигнал, что в стабильной поверхности не хватает операции.</span></div>
+  <div><b>Расхождения после reopen</b><span>Операций, где данные до и после <code>Save → Close → Reopen</code> разошлись. Должно быть строго 0.</span></div>
+  <div><b>Время до первого отказа с понятной причиной</b><span>После C6: пользователь должен видеть код и подсказку, а не трассировку Python.</span></div>
+  <div><b>Покрытие поверхности тестами</b><span>Доля из 35 (и далее больше) инструментов, у которых есть контрактный тест на схему и smoke-тест на живой КОМПАС.</span></div>
+</div>
+
+<div class="card tight">
+<h4>Итог в трёх предложениях</h4>
+<p>Проект уже сделал главное и самое трудное — построил детерминированный слой с доказательной записью,
+который не даёт ИИ «нафантазировать» инженерные данные, и это ценнее большинства публичных MCP для САПР.
+Но у него проседают три вещи: <b>протокол и контекст</b> (устаревшая версия MCP, полные дампы в контекст,
+не подключённый конфиг), <b>инженерная полнота</b> (нет сопряжений, нет 2D-документации, нет экспорта —
+при том что собственные правила агента их требуют) и <b>устойчивость</b> (нет сторожа диалогов, нет
+версионной матрицы, нет очереди и отмены). Первая волна изменений — протокол, контекст, конфиг и коды
+ошибок — даёт эффект сразу и почти без риска; вторая — сопряжения и чертежи — превращает проект из
+демонстратора в рабочий инструмент.</p>
+</div>
+
+<!-- ================= 8 ================= -->
+<h2 id="s8"><span class="num">08</span>Источники разбора</h2>
+<ul class="src">
+  <li>Репозиторий <code>quja/kompas-3d-ai-bridge</code>, ветка <code>main</code>, коммит <code>2ee5360</code> (18.08.2026) — прочитаны <code>README.md</code>, <code>CAP2_SETUP_AND_RUN.md</code>, <code>FINAL_BUILD_NOTES.md</code>, <code>VERSION.json</code>, <code>requirements.txt</code>, <code>.gitignore</code>, <code>config/agent_config.example.json</code>, <code>jobs/README.md</code>, <code>jobs/job_template.py</code>, <code>skills/kompas-engineering/SKILL.md</code>, <code>mcp/kompas_mcp_server.py</code>, <code>mcp/kompas_mcp_server_core.py</code>, <code>src/worker.py</code>, <code>src/protocol.py</code>, <code>src/safety.py</code>, <code>src/config.py</code>, <code>src/jobs.py</code>, <code>src/kompas_session.py</code>, <code>src/capabilities.py</code>, <code>src/engineering_capabilities.py</code>.</li>
+  <li>SolidWorks MCP Server (<code>just1step/solidworks-mcp</code>): README, <code>CompatibilityPolicy.cs</code>, <code>SolidWorksSupportMatrix.cs</code>, <code>WorkflowTools.cs</code>, каталоги <code>Tools/</code>, <code>SKILL.md</code> навыка моделирования.</li>
+  <li>EPLAN MCP (<code>swater-kankyo/eplan-mcp-oss</code>): README, <code>docs/USAGE.md</code> (перечень инструментов, включая <code>eplan_watchdog</code>).</li>
+  <li>FreeCAD MCP (<code>neka-nat/freecad-mcp</code>): README, архитектура «аддон внутри САПР + RPC».</li>
+  <li>KOMPAS-3D MCP (<code>dwnmf/KOMPAS-3D-MCP-bin</code>): README, статья автора на Habr «ИИ управляет КОМПАС-3D» (31.03.2026) — CAD-as-Code, runtime memory/artifacts, preflight/snapshot-diff, покрытие 2D.</li>
+  <li>Документация АСКОН: «API интерфейсов. Версия 7» (<code>help.ascon.ru/KOMPAS_SDK</code>), интерфейсы <code>IMateConstraint</code> / <code>IMateConstraintCollection</code> (свойства <code>constraintType</code>, <code>direction</code>, <code>distance</code>, <code>fixed</code>).</li>
+  <li>Спецификация MCP: <code>2025-11-25</code> (стабильная), <code>2026-07-28</code> (stateless-ядро, MRTR, <code>ttlMs</code>/<code>cacheScope</code>, деприкация Roots/Sampling/Logging), <code>2025-06-18</code> (текущая в проекте).</li>
+</ul>
+
+<footer>
+Отчёт подготовлен по результатам чтения исходного кода и публичной документации.
+Все утверждения о проблемах содержат ссылку на конкретное место в коде или на конкретное поведение инструмента.
+Нумерация улучшений (A1–E5) — сквозная, для использования в задачах и обсуждениях.
+</footer>
+
+</div>
+</body>
+</html>

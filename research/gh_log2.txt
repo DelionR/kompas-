@@ -1,0 +1,24 @@
+OK  КОМПАС-Электрик                          total=0
+OK  Компас Электрик                          total=0
+OK  компас api                               total=8
+OK  КОМПАС API автоматизация                 total=0
+OK  EPLAN                                    total=816
+OK  eplan electric p8                        total=25
+OK  eplan pro panel                          total=4
+OK  IEC 61439                                total=3
+OK  61439                                    total=26
+OK  busbar                                   total=193
+OK  электрический шкаф                       total=0
+OK  монтажная панель                         total=0
+OK  щит автоматики                           total=0
+OK  ШКАФ ПЛК                                 total=0
+OK  PLC cabinet                              total=3
+OK  electrical panel layout                  total=23
+OK  din rail layout                          total=0
+OK  panel layout generator dxf               total=1
+OK  solidworks api automation python         total=8
+OK  cad mcp server                           total=205
+OK  mcp server cad automation                total=26
+OK   parametric cabinet generator            total=0
+ERR opencad электрика HTTP Error 403: rate limit exceeded
+ERR ГОСТ ЕСКД библиотека HTTP Error 403: rate limit exceeded

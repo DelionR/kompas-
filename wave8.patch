@@ -1,0 +1,1089 @@
+diff --git a/VERSION.json b/VERSION.json
+index 56b0e17..424943d 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 49,
++  "mcp_tool_count": 50,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -56,6 +56,7 @@
+     "kompas_run_job",
+     "kompas_cabinet_spec_check",
+     "kompas_cabinet_layout_check",
++    "kompas_cabinet_layout_build",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+   ],
+diff --git b/docs/WAVE8_CHANGES.md b/docs/WAVE8_CHANGES.md
+new file mode 100644
+index 0000000..c16683c
+--- /dev/null
++++ b/docs/WAVE8_CHANGES.md
+@@ -0,0 +1,135 @@
++# Волна 8 — раскладка как генератор координат
++
++Волна 7 умела раскладку только **проверять**. Волна 8 её **строит**: по составу
++изделий, панели и каналам рассчитывает координаты каждой позиции.
++
++Поверхность инструментов: **49 → 50**.
++
++## Что добавлено
++
++| Файл | Назначение |
++|---|---|
++| `src/cabinet_build.py` | генератор раскладки — чистые функции, без COM |
++| `src/cabinet_tools.py` | адаптер `cabinet_layout_build` к реестру действий |
++| `mcp/tools_catalog.py` | инструмент `kompas_cabinet_layout_build` |
++| `src/engineering_capabilities.py` | действие `cabinet.layout_build` |
++| `tests/test_wave8.py` | 38 тестов |
++
++### Инструмент
++
++`kompas_cabinet_layout_build` — чистый расчёт (`readOnlyHint: true`). Документ не
++открывается, КОМПАС не требуется, ничего не пишется.
++
++Вход:
++
++- `plate` — ширина и высота монтажной панели, мм;
++- `library` — позиции с габаритом и необязательным `rail_offset_mm`;
++- `lines` — состав: что и сколько поставить, с тегами для маркировки;
++- `rail` — ось первой DIN-рейки и шаг между рядами;
++- `defaults` — зазоры, ширина бокового канала;
++- `ducts` — необязательно; если не переданы, генерируются боковые.
++
++Выход:
++
++- `layout` — готовая модель раскладки, совместимая с `kompas_cabinet_layout_check`;
++- `rows` — ряды с осью рейки и высотой;
++- `unplaced` — то, что разместить нельзя, с причиной;
++- `self_check` — проверка собственного вывода;
++- `ducts_generated` — были ли каналы сгенерированы.
++
++## Ключевые решения
++
++### Выравнивание по оси DIN-рейки, а не по центру габарита
++
++Поле `rail_offset_mm` — расстояние от **верхней кромки** детали до оси рейки.
++Именно поэтому автомат (90 мм) и клемма (40 мм) встают на одну линию:
++
++```
++ряд 0, ось рейки y=130
++   бп      G1    psu   y=70   (высота 100, offset 60)
++   автомат QF1   brk63 y=85   (высота 90,  offset 45)
++   клеммы  B101  term  y=105  (высота 40,  offset 25)
++```
++
++У всех трёх `y + offset = 130`. Если выравнивать по центру, клеммный ряд
++«пляшет» относительно автоматов — это ровно та деталь, которую подсказал разбор
++`cabinet-layout-generator-v2`.
++
++Если `rail_offset_mm` в библиотеке нет, берётся центр по высоте. Это соглашение,
++а не расчёт, и оно зафиксировано в `limits` ответа.
++
++### Партия становится сетом, а не N элементами
++
++`qty: 24` — это один объект `group` с полями `count`, `tag_start`, `tag_step`.
++Дальше такой сет материализуется **линейным массивом** (`component_pattern_linear`),
++а не 24 отдельными вставками. Это то, что делает волну 9 дешёвой: одна позиция
++состава — один вызов моста.
++
++### Порядок из входа не переставляется
++
++Генератор расставляет слева направо в порядке `lines` и переносит по рядам, когда
++позиция не влезает в остаток. Он не группирует оборудование по функциональному
++признаку — это инженерное решение, а не расчёт.
++
++### Неподтверждённое не попадает в геометрию
++
++Пять причин попасть в `unplaced`, ни одна не подменяется оценкой:
++
++| Причина | Когда |
++|---|---|
++| `unknown_lib_key` | ссылки нет в библиотеке |
++| `unconfirmed_size` | нулевой габарит или явный флаг `confirm` |
++| `zero_width` | ширина строки состава равна нулю |
++| `wider_than_plate` | деталь шире доступной области |
++| `no_vertical_space` | ряд вышел за низ панели |
++
++Тест `test_unplaced_never_reaches_geometry` требует, чтобы ни одна запись из
++`unplaced` не фигурировала в `elements` или `groups`.
++
++### Генератор проверяет собственный вывод
++
++Результат прогоняется через `cabinet_layout.check_layout` — ту же функцию, что
++обслуживает отдельный инструмент проверки. Иначе «сгенерировано» и «корректно»
++расходятся, и инженер получает две правды.
++
++## Дефекты, пойманные тестами
++
++### Доступная ширина схлопывалась в ноль
++
++Первая версия `usable_span` искала правую границу как минимум `x` по всем
++вертикальным каналам. Левый канал (x=0) и есть этот минимум, поэтому `x1` уходил
++в минус, а доступная область становилась нулевой — ни одна позиция не
++размещалась, все уходили в `wider_than_plate`.
++
++Исправлено разведением ролей: **границу задают только каналы, примыкающие к
++кромке панели** (допуск 1 мм). Канал в середине поля — препятствие, а не граница;
++наложение на него ловит проверка раскладки. Регрессия закреплена тестом
++`test_usable_span_does_not_collapse_on_middle_duct`.
++
++### Три теста упали на арифметике фикстуры
++
++Я задал панель 300 мм и ждал переноса для шести автоматов, забыв, что зазор до
++канала по умолчанию 20 мм с каждой стороны: доступно 260 мм, а требуется 241 —
++переноса нет. Фикстуры пересчитаны (240 мм, зазоры отключены явно).
++
++### Имена тестов-счётчиков врали
++
++`test_tool_count_is_42` при ожидании 50 — в wave2/3/4, `test_tool_count_is_49` —
++в wave5/6. Имена приведены к реальности.
++
++## Проверка
++
++- 311 тестов, все зелёные (38 новых + 273 прежних);
++- `test_mcp_stdio` — 50 инструментов;
++- `compileall src mcp` — без ошибок;
++- обновлены стоп-краны во всех предыдущих тестах и `VERSION.json`
++  (`mcp_tool_count` и список `mcp_tools` — иначе `test_version_json_matches_catalog`
++  падает на расхождении каталога с версией).
++
++## Что дальше
++
++- **Волна 9** — материализация в КОМПАС: сеты через `component_pattern_linear`,
++  одиночные позиции через `assembly_insert_component`, координаты через `to_cad`,
++  откат через `kompas_checkpoints`.
++- **Волна 10** — сверка BOM со спецификацией и библиотека фрагментов
++  (`fragment_ref`).
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index a302304..8e3ce37 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -109,6 +109,7 @@ TOOLS = [
+     {"name":"kompas_run_job","description":"Run an existing task-specific Python COM job only from KOMPAS_BRIDGE/jobs with a bounded timeout. Use only when the stable tool surface does not cover an engineering operation, then verify through API plus a fresh viewport capture.","inputSchema":{"type":"object","required":["script"],"properties":{"script":{"type":"string"},"timeout_sec":{"type":"integer","minimum":1,"maximum":300,"default":60}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+     {"name":"kompas_cabinet_spec_check","description":"Validate the engineering composition of a switchgear cabinet (NKU / ASU TP): equipment compatibility, separation form and functional segments to GOST IEC 61439-2. Pure domain check over the supplied JSON - no document is opened and nothing is written. Rules that cannot be evaluated because a rated current or a catalog reference is missing are reported under unverified and unconfirmed instead of being treated as passing.","inputSchema":{"type":"object","properties":{"cabinets":{"type":"array","items":{"type":"object"},"maxItems":200},"catalog":{"type":"array","items":{"type":"object"},"maxItems":5000},"library":{"type":"array","items":{"type":"object"},"maxItems":5000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_layout_check","description":"Validate a control-cabinet mounting-plate layout in millimetres: plate bounds, wire ducts, placed equipment, sets, wiring clearance and row overflow. Coordinates are top-left origin with +y down; conversion to CAD space is done only by to_cad(). Unconfirmed part sizes are reported, never substituted. Pure check - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"plate":{"type":"object"},"defaults":{"type":"object"},"ducts":{"type":"array","items":{"type":"object"},"maxItems":500},"elements":{"type":"array","items":{"type":"object"},"maxItems":5000},"groups":{"type":"array","items":{"type":"object"},"maxItems":1000},"library":{"type":"array","items":{"type":"object"},"maxItems":5000}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_layout_build","description":"Compute a mounting-plate layout from a parts list: side wire ducts are generated when none are supplied, lines are placed left to right and wrapped into rows, batches become sets for later linear-array materialisation. Parts are aligned on a DIN rail by rail_offset_mm - the distance from the top edge of the part to the rail axis - so terminals of different heights sit on one line. A line with an unknown lib_key or an unconfirmed size goes to unplaced instead of being placed with a guessed dimension. The result is validated by the same check as kompas_cabinet_layout_check. Pure computation - no document is opened and nothing is written.","inputSchema":{"type":"object","properties":{"plate":{"type":"object"},"defaults":{"type":"object"},"rail":{"type":"object"},"library":{"type":"array","items":{"type":"object"},"maxItems":5000},"lines":{"type":"array","items":{"type":"object"},"maxItems":5000},"ducts":{"type":"array","items":{"type":"object"},"maxItems":500}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+ # Инструменты, которые обслуживаются Python-слоем обёртки: у них есть логика,
+@@ -173,6 +174,7 @@ ACTION_MAP = {
+     "kompas_run_job": ("run_job", lambda a: a),
+     "kompas_cabinet_spec_check": ("cabinet.spec_check", lambda a: a),
+     "kompas_cabinet_layout_check": ("cabinet.layout_check", lambda a: a),
++    "kompas_cabinet_layout_build": ("cabinet.layout_build", lambda a: a),
+ }
+ 
+ 
+diff --git b/src/cabinet_build.py b/src/cabinet_build.py
+new file mode 100644
+index 0000000..28c872d
+--- /dev/null
++++ b/src/cabinet_build.py
+@@ -0,0 +1,359 @@
++"""Генератор раскладки монтажной панели — чистые функции, без COM.
++
++Волна 7 умела только проверять раскладку. Эта волна её **строит**: по составу
++изделий, панели и каналам рассчитывает координаты каждой позиции.
++
++Соглашения унаследованы из ``cabinet_layout``: миллиметры, начало координат сверху
++слева, ``+y`` вниз. Результат — готовая модель раскладки, которую принимает
++``cabinet_layout.check_layout``.
++
++Что генератор **не** делает:
++
++- не выбирает оборудование и не меняет порядок позиций (порядок входа — это
++  инженерное решение, генератор его уважает);
++- не подбирает габарит, если его нет: позиция без подтверждённого размера
++  уходит в ``unplaced``, а не в геометрию «примерно 90 мм»;
++- не считает электрику и тепловой режим.
++
++Ключевая механика — **DIN-рейка**. Детали в ряду выравниваются не по центру
++габарита, а по оси рейки: расстояние от верхней кромки детали до оси задаётся
++полем ``rail_offset_mm`` в библиотеке. Именно из-за этого клеммы разной высоты
++встают в одну линию, а не «пляшут».
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Optional
++
++import cabinet_layout as cl
++
++DEFAULT_SIDE_DUCT_MM = 40.0
++DEFAULT_ROW_GAP_MM = 30.0
++DEFAULT_FIRST_RAIL_Y_MM = 120.0
++
++
++# --------------------------------------------------------------------------
++# разбор
++# --------------------------------------------------------------------------
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _number(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def load_build(payload: Any) -> Dict[str, Any]:
++    data = _as_dict(payload)
++    parse_issues: List[Dict[str, Any]] = []
++
++    plate_raw = _as_dict(data.get("plate"))
++    plate = {
++        "width_mm": _number(plate_raw.get("width_mm")) or 0.0,
++        "height_mm": _number(plate_raw.get("height_mm")) or 0.0,
++        "origin": _text(plate_raw.get("origin")) or "top_left",
++    }
++    if plate["width_mm"] <= 0 or plate["height_mm"] <= 0:
++        parse_issues.append({"level": "error", "code": "BAD_PLATE_SIZE",
++                             "message": "нужны положительные ширина и высота панели"})
++
++    defaults_raw = _as_dict(data.get("defaults"))
++    defaults = {
++        "gap_between_equipment_mm": _number(defaults_raw.get("gap_between_equipment_mm"), cl.DEFAULT_GAP_MM),
++        "clearance_equipment_to_duct_mm": _number(
++            defaults_raw.get("clearance_equipment_to_duct_mm"), cl.DEFAULT_CLEARANCE_MM),
++        "row_gap_mm": _number(defaults_raw.get("row_gap_mm"), DEFAULT_ROW_GAP_MM),
++        "side_duct_mm": _number(defaults_raw.get("side_duct_mm"), DEFAULT_SIDE_DUCT_MM),
++    }
++
++    rail_raw = _as_dict(data.get("rail"))
++    rail = {
++        "first_rail_y_mm": _number(rail_raw.get("first_rail_y_mm"), DEFAULT_FIRST_RAIL_Y_MM),
++        "pitch_mm": _number(rail_raw.get("pitch_mm")),
++    }
++
++    library: Dict[str, Dict[str, Any]] = {}
++    for raw in _as_list(data.get("library")):
++        item = _as_dict(raw)
++        key = _text(item.get("lib_key"))
++        if not key:
++            parse_issues.append({"level": "error", "code": "BAD_LIBRARY_ITEM",
++                                 "message": "позиция библиотеки без lib_key"})
++            continue
++        library[key] = {
++            "lib_key": key,
++            "name": _text(item.get("name")) or key,
++            "width_mm": _number(item.get("width_mm")) or 0.0,
++            "height_mm": _number(item.get("height_mm")) or 0.0,
++            "rail_offset_mm": _number(item.get("rail_offset_mm")),
++            "confirm": bool(item.get("confirm")),
++        }
++
++    lines: List[Dict[str, Any]] = []
++    for raw in _as_list(data.get("lines")):
++        line = _as_dict(raw)
++        if not line:
++            parse_issues.append({"level": "error", "code": "BAD_LINE",
++                                 "message": "элемент lines не является объектом"})
++            continue
++        qty = _number(line.get("qty"), 1.0) or 1.0
++        lines.append({
++            "id": _text(line.get("id")),
++            "lib_key": _text(line.get("lib_key")),
++            "qty": int(qty) if float(qty) == int(qty) else int(qty) + 1,
++            "tag": _text(line.get("tag")),
++            "tag_start": _text(line.get("tag_start")),
++            "tag_step": _number(line.get("tag_step"), 1.0) or 1.0,
++            "internal_gap_mm": _number(line.get("internal_gap_mm"), 0.0) or 0.0,
++            "cap_start_key": _text(line.get("cap_start_key")) or None,
++            "cap_end_key": _text(line.get("cap_end_key")) or None,
++        })
++
++    ducts: List[Dict[str, Any]] = []
++    for raw in _as_list(data.get("ducts")):
++        duct = _as_dict(raw)
++        if not duct:
++            continue
++        rec = dict(duct)
++        rec["id"] = _text(duct.get("id"))
++        for key in ("x_mm", "y_mm", "length_mm", "width_mm", "rot_deg"):
++            if key in duct:
++                rec[key] = _number(duct.get(key))
++        ducts.append(rec)
++
++    return {"plate": plate, "defaults": defaults, "rail": rail, "library": library,
++            "lines": lines, "ducts": ducts, "parse_issues": parse_issues}
++
++
++# --------------------------------------------------------------------------
++# каналы и доступная область
++# --------------------------------------------------------------------------
++
++def make_side_ducts(model: Dict[str, Any]) -> List[Dict[str, Any]]:
++    """Два вертикальных канала по краям панели, если свои не переданы.
++
++    Такие каналы помечаются ``generated: true`` — инженер должен видеть, что их
++    не он задал.
++    """
++    plate = model["plate"]
++    width = model["defaults"]["side_duct_mm"] or 0.0
++    if width <= 0:
++        return []
++    return [
++        {"id": "duct-left", "x_mm": 0.0, "y_mm": 0.0, "length_mm": plate["height_mm"],
++         "width_mm": width, "rot_deg": 90.0, "generated": True},
++        {"id": "duct-right", "x_mm": plate["width_mm"] - width, "y_mm": 0.0,
++         "length_mm": plate["height_mm"], "width_mm": width, "rot_deg": 90.0,
++         "generated": True},
++    ]
++
++
++def usable_span(model: Dict[str, Any], ducts: List[Dict[str, Any]]) -> Dict[str, float]:
++    """Доступный по X интервал между боковыми каналами с учётом зазора.
++
++    Границу задают только каналы, примыкающие к кромке панели: левый сдвигает
++    начало, правый — конец. Канал в середине поля — не граница, а препятствие;
++    наложение на него поймает ``check_layout``, а не эта функция. Смешивать роли
++    нельзя: если считать середину границей, доступная область схлопывается.
++    """
++    plate = model["plate"]
++    clearance = model["defaults"]["clearance_equipment_to_duct_mm"] or 0.0
++    width = plate["width_mm"]
++    edge = 1.0  # допуск на примыкание к кромке, мм
++    x0 = clearance
++    x1 = width - clearance
++    for duct in ducts:
++        rot = _number(duct.get("rot_deg"), 0.0) or 0.0
++        if abs((rot % 180.0) - 90.0) >= 1e-6:
++            continue
++        box = cl.duct_box(duct)
++        if box["w"] <= 0:
++            continue
++        if box["x"] <= edge:
++            x0 = max(x0, box["x"] + box["w"] + clearance)
++        if box["x"] + box["w"] >= width - edge:
++            x1 = min(x1, box["x"] - clearance)
++    return {"x0": x0, "x1": max(x1, x0)}
++
++
++# --------------------------------------------------------------------------
++# расстановка
++# --------------------------------------------------------------------------
++
++def line_width(line: Dict[str, Any], library: Dict[str, Dict[str, Any]]) -> Optional[float]:
++    """Ширина, которую займёт строка состава: одиночная деталь или сет."""
++    item = library.get(line["lib_key"])
++    if item is None:
++        return None
++    gap = line["internal_gap_mm"] or 0.0
++    if line["qty"] <= 1:
++        return item["width_mm"]
++    grp = {"lib_key": line["lib_key"], "count": line["qty"],
++           "internal_gap_mm": gap,
++           "cap_start_key": line.get("cap_start_key"),
++           "cap_end_key": line.get("cap_end_key")}
++    return cl.group_width(grp, library)
++
++
++def place_line(line: Dict[str, Any], library: Dict[str, Dict[str, Any]],
++               x_mm: float, rail_y_mm: float) -> Dict[str, Any]:
++    """Разместить одну строку состава и вернуть объект модели раскладки.
++
++    Одиночная позиция становится ``element``, партия — ``group`` (сет): именно
++    сет потом материализуется линейным массивом в CAD.
++    """
++    item = library[line["lib_key"]]
++    offset = item.get("rail_offset_mm")
++    if offset is None:
++        offset = item["height_mm"] / 2.0
++        source = "centre"
++    else:
++        source = "catalog"
++    y_mm = rail_y_mm - offset
++
++    if line["qty"] <= 1:
++        return {"kind": "element", "source": source,
++                "obj": {"id": line["id"], "lib_key": line["lib_key"],
++                        "tag": line["tag"], "x_mm": round(x_mm, 6),
++                        "y_mm": round(y_mm, 6), "rot_deg": 0.0,
++                        "gap_before_mm": 0.0, "clearance_to_duct_mm": None,
++                        "group_id": None, "locked": False}}
++    return {"kind": "group", "source": source,
++            "obj": {"id": line["id"], "kind": "set", "lib_key": line["lib_key"],
++                    "count": line["qty"], "internal_gap_mm": line["internal_gap_mm"],
++                    "cap_start_key": line.get("cap_start_key"),
++                    "cap_end_key": line.get("cap_end_key"),
++                    "tag_start": line["tag_start"], "tag_step": line["tag_step"],
++                    "x_mm": round(x_mm, 6), "y_mm": round(y_mm, 6), "rot_deg": 0.0,
++                    "exploded": False, "label_id": None}}
++
++
++def build_layout(payload: Any) -> Dict[str, Any]:
++    """Собрать раскладку. Возвращает модель, непомещённое и самопроверку."""
++    model = load_build(payload)
++    plate = model["plate"]
++    defaults = model["defaults"]
++    library = model["library"]
++    gap = defaults["gap_between_equipment_mm"] or 0.0
++    row_gap = defaults["row_gap_mm"] or 0.0
++
++    ducts = model["ducts"] or make_side_ducts(model)
++    span = usable_span(model, ducts)
++    available = span["x1"] - span["x0"]
++
++    elements: List[Dict[str, Any]] = []
++    groups: List[Dict[str, Any]] = []
++    unplaced: List[Dict[str, Any]] = []
++    rows: List[Dict[str, Any]] = []
++
++    rail_y = model["rail"]["first_rail_y_mm"] or 0.0
++    pitch = model["rail"]["pitch_mm"]
++    x = span["x0"]
++    row_index = 0
++    row_height = 0.0
++    row_members = 0
++
++    for line in model["lines"]:
++        item = library.get(line["lib_key"])
++        if item is None:
++            unplaced.append({"id": line["id"], "lib_key": line["lib_key"],
++                             "reason": "unknown_lib_key"})
++            continue
++        if item.get("confirm") or item["width_mm"] <= 0 or item["height_mm"] <= 0:
++            unplaced.append({"id": line["id"], "lib_key": line["lib_key"],
++                             "reason": "unconfirmed_size"})
++            continue
++
++        width = line_width(line, library)
++        if width is None or width <= 0:
++            unplaced.append({"id": line["id"], "lib_key": line["lib_key"],
++                             "reason": "zero_width"})
++            continue
++        if width > available + 1e-9:
++            unplaced.append({"id": line["id"], "lib_key": line["lib_key"],
++                             "reason": "wider_than_plate",
++                             "detail": "ширина %.4g мм больше доступных %.4g мм" % (width, available)})
++            continue
++
++        # перенос строки: не влезает в остаток ряда
++        if row_members and x + width > span["x1"] + 1e-9:
++            rows.append({"index": row_index, "rail_y_mm": round(rail_y, 6),
++                         "members": row_members, "height_mm": round(row_height, 6)})
++            row_index += 1
++            rail_y = (rail_y + pitch) if pitch else (rail_y + row_height + row_gap)
++            x = span["x0"]
++            row_height = 0.0
++            row_members = 0
++
++        # по низу панели: дальше ставить некуда
++        bottom = rail_y + (item["height_mm"] / 2.0 if item.get("rail_offset_mm") is None
++                           else max(item["height_mm"] - item["rail_offset_mm"], item["rail_offset_mm"]))
++        if bottom > plate["height_mm"] + 1e-9:
++            unplaced.append({"id": line["id"], "lib_key": line["lib_key"],
++                             "reason": "no_vertical_space",
++                             "detail": "ряд %d выходит за низ панели" % (row_index + 1)})
++            continue
++
++        placed = place_line(line, library, x, rail_y)
++        if placed["kind"] == "element":
++            elements.append(placed["obj"])
++        else:
++            groups.append(placed["obj"])
++        x += width + gap
++        row_height = max(row_height, item["height_mm"])
++        row_members += 1
++
++    if row_members:
++        rows.append({"index": row_index, "rail_y_mm": round(rail_y, 6),
++                     "members": row_members, "height_mm": round(row_height, 6)})
++
++    layout_model = {
++        "plate": plate,
++        "defaults": {"gap_between_equipment_mm": defaults["gap_between_equipment_mm"],
++                     "clearance_equipment_to_duct_mm": defaults["clearance_equipment_to_duct_mm"]},
++        "ducts": [{k: v for k, v in d.items() if k != "generated"} for d in ducts],
++        "elements": elements,
++        "groups": groups,
++        "labels": [],
++        "library": [dict(v) for v in library.values()],
++    }
++
++    # генератор обязан проверить собственный вывод той же проверкой, которой
++    # пользуется отдельный инструмент, — иначе «сгенерировано» и «корректно»
++    # расходятся.
++    self_check = cl.check_layout(layout_model)
++
++    return {
++        "ok": not unplaced and self_check["summary"]["error"] == 0,
++        "layout": layout_model,
++        "unplaced": unplaced,
++        "rows": rows,
++        "ducts_generated": not model["ducts"],
++        "self_check": {"summary": self_check["summary"],
++                       "issues": self_check["issues"],
++                       "verdict": self_check["verdict"]},
++        "parse_issues": model["parse_issues"],
++        "limits": [
++            "Порядок позиций берётся из входа: генератор не перегруппировывает "
++            "оборудование по функциональным признакам.",
++            "rail_offset_mm задаёт расстояние от верхней кромки детали до оси "
++            "DIN-рейки; если поле отсутствует, используется центр по высоте "
++            "(соглашение cabinet-layout-generator-v2).",
++            "Позиция без подтверждённого габарита уходит в unplaced, а не "
++            "размещается с оценочным размером.",
++            "Раскладка не проверяет электрику, тепловой режим и трассировку.",
++        ],
++    }
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index c20487d..3c04ba7 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -12,6 +12,7 @@ from typing import Any, Dict
+ from protocol import ok
+ from cabinet_domain import check_spec
+ from cabinet_layout import check_layout
++from cabinet_build import build_layout
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -22,3 +23,8 @@ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+ def cabinet_layout_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     """Проверить раскладку монтажной панели в миллиметрах."""
+     return ok("cabinet.layout_check", check_layout(params))
++
++
++def cabinet_layout_build(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Рассчитать раскладку монтажной панели: координаты, ряды, DIN-рейка."""
++    return ok("cabinet.layout_build", build_layout(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 0f41731..593a6f1 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -27,7 +27,7 @@ from drawing_tools import drawing_info, stamp_read, stamp_write
+ from spec_tools import specification_read
+ from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
+-from cabinet_tools import cabinet_spec_check, cabinet_layout_check
++from cabinet_tools import cabinet_spec_check, cabinet_layout_check, cabinet_layout_build
+ 
+ 
+ def _doc(s):
+@@ -324,4 +324,5 @@ registry = {
+     "viewport.capture": viewport_capture,
+     "cabinet.spec_check": cabinet_spec_check,
+     "cabinet.layout_check": cabinet_layout_check,
++    "cabinet.layout_build": cabinet_layout_build,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index afa60c6..61c9d89 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 49, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 50, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 5e03985..74f361d 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index ae0dcd7..00a6c3b 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -314,8 +314,8 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ 
+ class TestCatalogWave3(unittest.TestCase):
+-    def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index 1efe35f..bf10b2e 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -316,8 +316,8 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ 
+ class TestCatalogWave4(unittest.TestCase):
+-    def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index b9e3693..2d9bd5f 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -391,8 +391,8 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_49(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index 461d673..14bb26c 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -434,8 +434,8 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ 
+ class TestCatalogSurface(unittest.TestCase):
+-    def test_tool_count_is_49(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index 85adf66..76abbcc 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 49)
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git b/tests/test_wave8.py b/tests/test_wave8.py
+new file mode 100644
+index 0000000..eee91dc
+--- /dev/null
++++ b/tests/test_wave8.py
+@@ -0,0 +1,395 @@
++"""Волна 8: раскладка как генератор координат.
++
++Отличие от волны 7: там раскладка только проверялась, здесь она строится.
++Поэтому главные требования к тестам другие:
++
++- неизвестное и неподтверждённое **не должно попадать в геометрию**;
++- генератор обязан проверять собственный вывод той же проверкой;
++- порядок позиций берётся из входа и не переставляется.
++
++COM не импортируется: модуль чистый, как и вся доменная линейка щита.
++"""
++
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_build as cb            # noqa: E402
++import cabinet_layout as cl           # noqa: E402
++import tools_catalog                  # noqa: E402
++
++ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
++
++
++# --------------------------------------------------------------------------
++# фикстуры
++# --------------------------------------------------------------------------
++
++def lib(key, width, height, rail_offset=None, name=None, **extra):
++    """Позиция библиотеки. ``rail_offset_mm`` — от верхней кромки до оси рейки."""
++    row = {"lib_key": key, "name": name or key,
++           "width_mm": width, "height_mm": height}
++    if rail_offset is not None:
++        row["rail_offset_mm"] = rail_offset
++    row.update(extra)
++    return row
++
++
++def line(ident, key, qty=1, **extra):
++    row = {"id": ident, "lib_key": key, "qty": qty}
++    row.update(extra)
++    return row
++
++
++PLATE = {"width_mm": 800.0, "height_mm": 600.0}
++
++LIBRARY = [
++    lib("brk", 36.0, 90.0, rail_offset=45.0, name="Автомат 2P"),
++    lib("term", 6.0, 40.0, rail_offset=25.0, name="Клемма"),
++    lib("psu", 50.0, 100.0, rail_offset=60.0, name="БП 24В"),
++]
++
++
++def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None):
++    payload = {"plate": dict(plate or PLATE),
++               "library": list(library or LIBRARY),
++               "lines": list(lines)}
++    if rail is not None:
++        payload["rail"] = rail
++    if defaults is not None:
++        payload["defaults"] = defaults
++    if ducts is not None:
++        payload["ducts"] = ducts
++    return cb.build_layout(payload)
++
++
++# --------------------------------------------------------------------------
++# поверхность инструментов
++# --------------------------------------------------------------------------
++
++class ToolSurface(unittest.TestCase):
++    def test_tool_count_is_50(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 50)
++
++    def test_build_tool_declared(self):
++        names = [t["name"] for t in tools_catalog.TOOLS]
++        self.assertIn("kompas_cabinet_layout_build", names)
++
++    def test_build_tool_is_read_only(self):
++        tool = tools_catalog.TOOL_INDEX["kompas_cabinet_layout_build"]
++        self.assertTrue(tool["annotations"]["readOnlyHint"])
++
++    def test_build_tool_routed(self):
++        action = tools_catalog.ACTION_MAP["kompas_cabinet_layout_build"][0]
++        self.assertEqual(action, "cabinet.layout_build")
++
++    def test_build_tool_input_schema_closed(self):
++        tool = tools_catalog.TOOL_INDEX["kompas_cabinet_layout_build"]
++        self.assertFalse(tool["inputSchema"]["additionalProperties"])
++        self.assertIn("lines", tool["inputSchema"]["properties"])
++        self.assertIn("library", tool["inputSchema"]["properties"])
++
++    def test_registry_wires_action(self):
++        """engineering_capabilities не импортируется статически (win32com),
++        поэтому маршрут проверяем по исходнику."""
++        path = os.path.join(ROOT, "src", "engineering_capabilities.py")
++        with open(path, encoding="utf-8") as fh:
++            body = fh.read()
++        self.assertIn("cabinet_layout_build", body)
++        self.assertIn('"cabinet.layout_build": cabinet_layout_build', body)
++
++
++# --------------------------------------------------------------------------
++# каналы
++# --------------------------------------------------------------------------
++
++class SideDucts(unittest.TestCase):
++    def test_generated_when_absent(self):
++        result = build([line("l1", "brk")])
++        self.assertTrue(result["ducts_generated"])
++        ids = [d["id"] for d in result["layout"]["ducts"]]
++        self.assertIn("duct-left", ids)
++        self.assertIn("duct-right", ids)
++
++    def test_supplied_ducts_win(self):
++        ducts = [{"id": "mine", "x_mm": 0.0, "y_mm": 0.0, "length_mm": 600.0,
++                  "width_mm": 30.0, "rot_deg": 90.0}]
++        result = build([line("l1", "brk")], ducts=ducts)
++        self.assertFalse(result["ducts_generated"])
++        self.assertEqual([d["id"] for d in result["layout"]["ducts"]], ["mine"])
++
++    def test_generated_mark_does_not_leak_into_layout(self):
++        """Служебный флаг generated — для человека, а не для модели раскладки."""
++        result = build([line("l1", "brk")])
++        for duct in result["layout"]["ducts"]:
++            self.assertNotIn("generated", duct)
++
++    def test_no_ducts_when_side_duct_disabled(self):
++        result = build([line("l1", "brk")], defaults={"side_duct_mm": 0})
++        self.assertEqual(result["layout"]["ducts"], [])
++
++    def test_usable_span_excludes_side_ducts(self):
++        model = cb.load_build({"plate": PLATE, "library": LIBRARY, "lines": []})
++        ducts = cb.make_side_ducts(model)
++        span = cb.usable_span(model, ducts)
++        # левый канал 40 мм + зазор 20 мм; справа симметрично
++        self.assertAlmostEqual(span["x0"], 60.0)
++        self.assertAlmostEqual(span["x1"], 740.0)
++
++    def test_usable_span_does_not_collapse_on_middle_duct(self):
++        """Канал в середине поля — препятствие, а не граница.
++
++        Регрессия: первая версия брала минимум x по всем каналам, из-за чего
++        левый канал ограничивал правую границу и доступная ширина была нулевой.
++        """
++        model = cb.load_build({"plate": PLATE, "library": LIBRARY, "lines": []})
++        ducts = [{"id": "mid", "x_mm": 400.0, "y_mm": 0.0, "length_mm": 600.0,
++                  "width_mm": 40.0, "rot_deg": 90.0}]
++        span = cb.usable_span(model, ducts)
++        self.assertGreater(span["x1"] - span["x0"], 0.0)
++        self.assertAlmostEqual(span["x0"], 20.0)
++
++
++# --------------------------------------------------------------------------
++# DIN-рейка: ради чего вся волна
++# --------------------------------------------------------------------------
++
++class RailAlignment(unittest.TestCase):
++    def test_parts_line_up_on_rail_axis(self):
++        """Детали разной высоты стоят на одной оси рейки, а не центрами."""
++        result = build([line("l1", "brk"), line("l2", "psu")],
++                       rail={"first_rail_y_mm": 120.0})
++        ys = {e["id"]: e["y_mm"] for e in result["layout"]["elements"]}
++        self.assertAlmostEqual(ys["l1"], 120.0 - 45.0)   # автомат
++        self.assertAlmostEqual(ys["l2"], 120.0 - 60.0)   # блок питания выше
++        self.assertNotAlmostEqual(ys["l1"], ys["l2"])
++
++    def test_centre_fallback_when_offset_absent(self):
++        library = [lib("plain", 20.0, 80.0)]
++        result = build([line("l1", "plain")], library=library,
++                       rail={"first_rail_y_mm": 200.0})
++        element = result["layout"]["elements"][0]
++        self.assertAlmostEqual(element["y_mm"], 200.0 - 40.0)
++
++    def test_rail_y_comes_from_rail_block(self):
++        result = build([line("l1", "brk")], rail={"first_rail_y_mm": 300.0})
++        self.assertAlmostEqual(result["layout"]["elements"][0]["y_mm"], 255.0)
++
++
++# --------------------------------------------------------------------------
++# строки состава: элемент против сета
++# --------------------------------------------------------------------------
++
++class Lines(unittest.TestCase):
++    def test_single_becomes_element(self):
++        result = build([line("l1", "brk", tag="QF1")])
++        self.assertEqual(len(result["layout"]["elements"]), 1)
++        self.assertEqual(result["layout"]["groups"], [])
++        self.assertEqual(result["layout"]["elements"][0]["tag"], "QF1")
++
++    def test_batch_becomes_set(self):
++        """Партия — это сет для последующего линейного массива, а не N элементов."""
++        result = build([line("l1", "term", qty=12, tag_start="B101", tag_step=1)])
++        self.assertEqual(result["layout"]["elements"], [])
++        self.assertEqual(len(result["layout"]["groups"]), 1)
++        group = result["layout"]["groups"][0]
++        self.assertEqual(group["count"], 12)
++        self.assertEqual(group["tag_start"], "B101")
++        self.assertEqual(group["tag_step"], 1.0)
++
++    def test_set_width_includes_internal_gap(self):
++        result = build([line("l1", "term", qty=12, internal_gap_mm=1.0)])
++        group = result["layout"]["groups"][0]
++        self.assertAlmostEqual(group["internal_gap_mm"], 1.0)
++        width = cl.group_width(group, {i["lib_key"]: i for i in LIBRARY})
++        self.assertAlmostEqual(width, 12 * 6.0 + 11 * 1.0)
++
++    def test_input_order_is_preserved(self):
++        """Генератор не перегруппировывает оборудование: порядок из входа."""
++        result = build([line("l3", "psu"), line("l1", "brk"), line("l2", "term")])
++        xs = [e["x_mm"] for e in result["layout"]["elements"]]
++        self.assertEqual(xs, sorted(xs))
++        order = [e["id"] for e in
++                 sorted(result["layout"]["elements"], key=lambda e: e["x_mm"])]
++        self.assertEqual(order, ["l3", "l1", "l2"])
++
++    def test_gap_between_lines(self):
++        result = build([line("l1", "brk"), line("l2", "brk")])
++        xs = sorted(e["x_mm"] for e in result["layout"]["elements"])
++        self.assertAlmostEqual(xs[1] - xs[0], 36.0 + 5.0)
++
++
++# --------------------------------------------------------------------------
++# перенос по рядам
++# --------------------------------------------------------------------------
++
++class RowWrapping(unittest.TestCase):
++    # Шесть автоматов по 36 мм с зазором 5 мм требуют 241 мм; панель 240 мм
++    # без каналов и без зазоров даёт ровно 240 мм — шестой уходит во второй ряд.
++    NARROW = {"width_mm": 240.0, "height_mm": 600.0}
++    NO_DUCTS = {"side_duct_mm": 0.0, "clearance_equipment_to_duct_mm": 0.0}
++
++    def test_wrap_uses_pitch(self):
++        library = [lib("brk", 36.0, 90.0, rail_offset=45.0)]
++        lines = [line("l%d" % i, "brk") for i in range(6)]
++        result = build(lines, library=library, plate=self.NARROW,
++                       rail={"first_rail_y_mm": 100.0, "pitch_mm": 150.0},
++                       defaults=self.NO_DUCTS)
++        self.assertEqual(len(result["rows"]), 2)
++        self.assertEqual(result["rows"][0]["members"], 5)
++        self.assertAlmostEqual(result["rows"][0]["rail_y_mm"], 100.0)
++        self.assertAlmostEqual(result["rows"][1]["rail_y_mm"], 250.0)
++
++    def test_wrap_without_pitch_uses_row_height(self):
++        library = [lib("brk", 36.0, 90.0, rail_offset=45.0)]
++        lines = [line("l%d" % i, "brk") for i in range(6)]
++        defaults = dict(self.NO_DUCTS, row_gap_mm=30.0)
++        result = build(lines, library=library, plate=self.NARROW,
++                       rail={"first_rail_y_mm": 100.0}, defaults=defaults)
++        self.assertEqual(len(result["rows"]), 2)
++        # высота ряда 90 мм + зазор 30 мм
++        self.assertAlmostEqual(result["rows"][1]["rail_y_mm"], 220.0)
++
++    def test_row_starts_at_span_begin(self):
++        result = build([line("l%d" % i, "term", qty=20) for i in range(4)],
++                       plate={"width_mm": 200.0, "height_mm": 600.0},
++                       rail={"first_rail_y_mm": 100.0, "pitch_mm": 150.0},
++                       defaults={"side_duct_mm": 0.0})
++        self.assertGreater(len(result["rows"]), 1)
++        for group in result["layout"]["groups"]:
++            self.assertGreaterEqual(group["x_mm"], -1e-9)
++
++
++# --------------------------------------------------------------------------
++# непомещённое: главная граница ответственности
++# --------------------------------------------------------------------------
++
++class Unplaced(unittest.TestCase):
++    def test_unknown_lib_key(self):
++        result = build([line("l1", "no-such-key")])
++        self.assertEqual(result["layout"]["elements"], [])
++        self.assertEqual(result["unplaced"][0]["reason"], "unknown_lib_key")
++        self.assertFalse(result["ok"])
++
++    def test_unconfirmed_size_not_placed(self):
++        """Нулевой габарит — не «примерно 90 мм», а отсутствие в геометрии."""
++        library = [lib("hazy", 0.0, 0.0)]
++        result = build([line("l1", "hazy")], library=library)
++        self.assertEqual(result["layout"]["elements"], [])
++        self.assertEqual(result["layout"]["groups"], [])
++        self.assertEqual(result["unplaced"][0]["reason"], "unconfirmed_size")
++
++    def test_confirm_flag_blocks_placement(self):
++        library = [lib("hazy", 40.0, 90.0, confirm=True)]
++        result = build([line("l1", "hazy")], library=library)
++        self.assertEqual(result["layout"]["elements"], [])
++        self.assertEqual(result["unplaced"][0]["reason"], "unconfirmed_size")
++
++    def test_wider_than_plate(self):
++        library = [lib("huge", 900.0, 90.0)]
++        result = build([line("l1", "huge")], library=library)
++        self.assertEqual(result["layout"]["elements"], [])
++        self.assertEqual(result["unplaced"][0]["reason"], "wider_than_plate")
++
++    def test_no_vertical_space(self):
++        """Ниже некуда: позиция не размещается «за краем панели».
++
++        Узкая панель заставляет шестой автомат перейти на второй ряд, а
++        высота 260 мм не оставляет этому ряду места.
++        """
++        library = [lib("tall", 36.0, 90.0, rail_offset=45.0)]
++        lines = [line("l%d" % i, "tall") for i in range(6)]
++        result = build(lines, library=library,
++                       plate={"width_mm": 240.0, "height_mm": 260.0},
++                       rail={"first_rail_y_mm": 100.0, "pitch_mm": 150.0},
++                       defaults=RowWrapping.NO_DUCTS)
++        reasons = [u["reason"] for u in result["unplaced"]]
++        self.assertIn("no_vertical_space", reasons)
++        placed = (len(result["layout"]["elements"])
++                  + len(result["layout"]["groups"]))
++        self.assertEqual(placed + len(result["unplaced"]), 6)
++
++    def test_unplaced_never_reaches_geometry(self):
++        """Ни одна запись из unplaced не должна фигурировать в раскладке."""
++        library = LIBRARY + [lib("hazy", 0.0, 0.0)]
++        lines = [line("l1", "brk"), line("l2", "hazy"), line("l3", "ghost")]
++        result = build(lines, library=library)
++        placed_ids = {e["id"] for e in result["layout"]["elements"]}
++        placed_ids |= {g["id"] for g in result["layout"]["groups"]}
++        self.assertEqual(placed_ids, {"l1"})
++        self.assertEqual({u["id"] for u in result["unplaced"]}, {"l2", "l3"})
++
++
++# --------------------------------------------------------------------------
++# самопроверка генератора
++# --------------------------------------------------------------------------
++
++class SelfCheck(unittest.TestCase):
++    def test_clean_build_has_no_errors(self):
++        result = build([line("l1", "brk"), line("l2", "term", qty=10),
++                        line("l3", "psu")], rail={"first_rail_y_mm": 120.0})
++        self.assertEqual(result["self_check"]["summary"]["error"], 0)
++        self.assertTrue(result["ok"])
++        self.assertEqual(result["unplaced"], [])
++
++    def test_result_accepted_by_separate_checker(self):
++        """Модель из генератора принимается инструментом проверки как есть."""
++        result = build([line("l1", "brk"), line("l2", "term", qty=10)])
++        check = cl.check_layout(result["layout"])
++        self.assertEqual(check["summary"]["error"], 0)
++
++    def test_self_check_reports_own_fault(self):
++        """Генератор не объявляет успех, если сам же нарушил границы."""
++        library = [lib("brk", 36.0, 90.0, rail_offset=45.0)]
++        result = build([line("l1", "brk")], library=library,
++                       plate={"width_mm": 100.0, "height_mm": 50.0},
++                       rail={"first_rail_y_mm": 30.0},
++                       defaults={"side_duct_mm": 0.0})
++        self.assertFalse(result["ok"])
++
++    def test_verdict_present(self):
++        result = build([line("l1", "brk")])
++        self.assertIn(result["self_check"]["verdict"],
++                      ("ready", "ready_with_unknowns", "blocked"))
++
++
++# --------------------------------------------------------------------------
++# устойчивость и детерминизм
++# --------------------------------------------------------------------------
++
++class Robustness(unittest.TestCase):
++    def test_deterministic(self):
++        payload = {"plate": PLATE, "library": LIBRARY,
++                   "lines": [line("l1", "brk"), line("l2", "term", qty=8)]}
++        first = cb.build_layout(payload)
++        second = cb.build_layout(payload)
++        self.assertEqual(first["layout"], second["layout"])
++
++    def test_empty_lines(self):
++        result = build([])
++        self.assertEqual(result["unplaced"], [])
++        self.assertEqual(result["rows"], [])
++
++    def test_bad_plate_reported_not_raised(self):
++        result = cb.build_layout({"plate": {"width_mm": 0.0, "height_mm": 0.0},
++                                  "lines": [line("l1", "brk")],
++                                  "library": LIBRARY})
++        codes = [i["code"] for i in result["parse_issues"]]
++        self.assertIn("BAD_PLATE_SIZE", codes)
++
++    def test_garbage_input_does_not_raise(self):
++        for payload in (None, {}, [], "text", 42,
++                        {"lines": "nope", "library": "nope"}):
++            result = cb.build_layout(payload)
++            self.assertIn("layout", result)
++
++    def test_limits_declared(self):
++        result = build([line("l1", "brk")])
++        self.assertTrue(any("DIN" in s for s in result["limits"]))
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

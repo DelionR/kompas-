@@ -1,0 +1,1247 @@
+diff --git a/VERSION.json b/VERSION.json
+index 9ac67eb..3b0a0bb 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 58,
++  "mcp_tool_count": 59,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -64,6 +64,7 @@
+     "kompas_cabinet_catalog_search",
+     "kompas_cabinet_spec",
+     "kompas_docs_search",
++    "kompas_cabinet_schematic",
+     "kompas_normative_tables",
+     "kompas_open_copy",
+     "kompas_component_translate_xy"
+diff --git a/docs/WAVE16_CHANGES.md b/docs/WAVE16_CHANGES.md
+new file mode 100644
+index 0000000..e04639b
+--- /dev/null
++++ b/docs/WAVE16_CHANGES.md
+@@ -0,0 +1,159 @@
++# Волна 16: схема щита как модель данных
++
++## Что закрыто
++
++Роман спросил, что нужно, чтобы реализовать «схему как модель данных» — первый
++и главный остаток из `mcp_servers_comparison.md`. Ответ: **схему нельзя вывести
++из раскладки**, поэтому сначала нужна модель, а машина с КОМПАС нужна только
++потом, чтобы читать и писать документ.
++
++Модель добавлена. Машина не понадобилась: схема — это данные.
++
++## Почему схему нельзя вывести из раскладки
++
++Раскладка знает **координаты**, но не **электрические связи**. Два автомата,
++стоящие рядом на рейке, могут быть включены последовательно, параллельно или не
++связаны вовсе. Ни одна проверка раскладки не может этого различить.
++
++Поэтому соединения приносит вызывающая сторона: инженер, или сборочная
++программа, или шаблон типовой цепи (`kind=typical`). Угадывать связи по
++соседству на рейке — правдоподобная подмена, а не расчёт.
++
++## Модель: четыре сущности
++
++| Сущность | Поле ввода | Что это |
++|---|---|---|
++| устройство | `devices` | изделие с позиционным обозначением, видом и числом полюсов |
++| зажим | считается из устройства | точка, к которой цепляется цепь |
++| цепь | `nets` | электрическое соединение двух и более зажимов |
++| соединение | `connections` | связь зажима с цепью (устройство, номер контакта) |
++
++## Новый модуль `src/cabinet_schematic.py`
++
++Чистые функции, без COM. Шесть видов через `{"kind": …}`:
++
++| Вид | Что делает |
++|---|---|
++| `build` | собирает всё: зажимы, цепи, таблицу, проверки |
++| `terminals` | зажимы устройств |
++| `nets` | цепи с подключёнными зажимами плюс висячие соединения |
++| `table` | таблица соединений по ГОСТ 2.702-2011 |
++| `check` | проверки связности и полноты |
++| `typical` | шаблон цепи «ввод → защитный аппарат → группа», самопроверяемый |
++
++## Что здесь цитата нормы, а что вывод
++
++### Цитата: графы таблицы соединений
++
++Из ГОСТ 2.702-2011 взяты буквально четыре графы: **«Конт.»** (номер контакта),
++**«Адрес»** (обозначение цепи и/или позиционное обозначение), **«Цепь»**
++(характеристика цепи), **«Адрес внешний»**. Номера контактов идут по
++возрастанию — тоже из стандарта. Графы возвращаются в поле `columns`, а
++источник — в `columns_source` и `provenance`.
++
++### Вывод: нумерации цепей в ГОСТ 2.702-2011 нет
++
++Проверено по тексту стандарта: **слово «маркировка» не встречается вовсе**, а
++«обозначение цепи» требуется, но не нормируется. Значит обозначение цепи —
++не normative величина. Оно либо приносится вызывающей стороной, либо
++присваивается шаблоном и помечается `derived`. Выдать шаблонную нумерацию за
++требование стандарта было бы прямой подменой.
++
++### Вывод: число зажимов
++
++Открытый каталог даёт число полюсов (ETIM `EF001391`) и тип подключения, но
++**не число зажимов и не распиновку** — какой контакт вход, а какой выход.
++Поэтому число зажимов считается как `2 × poles` и помечается `derived`.
++Клемма получает 2 зажима, блок питания — 4: это вывод из практики, а не
++паспортное значение.
++
++Изделие, у которого нет ни числа полюсов, ни явно заданного числа зажимов,
++**не получает зажимов вовсе** и уходит в `unverified` с причиной
++`no_terminals`. Угадывать «наверное два» нельзя: именно на этом зажиме потом
++держится проверка цепи.
++
++## Проверки (`kind=check`)
++
++| Код | Важность | О чём |
++|---|---|---|
++| `no_designation` | error | устройство без позиционного обозначения |
++| `duplicate_designation` | error | обозначение повторяется |
++| `unknown_device` | error | цепь ссылается на устройство, которого нет |
++| `open_net` | error | цепь замкнута менее чем на два зажима |
++| `unknown_net` | error | соединение ссылается на цепь, которой нет в описании |
++| `unconnected_device` | warn | устройство не подключено ни к одной цепи |
++| `unprotected_net` | warn | силовая цепь без защитного аппарата |
++
++Ошибки сортируются выше предупреждений.
++
++Одна тонкость: **цепь с внешним адресом считается замкнутой**. Ввод от
++внешнего источника и отходящая линия к нагрузке имеют по одному зажиму в щите,
++но это не ошибка — второй конец снаружи. Без этого правила вводная цепь всегда
++давала бы ложное срабатывание.
++
++## Типовая цепь (`kind=typical`)
++
++Шаблон «ввод → защитный аппарат → группа» собирает модель целиком: устройства,
++цепи, соединения. Обозначения цепей присваивает сам, поэтому все помечены
++`derived`. Вводная цепь получает `external_address` «ввод», отходящие —
++«нагрузка».
++
++Шаблон **проверяется теми же правилами, что и схема инженера**: составленное
++нами обозначение должно проходить проверку, иначе шаблон ничему не учит.
++Ответ шаблона — это модель, её можно подать обратно в `kind=build`.
++
++## Поверхность: 58 → 59
++
++Новый инструмент `kompas_cabinet_schematic`, действие `cabinet.schematic`.
++
++Отдельный инструмент здесь оправдан, в отличие от корпусов волны 15: корпуса
++были новыми данными в существующем поиске, а схема — новая сущность с новыми
++проверками, и втискивать её в `kompas_cabinet_spec` значило бы смешать перечень
++изделий с электрическими связями.
++
++Изменены:
++
++- `src/cabinet_schematic.py` — новый модуль;
++- `src/cabinet_tools.py` — адаптер `cabinet_schematic_build`;
++- `src/engineering_capabilities.py` — действие `cabinet.schematic`;
++- `mcp/tools_catalog.py` — описание, схема, маршрут;
++- `VERSION.json` — `mcp_tool_count` 58 → 59, имя в списке `mcp_tools` в том же
++  порядке, что в каталоге (иначе падает `test_version_json_matches_catalog`);
++- гейты числа инструментов в `test_wave1`–`test_wave15` — 58 → 59.
++
++## Тесты
++
++`tests/test_wave16.py` — 42 теста. Всего 645 (было 603).
++
++Что проверяется сверх очевидного:
++
++- **раскладка не становится схемой**: элементы раскладки с координатами не
++  получают зажимов и уходят в `unverified`;
++- число зажимов помечено `derived`, явно заданное вызывающей стороной — нет;
++- изделие без числа полюсов отказывает, а не угадывает;
++- графы таблицы — буквально четыре графы ГОСТ 2.702-2011, контакты по
++  возрастанию, незанятый контакт без адреса;
++- цепь с внешним адресом не считается разомкнутой;
++- висячее соединение всплывает и в `dangling`, и в `check`;
++- шаблон проходит собственную проверку с нулём ошибок, его цепи помечены
++  `derived`, и его вывод можно подать в `kind=build`;
++- модуль не импортирует `win32com`.
++
++## Что осталось внутри этой задачи
++
++- **Чтение схемы из документа КОМПАС.** Здесь нужна машина: обозначения цепей
++  и связи живут в документе, прочитать их можно только через API. Модель готова
++  принять прочитанное.
++- **Запись схемы в документ.** Та же история: модель отдаёт данные, отрисовка —
++  отдельная задача.
++- **Распиновка от производителя.** Как только производитель опубликует число
++  зажимов и назначение контактов, `derived` у числа зажимов можно снять. Сейчас
++  это нигде не публикуется.
++- **Нумерация цепей по проекту.** Систему обозначений приносит инженер или
++  внутренний стандарт предприятия: ГОСТ её не нормирует.
++
++## Ограничения
++
++Записаны в `LIMITS` модуля и возвращаются в каждом ответе. Главное: модель не
++проверяет электрику — сечение, ток, селективность. Она проверяет связность и
++полноту описания. Расчёт остаётся за `kompas_cabinet_calc`.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index 6115b6a..a570324 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -117,6 +117,7 @@ TOOLS = [
+     {"name":"kompas_cabinet_catalog_search","description":"Search a cabinet equipment catalogue for breakers, RCDs, contactors, relays, terminals, busbars, power supplies and enclosures by parameters: kind, poles, rating range, trip curve, breaking capacity, leakage current, mount type and overall dimensions. For enclosures (kind=enclosure) also by modules_min, rows, ip, mounting_plate and din_rail. An enclosure is not a position on a mounting plate - it defines the plate - so it carries no layout entry but returns a plate object with the usable row width, computed as modules / rows x 18 mm, explicitly flagged derived because the manufacturer publishes the module count but not the row width in millimetres. The plate height stays null: manufacturers do not publish mounting plate dimensions. Where the computed row width exceeds the enclosure width the manufacturer data contradicts itself, and the item is reported with a conflict rather than silently adjusted. Every returned item carries its source string, and every item with known dimensions also carries a ready-made layout entry (width_mm, height_mm, rail_offset_mm) so a pick can go straight into kompas_cabinet_layout_build or into kompas_cabinet_calc. No catalogue data is built in: the catalogue is supplied in the catalog field or loaded from catalog_path inside the project root. The bundled data/cabinet_catalog.example.json is a placeholder of typical DIN 43880 modular dimensions with no manufacturers or article numbers, and any answer built on it is flagged example=True. Items missing required dimensions go to unverified instead of being filled with a typical value. Pure search, no COM, no KOMPAS.","inputSchema":{"type":"object","properties":{"catalog":{"description":"Catalogue inline: list of rows or {items, source, example}."},"catalog_path":{"type":"string","description":"Path to a JSON catalogue inside the project root."},"query":{"type":"object","description":"Filters: kind, poles, rating_min_a, rating_max_a, trip_curve, breaking_ka_min, leakage_ma, rcd_type, mount, width_max_mm, height_max_mm, depth_max_mm, manufacturer, series, text. Enclosure filters: modules_min, rows, ip, mounting_plate, din_rail."},"kind":{"type":"string"},"poles":{},"rating_min_a":{"type":"number"},"rating_max_a":{"type":"number"},"trip_curve":{"type":"string"},"breaking_ka_min":{"type":"number"},"leakage_ma":{"type":"number"},"rcd_type":{"type":"string"},"mount":{"type":"string"},"width_max_mm":{"type":"number"},"height_max_mm":{"type":"number"},"modules_min":{"type":"number","description":"Enclosure: minimum number of 18 mm module spaces."},"rows":{"type":"number","description":"Enclosure: exact number of DIN rail rows."},"ip":{"type":"string","description":"Enclosure: degree of protection, e.g. IP41."},"mounting_plate":{"type":"boolean","description":"Enclosure: has a mounting plate."},"din_rail":{"type":"boolean","description":"Enclosure: has a DIN rail."},"text":{"type":"string"},"limit":{"type":"integer"},"need_geometry":{"type":"boolean","description":"Move items without dimensions to unverified."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_cabinet_spec","description":"Turn a cabinet layout into documents: kind=bom builds the parts list from the layout (what stands, how many, which overall size, at which coordinates); kind=marking assigns positional designations by GOST 2.710-81 letter codes (QF1, KM1, XT1) numbered in the order the items read on the plate - top to bottom, then left to right; kind=labels produces nameplates with the designation, optional item name and the coordinates to place them on. Letter codes come from the caller as codes={lib_key: QF}, or from the item kind via kinds={lib_key: breaker} resolved through the bundled designation_map table, whose source is echoed in provenance. The mapping item kind to letter code is compiled, not quoted: GOST 2.710-81 assigns codes to kinds of element in a diagram, not to kinds of cabinet product, and no code exists there for an RCD - such a position goes to unresolved rather than borrowing the breaker code. Positions absent from the library keep no invented name. Writing the list into a KOMPAS document is not done here: this returns data. Pure, no COM, no KOMPAS.","inputSchema":{"type":"object","required":["kind"],"properties":{"kind":{"type":"string","enum":["bom","marking","labels"]},"layout":{"type":"object","description":"Layout produced by kompas_cabinet_layout_build: plate, library, elements, groups, ducts."},"plate":{"type":"object"},"library":{"type":"array","items":{"type":"object"}},"elements":{"type":"array","items":{"type":"object"}},"groups":{"type":"array","items":{"type":"object"}},"ducts":{"type":"array","items":{"type":"object"}},"codes":{"type":"object","description":"Explicit letter codes: {lib_key: QF}. Highest priority."},"kinds":{"type":"object","description":"Item kinds: {lib_key: breaker|contactor|terminal|rcd|fuse|relay|disconnect_switch|busbar|psu|surge_protector}. Resolved through designation_map."},"tables":{"type":"object","description":"Override tables, e.g. {designation_map: normative:designation_map} or inline rows."},"with_name":{"type":"boolean","description":"Append the item name to the nameplate text."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_docs_search","description":"Full-text search over the project documentation and normative documents on disk, returning a citation for every hit: file, line number and the fragment itself. Every answer is traceable to a real file, so it can be verified instead of trusted. Search is substring-based, not semantic: all query words must appear on the line, so an imprecise query returns nothing rather than a plausible answer. Reading is limited to the project root and the current directory; a path outside them is refused. Scanning stops at max_files and reports truncated, so an empty result under truncation does not mean the subject is absent. Binary and unreadable files are skipped. No network access and no COM.","inputSchema":{"type":"object","required":["query"],"properties":{"query":{"description":"Search string, or a list of strings; all words must match."},"root":{"type":"string","description":"Directory to scan; defaults to the project root."},"extensions":{"type":"array","items":{"type":"string"}},"context_lines":{"type":"integer","minimum":0},"max_results":{"type":"integer","minimum":0},"max_files":{"type":"integer","minimum":1},"case_sensitive":{"type":"boolean"}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_cabinet_schematic","description":"The cabinet schematic as a data model, not as a drawing. Four entities: devices (with positional designation), terminals (the points a circuit attaches to), nets (an electrical connection of two or more terminals) and connections (terminal to net). kind=terminals derives terminals from pole count as 2 x poles and marks the count derived, because no manufacturer publishes a terminal count or a pinout - an item with no pole count gets no terminals at all rather than a plausible guess. kind=nets resolves nets and reports dangling connections that name a net absent from the description. kind=table builds the connection table with the columns taken verbatim from GOST 2.702-2011: Kont. (contact number), Address (circuit designation and/or positional designation), Circuit (circuit characteristic), External address; contacts are listed in ascending order. GOST 2.702-2011 contains no circuit numbering system at all - the word marking does not occur in it - so a circuit designation is supplied by the caller, and one this tool invents from a template is returned marked derived. kind=check runs connectivity rules: duplicate and missing positional designations, references to unknown devices, nets joined at fewer than two terminals, devices attached to no net, and phase circuits containing no protective device. kind=typical emits a starter model for the chain incoming breaker to group, self-checked by the same rules. Connections cannot be derived from a layout: a layout knows coordinates, not electrical bonds. Drawing the schematic and writing it into a KOMPAS document are not done here - this returns data. Pure, no COM, no KOMPAS.","inputSchema":{"type":"object","properties":{"kind":{"type":"string","enum":["build","terminals","nets","table","check","typical"],"description":"build assembles terminals, nets, table and check; typical emits a starter model for incoming to breaker to group."},"devices":{"type":"array","items":{"type":"object"},"maxItems":2000,"description":"Devices: ref (positional designation), kind (breaker|rcd|fuse|contactor|terminal|psu|...), poles, optional explicit terminals."},"nets":{"type":"array","items":{"type":"object"},"maxItems":2000,"description":"Nets: id, designation, kind (phase|neutral|pe|control), characteristic, external_address."},"connections":{"type":"array","items":{"type":"object"},"maxItems":4000,"description":"Connections: net, device, terminal (contact number)."},"incoming":{"type":"string","description":"For kind=typical: designation of the incoming protective device, default QF1."},"group":{"type":"array","items":{"type":"object"},"description":"For kind=typical: group members as {ref, kind, poles, outgoing, load}."},"phases":{"type":"string","description":"For kind=typical: phase designation, default L."},"supply":{"type":"string","description":"For kind=typical: external address of the incoming circuit."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_normative_tables","description":"Normative tables as data. The repository now ships the tables the calculation engine needs, each with document, table number, URL, publisher and retrieval date. kind=list inventories what is present and what is missing and why. kind=get returns rows, optionally filtered by field values. kind=validate checks a caller-supplied table against the schema before it is used in a calculation. Sources: GOST R 50571.5.52-2011 (IEC 60364-5-52) cable ampacity, correction factors for ambient temperature and grouping, and voltage-drop limits; GOST R 50345-2010 (IEC 60898-1) time-current trip bands for curves B, C and D; PUE 7th edition clause 6.3.39 for the one demand factor it norms; IEK published product cards for the breaker catalogue. Filtering is not optional convenience: the ampacity table holds every installation method, and selecting across all of them at once would return the smallest section permitted by the most favourable method, which is plausible and wrong. A filter that matches no row is refused together with the list of available values. The demand factor table is partial on purpose - PUE has no demand-factor table, so uncovered load types are reported as unverified instead of being filled with a typical coefficient. Data only, no calculation, no COM.","inputSchema":{"type":"object","properties":{"kind":{"type":"string","enum":["list","get","validate"],"description":"list inventories the registry, get returns rows, validate checks rows against the schema."},"table":{"type":"string","enum":["ampacity","breakers","trip_curves","derating","voltage_drop_limits","demand_factors"]},"name":{"type":"string","description":"Alias for table."},"filter":{"type":"object","description":"Row selection by field values, e.g. {material: copper, insulation: pvc, loaded_conductors: 3, method: C}."},"limit":{"type":"integer","minimum":0,"description":"Return at most this many rows; truncated is reported."},"rows":{"type":"array","description":"For kind=validate: rows to check. Omitted means validate the bundled table."}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+ ]
+ 
+@@ -191,6 +192,7 @@ ACTION_MAP = {
+     "kompas_cabinet_spec": ("cabinet.spec", lambda a: a),
+     "kompas_docs_search": ("docs.search", lambda a: a),
+     "kompas_normative_tables": ("normative.tables", lambda a: a),
++    "kompas_cabinet_schematic": ("cabinet.schematic", lambda a: a),
+ }
+ 
+ 
+diff --git a/src/cabinet_schematic.py b/src/cabinet_schematic.py
+new file mode 100644
+index 0000000..3064951
+--- /dev/null
++++ b/src/cabinet_schematic.py
+@@ -0,0 +1,480 @@
++"""Схема щита как модель данных — чистые функции, без COM.
++
++До этой волны схема не существовала вовсе: мост знал состав, раскладку и
++перечень, но не знал **электрических связей**. Раскладка знает координаты, но
++не связи — поэтому схему нельзя вывести из раскладки, её нужно задать.
++
++Модель минимальна и состоит из четырёх сущностей:
++
++- **устройство** (``devices``) — изделие с позиционным обозначением;
++- **зажим** (вывод устройства) — точка, к которой цепляется цепь;
++- **цепь** (``nets``) — электрическое соединение двух и более зажимов;
++- **соединение** (``connections``) — связь зажима с цепью.
++
++Что берётся из нормы, а что нет
++-------------------------------
++
++**Графы таблицы соединений — цитата из ГОСТ 2.702-2011**: «Конт.» (номер
++контакта), «Адрес» (обозначение цепи и/или позиционное обозначение), «Цепь»
++(характеристика цепи), «Адрес внешний». Номера контактов записываются в порядке
++возрастания — это тоже из стандарта.
++
++**Системы нумерации цепей в ГОСТ 2.702-2011 нет.** Проверено по тексту
++стандарта: слово «маркировка» не встречается вовсе, а «обозначение цепи»
++требуется, но не нормируется. Поэтому обозначение цепи приносит вызывающая
++сторона; если мы присваиваем его сами по шаблону, значение помечается
++``derived``, а не выдаётся за норму.
++
++**Распиновку производитель не публикует.** Открытый каталог IEK даёт число
++полюсов (ETIM ``EF001391``) и тип подключения, но не число зажимов и не то,
++какой зажим вход, а какой выход. Число зажимов считается как ``2 × poles`` и
++помечается ``derived``. Для изделия без числа полюсов зажимов не будет вовсе —
++отказ вместо правдоподобной догадки.
++"""
++
++from __future__ import annotations
++
++from typing import Any, Dict, List, Optional, Tuple
++
++KIND_BUILD = "build"
++KIND_TERMINALS = "terminals"
++KIND_NETS = "nets"
++KIND_TABLE = "table"
++KIND_CHECK = "check"
++KIND_TYPICAL = "typical"
++KINDS = (KIND_BUILD, KIND_TERMINALS, KIND_NETS, KIND_TABLE, KIND_CHECK, KIND_TYPICAL)
++
++# Сколько зажимов на один полюс. Для модульных аппаратов вход и выход на каждый
++# полюс — это вывод из практики, а не паспортное значение.
++TERMINALS_PER_POLE = 2
++# Клемма: два зажима — вход и выход перемычки.
++TERMINALS_OF_TERMINAL_BLOCK = 2
++# Блок питания: вход сети и выход.
++TERMINALS_OF_PSU = 4
++
++CONNECTOR_KINDS = ("terminal",)
++PROTECTIVE_KINDS = ("breaker", "rcd", "fuse")
++
++LIMITS = [
++    "Схему нельзя вывести из раскладки: раскладка знает координаты, но не "
++    "электрические связи. Соединения приносит вызывающая сторона.",
++    "Графы таблицы соединений (Конт., Адрес, Цепь, Адрес внешний) — по "
++    "ГОСТ 2.702-2011. Системы нумерации цепей в стандарте нет: обозначение "
++    "цепи задаёт вызывающая сторона.",
++    "Число зажимов считается как 2 × poles и помечается derived: "
++    "производитель не публикует ни числа зажимов, ни распиновки.",
++    "Изделие без числа полюсов не получает зажимов: отказ, а не догадка.",
++    "Отрисовка схемы и запись её в документ КОМПАС здесь не производятся: "
++    "модуль отдаёт данные.",
++]
++
++
++def _as_dict(value: Any) -> Dict[str, Any]:
++    return value if isinstance(value, dict) else {}
++
++
++def _as_list(value: Any) -> List[Any]:
++    return list(value) if isinstance(value, (list, tuple)) else []
++
++
++def _text(value: Any) -> str:
++    return value.strip() if isinstance(value, str) else ""
++
++
++def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
++    if isinstance(value, bool) or value is None:
++        return default
++    if isinstance(value, (int, float)):
++        return float(value)
++    return default
++
++
++def _int(value: Any, default: Optional[int] = None) -> Optional[int]:
++    parsed = _num(value)
++    return int(parsed) if parsed is not None else default
++
++
++def _result(kind: str, data: Dict[str, Any],
++            refusals: Optional[List[Dict[str, Any]]] = None,
++            notes: Optional[List[str]] = None,
++            provenance: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
++    return {
++        "kind": kind,
++        "ok": not refusals,
++        "verdict": "refused" if refusals else "computed",
++        "result": data,
++        "refusals": list(refusals or []),
++        "notes": list(notes or []),
++        "provenance": list(provenance or []),
++        "limits": list(LIMITS),
++    }
++
++
++# --------------------------------------------------------------------------
++# зажимы
++# --------------------------------------------------------------------------
++
++def terminals_of(device: Any) -> Tuple[List[Dict[str, Any]], Optional[str]]:
++    """Зажимы устройства.
++
++    Возвращает ``(None, причина)``, если число зажимов вывести не из чего.
++    """
++    data = _as_dict(device)
++    kind = _text(data.get("kind")).lower()
++    poles = _int(data.get("poles"))
++    explicit = _int(data.get("terminals"))
++
++    if explicit is not None and explicit > 0:
++        count, derived = explicit, False
++    elif kind in CONNECTOR_KINDS:
++        count, derived = TERMINALS_OF_TERMINAL_BLOCK, True
++    elif kind == "psu":
++        count, derived = TERMINALS_OF_PSU, True
++    elif poles is not None and poles > 0:
++        count, derived = poles * TERMINALS_PER_POLE, True
++    else:
++        return None, "no_terminals"
++
++    ref = _text(data.get("ref")) or _text(data.get("designation"))
++    rows = [{"ref": ref, "number": index + 1,
++             "derived": derived,
++             "kind": kind or None}
++            for index in range(count)]
++    return rows, None
++
++
++def build_terminals(payload: Any) -> Dict[str, Any]:
++    """Зажимы всех устройств схемы."""
++    data = _as_dict(payload)
++    notes: List[str] = []
++    rows: List[Dict[str, Any]] = []
++    unverified: List[Dict[str, Any]] = []
++    for device in _as_list(data.get("devices")):
++        record = _as_dict(device)
++        found, reason = terminals_of(record)
++        if found is None:
++            unverified.append({"ref": _text(record.get("ref")) or None,
++                               "kind": _text(record.get("kind")) or None,
++                               "reason": reason})
++            continue
++        rows.extend(found)
++    if not rows and not unverified:
++        return _result(KIND_TERMINALS, {}, [
++            {"code": "no_devices",
++             "message": "Устройства не заданы: поле devices пусто."}])
++    notes.append("зажимов: %d, без данных о выводах: %d"
++                 % (len(rows), len(unverified)))
++    return _result(KIND_TERMINALS, {
++        "terminals": rows,
++        "terminal_count": len(rows),
++        "unverified": unverified,
++    }, notes=notes)
++
++
++# --------------------------------------------------------------------------
++# цепи и соединения
++# --------------------------------------------------------------------------
++
++def build_nets(payload: Any) -> Dict[str, Any]:
++    """Цепи с подключёнными зажимами."""
++    data = _as_dict(payload)
++    nets: Dict[str, Dict[str, Any]] = {}
++    for net in _as_list(data.get("nets")):
++        record = _as_dict(net)
++        key = _text(record.get("id")) or _text(record.get("designation"))
++        if not key:
++            continue
++        nets[key] = {"id": key,
++                     "designation": _text(record.get("designation")) or key,
++                     "kind": _text(record.get("kind")) or None,
++                     "characteristic": _text(record.get("characteristic")) or None,
++                     "external_address": _text(record.get("external_address")) or None,
++                     "terminals": []}
++
++    dangling: List[Dict[str, Any]] = []
++    for connection in _as_list(data.get("connections")):
++        record = _as_dict(connection)
++        key = _text(record.get("net")) or _text(record.get("net_id"))
++        if key not in nets:
++            dangling.append({"net": key or None,
++                             "device": _text(record.get("device")) or None,
++                             "reason": "unknown_net"})
++            continue
++        nets[key]["terminals"].append({
++            "device": _text(record.get("device")) or None,
++            "terminal": _int(record.get("terminal")),
++        })
++
++    rows = sorted(nets.values(), key=lambda item: item["id"])
++    for row in rows:
++        row["terminal_count"] = len(row["terminals"])
++        row["closed"] = len(row["terminals"]) >= 2
++    return _result(KIND_NETS, {
++        "nets": rows,
++        "net_count": len(rows),
++        "dangling": dangling,
++    })
++
++
++# --------------------------------------------------------------------------
++# таблица соединений по ГОСТ 2.702-2011
++# --------------------------------------------------------------------------
++
++def build_table(payload: Any) -> Dict[str, Any]:
++    """Таблица соединений соединителя: графы по ГОСТ 2.702-2011.
++
++    Графы стандарта: «Конт.» — номер контакта, «Адрес» — обозначение цепи
++    и/или позиционное обозначение, «Цепь» — характеристика цепи, «Адрес
++    внешний». Номера контактов идут по возрастанию.
++    """
++    data = _as_dict(payload)
++    nets = build_nets(data)["result"]
++    net_by_terminal: Dict[Tuple[str, int], Dict[str, Any]] = {}
++    for net in nets.get("nets", []):
++        for point in net["terminals"]:
++            key = (point["device"], point["terminal"])
++            net_by_terminal[key] = net
++
++    rows: List[Dict[str, Any]] = []
++    for device in _as_list(data.get("devices")):
++        record = _as_dict(device)
++        if _text(record.get("kind")).lower() not in CONNECTOR_KINDS:
++            continue
++        ref = _text(record.get("ref")) or _text(record.get("designation"))
++        found, reason = terminals_of(record)
++        if found is None:
++            continue
++        for terminal in found:
++            net = net_by_terminal.get((ref, terminal["number"]))
++            rows.append({
++                "connector": ref,
++                "contact": terminal["number"],
++                "address": (net or {}).get("designation")
++                           or _address_of_terminal(net_by_terminal, (ref, terminal["number"])),
++                "circuit": (net or {}).get("characteristic") or None,
++                "external_address": (net or {}).get("external_address") or None,
++            })
++
++    rows.sort(key=lambda row: (row["connector"], row["contact"]))
++    columns = ["Конт.", "Адрес", "Цепь", "Адрес внешний"]
++    return _result(KIND_TABLE, {
++        "columns": columns,
++        "columns_source": "ГОСТ 2.702-2011, графы таблицы соединений соединителя",
++        "rows": rows,
++        "row_count": len(rows),
++    }, provenance=[{"table": "connection_table",
++                    "source": "ГОСТ 2.702-2011 ЕСКД. Правила выполнения "
++                              "электрических схем"}])
++
++
++def _address_of_terminal(net_by_terminal, key) -> Optional[str]:
++    """Адрес как позиционные обозначения, если обозначения цепи нет."""
++    net = net_by_terminal.get(key)
++    if not net:
++        return None
++    peers = [p for p in net["terminals"] if (p["device"], p["terminal"]) != key]
++    if not peers:
++        return None
++    return ", ".join(p["device"] or "?" for p in peers)
++
++
++# --------------------------------------------------------------------------
++# проверки
++# --------------------------------------------------------------------------
++
++def check(payload: Any) -> Dict[str, Any]:
++    """Проверки связности и полноты схемы."""
++    data = _as_dict(payload)
++    devices = [d for d in _as_list(data.get("devices")) if isinstance(d, dict)]
++    nets_result = build_nets(data)["result"]
++    nets = nets_result.get("nets", [])
++    issues: List[Dict[str, Any]] = []
++
++    def issue(code: str, severity: str, message: str, **extra):
++        item = {"code": code, "severity": severity, "message": message}
++        item.update(extra)
++        issues.append(item)
++
++    # 1. повтор позиционных обозначений
++    seen: Dict[str, int] = {}
++    for device in devices:
++        ref = _text(device.get("ref")) or _text(device.get("designation"))
++        if not ref:
++            issue("no_designation", "error",
++                  "Устройство без позиционного обозначения.",
++                  kind=_text(device.get("kind")) or None)
++            continue
++        seen[ref] = seen.get(ref, 0) + 1
++    for ref, count in sorted(seen.items()):
++        if count > 1:
++            issue("duplicate_designation", "error",
++                  "Позиционное обозначение %s повторяется %d раза."
++                  % (ref, count), ref=ref)
++
++    # 2. ссылка на несуществующее устройство
++    known = set(seen)
++    for net in nets:
++        for point in net["terminals"]:
++            if point["device"] not in known:
++                issue("unknown_device", "error",
++                      "Цепь %s ссылается на неизвестное устройство %s."
++                      % (net["id"], point["device"] or "—"),
++                      net=net["id"])
++
++    # 3. цепь не замкнута. Цепь с внешним адресом замкнута на внешний мир,
++    # поэтому один зажим в ней не ошибка.
++    for net in nets:
++        if net["terminal_count"] < 2 and not net.get("external_address"):
++            issue("open_net", "error",
++                  "Цепь %s подключена к %d зажиму: цепь должна соединять "
++                  "минимум два." % (net["id"], net["terminal_count"]),
++                  net=net["id"])
++
++    # 3а. соединение ссылается на цепь, которой нет в описании
++    for lost in nets_result.get("dangling", []):
++        issue("unknown_net", "error",
++              "Соединение ссылается на цепь %s, которой нет в описании."
++              % (lost.get("net") or "—"),
++              net=lost.get("net"))
++
++    # 4. устройство ни к чему не подключено
++    connected = {p["device"] for net in nets for p in net["terminals"]}
++    for device in devices:
++        ref = _text(device.get("ref")) or _text(device.get("designation"))
++        if ref and ref not in connected:
++            issue("unconnected_device", "warn",
++                  "Устройство %s не подключено ни к одной цепи." % ref, ref=ref)
++
++    # 5. силовая цепь без защиты
++    protected: Dict[str, List[str]] = {}
++    for net in nets:
++        for point in net["terminals"]:
++            device = next((d for d in devices
++                           if (_text(d.get("ref")) or _text(d.get("designation")))
++                           == point["device"]), None)
++            if device and _text(device.get("kind")).lower() in PROTECTIVE_KINDS:
++                protected.setdefault(net["id"], []).append(point["device"])
++    for net in nets:
++        if _text(net.get("kind")).lower() in ("phase", "power", "") and \
++                net["id"] not in protected:
++            issue("unprotected_net", "warn",
++                  "Цепь %s не содержит защитного аппарата." % net["id"],
++                  net=net["id"])
++
++    severity_rank = {"error": 0, "warn": 1}
++    issues.sort(key=lambda item: (severity_rank.get(item["severity"], 9),
++                                  item["code"]))
++    errors = [i for i in issues if i["severity"] == "error"]
++    return _result(KIND_CHECK, {
++        "issues": issues,
++        "issue_count": len(issues),
++        "error_count": len(errors),
++        "devices": len(devices),
++        "nets": len(nets),
++    })
++
++
++# --------------------------------------------------------------------------
++# типовая цепь
++# --------------------------------------------------------------------------
++
++def build_typical(payload: Any) -> Dict[str, Any]:
++    """Типовая цепь: ввод → защитный аппарат → группа.
++
++    Шаблон составлен, а не взят из стандарта: в ГОСТ 2.702-2011 системы
++    нумерации цепей нет, поэтому обозначения цепей здесь присваиваются по
++    шаблону и помечаются ``derived``.
++    """
++    data = _as_dict(payload)
++    incoming = _text(data.get("incoming")) or "QF1"
++    group = _as_list(data.get("group"))
++    phases = _text(data.get("phases")) or "L"
++    notes: List[str] = []
++    notes.append("обозначения цепей присвоены по шаблону и помечены derived: "
++                 "системы нумерации в ГОСТ 2.702-2011 нет")
++
++    devices: List[Dict[str, Any]] = []
++    nets: List[Dict[str, Any]] = []
++    connections: List[Dict[str, Any]] = []
++
++    devices.append({"ref": incoming, "kind": "breaker", "poles": 1})
++    # вводная цепь замкнута на внешний источник: один зажим в ней не ошибка
++    nets.append({"id": "%s_in" % phases, "designation": "%s (ввод)" % phases,
++                 "kind": "phase", "derived": True,
++                 "external_address": _text(data.get("supply")) or "ввод"})
++    nets.append({"id": "%s_after_%s" % (phases, incoming),
++                 "designation": "%s после %s" % (phases, incoming),
++                 "kind": "phase", "derived": True})
++    connections.append({"net": "%s_in" % phases, "device": incoming, "terminal": 1})
++    connections.append({"net": "%s_after_%s" % (phases, incoming),
++                        "device": incoming, "terminal": 2})
++
++    for index, member in enumerate(group):
++        record = _as_dict(member)
++        ref = _text(record.get("ref")) or ("QF%d" % (index + 2))
++        devices.append({"ref": ref, "kind": _text(record.get("kind")) or "breaker",
++                        "poles": _int(record.get("poles"), 1) or 1})
++        connections.append({"net": "%s_after_%s" % (phases, incoming),
++                            "device": ref, "terminal": 1})
++        outgoing = _text(record.get("outgoing")) or ("%s_%s" % (phases, ref))
++        nets.append({"id": outgoing, "designation": outgoing, "kind": "phase",
++                     "derived": True,
++                     "external_address": _text(record.get("load")) or "нагрузка"})
++        connections.append({"net": outgoing, "device": ref, "terminal": 2})
++
++    # шаблон проверяем тем же порядком, что и схему инженера: шаблон
++    # составляет обозначения цепей сам, и на нём ошибки виднее всего
++    model = {"devices": devices, "nets": nets, "connections": connections}
++    verdict = check(model)["result"]
++    return _result(KIND_TYPICAL, {
++        "devices": devices,
++        "nets": nets,
++        "connections": connections,
++        "check": verdict,
++    }, notes=notes)
++
++
++def build_schematic(payload: Any) -> Dict[str, Any]:
++    """Собрать схему целиком: зажимы, цепи, таблица, проверки."""
++    data = _as_dict(payload)
++    terminals = build_terminals(data)
++    nets = build_nets(data)
++    table = build_table(data)
++    checks = check(data)
++    return _result(KIND_BUILD, {
++        "terminals": terminals["result"],
++        "nets": nets["result"],
++        "table": table["result"],
++        "check": checks["result"],
++    }, notes=(terminals["notes"] + nets["notes"] + table["notes"] + checks["notes"]),
++        provenance=table["provenance"])
++
++
++_DISPATCH = {
++    KIND_BUILD: build_schematic,
++    KIND_TERMINALS: build_terminals,
++    KIND_NETS: build_nets,
++    KIND_TABLE: build_table,
++    KIND_CHECK: check,
++    KIND_TYPICAL: build_typical,
++}
++
++
++def build(payload: Any) -> Dict[str, Any]:
++    """Единая точка входа: ``{"kind": "build|terminals|nets|table|check|typical"}``."""
++    data = _as_dict(payload)
++    kind = _text(data.get("kind")).lower() or KIND_BUILD
++    if kind not in _DISPATCH:
++        return {
++            "kind": kind or None,
++            "ok": False,
++            "verdict": "refused",
++            "result": {},
++            "refusals": [{"code": "unknown_kind",
++                          "message": "Неизвестный вид: %s." % (kind or "не задан"),
++                          "known_kinds": list(KINDS)}],
++            "notes": [],
++            "provenance": [],
++            "limits": list(LIMITS),
++        }
++    return _DISPATCH[kind](data)
+diff --git a/src/cabinet_tools.py b/src/cabinet_tools.py
+index 6afc5ff..af1b184 100644
+--- a/src/cabinet_tools.py
++++ b/src/cabinet_tools.py
+@@ -19,6 +19,7 @@ from cabinet_reconcile import reconcile
+ from cabinet_calc import calculate
+ from cabinet_catalog import search as catalog_search
+ from cabinet_spec import build as build_spec
++from cabinet_schematic import build as build_schematic
+ 
+ 
+ def cabinet_spec_check(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+@@ -68,6 +69,11 @@ def cabinet_spec_build(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     return ok("cabinet.spec", build_spec(params))
+ 
+ 
++def cabinet_schematic_build(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
++    """Схема щита как модель данных: зажимы, цепи, таблица соединений, проверки."""
++    return ok("cabinet.schematic", build_schematic(params))
++
++
+ def cabinet_bom_reconcile(session: Any, params: Dict[str, Any]) -> Dict[str, Any]:
+     """Сверить ожидаемый состав щита с перечнем, прочитанным из КОМПАС."""
+     return ok("cabinet.bom_reconcile", reconcile(params))
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index d541011..df411c3 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -30,7 +30,8 @@ from view_tools import set_view, fit, rotate, visibility, projections
+ from cabinet_tools import (cabinet_spec_check, cabinet_layout_check, cabinet_layout_build,
+                            cabinet_materialize_plan, cabinet_materialize_apply,
+                            cabinet_bom_reconcile, cabinet_calc,
+-                           cabinet_catalog_search, cabinet_spec_build)
++                           cabinet_catalog_search, cabinet_spec_build,
++                           cabinet_schematic_build)
+ from docs_tools import docs_search_handler
+ from normative_tools import normative_tables_handler
+ 
+@@ -338,4 +339,5 @@ registry = {
+     "cabinet.spec": cabinet_spec_build,
+     "docs.search": docs_search_handler,
+     "normative.tables": normative_tables_handler,
++    "cabinet.schematic": cabinet_schematic_build,
+ }
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index f942898..da3f52e 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 58, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 59, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave10.py b/tests/test_wave10.py
+index e3659f8..9ba1733 100644
+--- a/tests/test_wave10.py
++++ b/tests/test_wave10.py
+@@ -67,7 +67,7 @@ TERMINALS = [{"id": "c", "lib_key": "term", "qty": 24, "tag_start": "B101",
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_tool_declared(self):
+         self.assertIn("kompas_cabinet_bom_reconcile",
+diff --git a/tests/test_wave14.py b/tests/test_wave14.py
+index 9717ece..541d817 100644
+--- a/tests/test_wave14.py
++++ b/tests/test_wave14.py
+@@ -244,7 +244,7 @@ class SurfaceTests(unittest.TestCase):
+         import tools_catalog
+         names = [t["name"] for t in tools_catalog.TOOLS]
+         self.assertIn("kompas_cabinet_spec", names)
+-        self.assertEqual(len(names), 58,
++        self.assertEqual(len(names), 59,
+                          "поверхность изменилась - обновите ожидание осознанно")
+ 
+     def test_tool_has_route(self):
+diff --git a/tests/test_wave15.py b/tests/test_wave15.py
+index 48a77c8..760610e 100644
+--- a/tests/test_wave15.py
++++ b/tests/test_wave15.py
+@@ -265,7 +265,7 @@ class SurfaceTests(unittest.TestCase):
+ 
+     def test_tool_count_unchanged(self):
+         import tools_catalog
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_existing_tool_gained_enclosure_filters(self):
+         import tools_catalog
+diff --git a/tests/test_wave16.py b/tests/test_wave16.py
+new file mode 100644
+index 0000000..e7751ca
+--- /dev/null
++++ b/tests/test_wave16.py
+@@ -0,0 +1,349 @@
++"""Волна 16: схема щита как модель данных.
++
++Главное, что проверяется: **схему нельзя вывести из раскладки**. Раскладка
++знает координаты, но не электрические связи — поэтому попытка получить зажимы
++из одной раскладки обязана отказать, а не угадать.
++
++Второе: что в схеме цитата нормы, а что — вывод. Графы таблицы соединений
++взяты из ГОСТ 2.702-2011 буквально. Системы нумерации цепей в стандарте нет —
++проверено по тексту, слова «маркировка» там не встречается, — поэтому
++обозначение цепи либо приносит вызывающая сторона, либо оно помечается
++``derived``. Число зажимов тоже расчётное: производитель публикует число
++полюсов, но не число зажимов и не распиновку.
++"""
++
++from __future__ import annotations
++
++import os
++import sys
++import unittest
++
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
++sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp"))
++
++import cabinet_schematic as sch  # noqa: E402
++
++
++def model(**extra):
++    """Двухполюсный ввод, одна групповая линия, клемма N."""
++    payload = {
++        "devices": [
++            {"ref": "QF1", "kind": "breaker", "poles": 1},
++            {"ref": "QF2", "kind": "breaker", "poles": 1},
++            {"ref": "XT1", "kind": "terminal"},
++        ],
++        "nets": [
++            {"id": "L_in", "designation": "L (ввод)", "kind": "phase",
++             "external_address": "ввод"},
++            {"id": "L_QF2", "designation": "L после QF1", "kind": "phase"},
++            {"id": "N", "designation": "N", "kind": "neutral"},
++        ],
++        "connections": [
++            {"net": "L_in", "device": "QF1", "terminal": 1},
++            {"net": "L_QF2", "device": "QF1", "terminal": 2},
++            {"net": "L_QF2", "device": "QF2", "terminal": 1},
++            {"net": "N", "device": "QF2", "terminal": 2},
++            {"net": "N", "device": "XT1", "terminal": 1},
++        ],
++    }
++    payload.update(extra)
++    return payload
++
++
++def codes(result):
++    return [i["code"] for i in result["result"]["issues"]]
++
++
++class TerminalTests(unittest.TestCase):
++    """Зажимы: откуда число и почему оно расчётное."""
++
++    def test_pole_count_gives_two_terminals_per_pole(self):
++        rows, reason = sch.terminals_of({"ref": "QF1", "kind": "breaker", "poles": 2})
++        self.assertIsNone(reason)
++        self.assertEqual(len(rows), 4)
++        self.assertTrue(all(r["derived"] for r in rows),
++                        "число зажимов расчётное, а не паспортное")
++
++    def test_explicit_terminal_count_is_not_derived(self):
++        rows, _ = sch.terminals_of({"ref": "QF1", "kind": "breaker",
++                                    "poles": 2, "terminals": 6})
++        self.assertEqual(len(rows), 6)
++        self.assertFalse(rows[0]["derived"],
++                         "заданное вызывающей стороной число зажимов не derived")
++
++    def test_terminal_block_and_psu_have_fixed_counts(self):
++        self.assertEqual(len(sch.terminals_of({"ref": "XT1", "kind": "terminal"})[0]),
++                         sch.TERMINALS_OF_TERMINAL_BLOCK)
++        self.assertEqual(len(sch.terminals_of({"ref": "G1", "kind": "psu"})[0]),
++                         sch.TERMINALS_OF_PSU)
++
++    def test_no_pole_count_refuses_instead_of_guessing(self):
++        rows, reason = sch.terminals_of({"ref": "QF9", "kind": "breaker"})
++        self.assertIsNone(rows)
++        self.assertEqual(reason, "no_terminals")
++
++    def test_terminals_are_numbered_from_one(self):
++        rows, _ = sch.terminals_of({"ref": "QF1", "kind": "breaker", "poles": 1})
++        self.assertEqual([r["number"] for r in rows], [1, 2])
++
++    def test_empty_devices_is_a_refusal(self):
++        result = sch.build_terminals({})
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "no_devices")
++
++    def test_device_without_terminals_goes_to_unverified(self):
++        result = sch.build_terminals({"devices": [
++            {"ref": "QF1", "kind": "breaker", "poles": 1},
++            {"ref": "QF9", "kind": "breaker"},
++        ]})
++        self.assertEqual(result["result"]["terminal_count"], 2)
++        self.assertEqual(result["result"]["unverified"][0]["ref"], "QF9")
++        self.assertEqual(result["result"]["unverified"][0]["reason"], "no_terminals")
++
++
++class LayoutIsNotASchematicTests(unittest.TestCase):
++    """Раскладка знает координаты, но не связи: схему из неё не вывести."""
++
++    def test_layout_elements_give_no_terminals(self):
++        elements = [{"lib_key": "breaker_1p", "x_mm": 0.0, "y_mm": 120.0,
++                     "w_mm": 18.0, "h_mm": 90.0}]
++        result = sch.build_terminals({"devices": elements})
++        self.assertEqual(result["result"]["terminal_count"], 0)
++        self.assertTrue(result["result"]["unverified"])
++
++    def test_no_connections_means_no_nets(self):
++        result = sch.build_nets({"devices": model()["devices"], "nets": []})
++        self.assertEqual(result["result"]["net_count"], 0)
++        self.assertEqual(result["result"]["dangling"], [])
++
++
++class NetTests(unittest.TestCase):
++
++    def test_net_is_closed_at_two_terminals(self):
++        result = sch.build_nets(model())
++        nets = {n["id"]: n for n in result["result"]["nets"]}
++        self.assertTrue(nets["L_QF2"]["closed"])
++        self.assertFalse(nets["L_in"]["closed"])
++        self.assertEqual(nets["L_QF2"]["terminal_count"], 2)
++
++    def test_connection_to_unknown_net_is_dangling(self):
++        payload = model()
++        payload["connections"].append({"net": "X7", "device": "QF1", "terminal": 1})
++        result = sch.build_nets(payload)
++        self.assertEqual(result["result"]["dangling"][0]["net"], "X7")
++        self.assertEqual(result["result"]["dangling"][0]["reason"], "unknown_net")
++
++    def test_nets_are_sorted_by_id(self):
++        ids = [n["id"] for n in sch.build_nets(model())["result"]["nets"]]
++        self.assertEqual(ids, sorted(ids))
++
++
++class ConnectionTableTests(unittest.TestCase):
++    """Таблица соединений: графы — цитата из ГОСТ 2.702-2011."""
++
++    def test_columns_are_the_standard_ones(self):
++        result = sch.build_table(model())
++        self.assertEqual(result["result"]["columns"],
++                         ["Конт.", "Адрес", "Цепь", "Адрес внешний"])
++        self.assertIn("2.702", result["result"]["columns_source"])
++
++    def test_provenance_names_the_standard(self):
++        result = sch.build_table(model())
++        self.assertIn("2.702-2011", result["provenance"][0]["source"])
++
++    def test_table_is_built_for_connectors_only(self):
++        result = sch.build_table(model())
++        rows = result["result"]["rows"]
++        self.assertEqual(sorted({r["connector"] for r in rows}), ["XT1"],
++                         "таблица соединений заполняется на соединитель")
++
++    def test_contacts_ascend(self):
++        rows = sch.build_table(model())["result"]["rows"]
++        contacts = [(r["connector"], r["contact"]) for r in rows]
++        self.assertEqual(contacts, sorted(contacts))
++        self.assertEqual([r["contact"] for r in rows], [1, 2])
++
++    def test_address_is_the_circuit_designation(self):
++        rows = {r["contact"]: r for r in sch.build_table(model())["result"]["rows"]}
++        self.assertEqual(rows[1]["address"], "N")
++
++    def test_unconnected_contact_has_no_address(self):
++        payload = model()
++        payload["connections"] = [c for c in payload["connections"]
++                                  if c["device"] != "XT1"]
++        rows = sch.build_table(payload)["result"]["rows"]
++        self.assertIsNone(rows[0]["address"])
++
++
++class CheckTests(unittest.TestCase):
++
++    def test_correct_model_has_no_errors(self):
++        result = sch.check(model())
++        self.assertEqual(result["result"]["error_count"], 0)
++
++    def test_duplicate_designation(self):
++        payload = model()
++        payload["devices"].append({"ref": "QF1", "kind": "breaker", "poles": 1})
++        self.assertIn("duplicate_designation", codes(sch.check(payload)))
++
++    def test_missing_designation(self):
++        payload = model()
++        payload["devices"].append({"kind": "breaker", "poles": 1})
++        self.assertIn("no_designation", codes(sch.check(payload)))
++
++    def test_unknown_device(self):
++        payload = model()
++        payload["connections"].append(
++            {"net": "N", "device": "QF99", "terminal": 1})
++        self.assertIn("unknown_device", codes(sch.check(payload)))
++
++    def test_open_net(self):
++        payload = model()
++        payload["nets"].append({"id": "Lonely", "designation": "Lonely",
++                                "kind": "phase"})
++        payload["connections"].append({"net": "Lonely", "device": "QF1",
++                                       "terminal": 1})
++        self.assertIn("open_net", codes(sch.check(payload)))
++
++    def test_external_address_closes_the_circuit(self):
++        """Цепь с внешним адресом замкнута на внешний мир — один зажим не ошибка."""
++        payload = model()
++        payload["nets"].append({"id": "PE", "designation": "PE",
++                                "kind": "pe", "external_address": "шина PE"})
++        payload["connections"].append({"net": "PE", "device": "XT1", "terminal": 2})
++        self.assertNotIn("open_net", codes(sch.check(payload)))
++
++    def test_unconnected_device(self):
++        payload = model()
++        payload["devices"].append({"ref": "KM1", "kind": "contactor", "poles": 2})
++        codes_ = codes(sch.check(payload))
++        self.assertIn("unconnected_device", codes_)
++        issue = next(i for i in sch.check(payload)["result"]["issues"]
++                     if i["code"] == "unconnected_device")
++        self.assertEqual(issue["severity"], "warn")
++
++    def test_phase_circuit_without_protection(self):
++        payload = model()
++        payload["devices"] = [d for d in payload["devices"]
++                              if d["ref"] not in ("QF1", "QF2")]
++        payload["connections"] = [c for c in payload["connections"]
++                                  if c["device"] not in ("QF1", "QF2")]
++        self.assertIn("unprotected_net", codes(sch.check(payload)))
++
++    def test_dangling_connection_is_reported(self):
++        payload = model()
++        payload["connections"].append({"net": "X7", "device": "QF1", "terminal": 1})
++        self.assertIn("unknown_net", codes(sch.check(payload)))
++
++    def test_errors_sort_before_warnings(self):
++        payload = model()
++        payload["devices"].append({"ref": "KM1", "kind": "contactor", "poles": 2})
++        payload["devices"].append({"kind": "breaker", "poles": 1})
++        issues = sch.check(payload)["result"]["issues"]
++        first_error = next(i for i in issues if i["severity"] == "error")
++        self.assertEqual(issues.index(first_error), 0)
++
++
++class TypicalCircuitTests(unittest.TestCase):
++    """Типовая цепь: шаблон составлен, обозначения помечены derived."""
++
++    def test_template_passes_its_own_check(self):
++        result = sch.build({"kind": "typical", "incoming": "QF1", "phases": "L",
++                            "group": [{"ref": "QF2", "kind": "breaker"},
++                                      {"ref": "QF3", "kind": "rcd", "poles": 2}]})
++        self.assertEqual(result["verdict"], "computed")
++        self.assertEqual(result["result"]["check"]["error_count"], 0)
++
++    def test_designations_are_derived(self):
++        result = sch.build({"kind": "typical", "group": [{"ref": "QF2"}]})
++        self.assertTrue(all(n.get("derived") for n in result["result"]["nets"]),
++                        "системы нумерации цепей в ГОСТ 2.702-2011 нет")
++
++    def test_chain_is_incoming_then_group(self):
++        result = sch.build({"kind": "typical", "incoming": "QF1", "phases": "L",
++                            "group": [{"ref": "QF2"}]})
++        nets = result["result"]["nets"]
++        self.assertEqual(nets[0]["id"], "L_in")
++        self.assertEqual(nets[0]["external_address"], "ввод")
++        self.assertEqual(nets[1]["id"], "L_after_QF1")
++        self.assertEqual(nets[2]["id"], "L_QF2")
++
++    def test_group_member_reference_defaults(self):
++        result = sch.build({"kind": "typical", "group": [{}]})
++        refs = [d["ref"] for d in result["result"]["devices"]]
++        self.assertEqual(refs, ["QF1", "QF2"])
++
++    def test_template_output_feeds_the_model(self):
++        """Шаблон — это модель: её можно подать в kind=build."""
++        template = sch.build({"kind": "typical", "group": [{"ref": "QF2"}]})
++        payload = dict(template["result"])
++        payload["kind"] = "build"
++        assembled = sch.build(payload)
++        self.assertEqual(assembled["verdict"], "computed")
++        self.assertGreater(assembled["result"]["terminals"]["terminal_count"], 0)
++        self.assertEqual(assembled["result"]["check"]["error_count"], 0)
++
++
++class DispatchTests(unittest.TestCase):
++
++    def test_build_assembles_everything(self):
++        result = sch.build({"kind": "build", **model()})
++        self.assertEqual(result["verdict"], "computed")
++        for key in ("terminals", "nets", "table", "check"):
++            self.assertIn(key, result["result"])
++
++    def test_build_is_the_default(self):
++        self.assertEqual(sch.build(model())["kind"], "build")
++
++    def test_unknown_kind_is_refused(self):
++        result = sch.build({"kind": "draw"})
++        self.assertEqual(result["verdict"], "refused")
++        self.assertEqual(result["refusals"][0]["code"], "unknown_kind")
++        self.assertIn("build", result["refusals"][0]["known_kinds"])
++
++    def test_limits_are_declared(self):
++        self.assertTrue(sch.LIMITS)
++        joined = " ".join(sch.LIMITS)
++        self.assertIn("2.702", joined)
++        self.assertIn("derived", joined)
++
++    def test_module_does_not_import_com(self):
++        source = open(sch.__file__, encoding="utf-8").read()
++        self.assertNotIn("win32com", source)
++        self.assertNotIn("pythoncom", source)
++
++
++class SurfaceTests(unittest.TestCase):
++    """Поверхность выросла на один инструмент."""
++
++    def test_tool_registered(self):
++        import tools_catalog
++        self.assertIn("kompas_cabinet_schematic", tools_catalog.TOOL_INDEX)
++        self.assertEqual(
++            tools_catalog.ACTION_MAP["kompas_cabinet_schematic"][0],
++            "cabinet.schematic")
++
++    def test_tool_count(self):
++        import tools_catalog
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
++
++    def test_schema_declares_the_kinds(self):
++        import tools_catalog
++        tool = tools_catalog.TOOL_INDEX["kompas_cabinet_schematic"]
++        kinds = tool["inputSchema"]["properties"]["kind"]["enum"]
++        self.assertEqual(set(kinds), set(sch.KINDS))
++
++    def test_adapter_returns_the_model(self):
++        """Адаптер реестра отдаёт ту же модель, что и чистый модуль."""
++        import cabinet_tools
++        import tools_catalog
++        action = tools_catalog.ACTION_MAP["kompas_cabinet_schematic"][0]
++        self.assertEqual(action, "cabinet.schematic")
++        answer = cabinet_tools.cabinet_schematic_build(None, {"kind": "check",
++                                                              **model()})
++        self.assertTrue(answer["ok"])
++        self.assertEqual(answer["result"]["result"]["error_count"], 0)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index b3eb887..e9c4ad9 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -321,7 +321,7 @@ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index 28dc24d..c751be7 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -315,7 +315,7 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ class TestCatalogWave3(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index 479b6b3..6e8b66a 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -317,7 +317,7 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ class TestCatalogWave4(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index 8053df3..30f2a4f 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -392,7 +392,7 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ class TestCatalogSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git a/tests/test_wave6.py b/tests/test_wave6.py
+index 08e622f..18271a4 100644
+--- a/tests/test_wave6.py
++++ b/tests/test_wave6.py
+@@ -435,7 +435,7 @@ class TestManifestCoverage(unittest.TestCase):
+ 
+ class TestCatalogSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_dry_run_tool_exists_and_is_read_only(self):
+         self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave7.py b/tests/test_wave7.py
+index 8628d2b..0523e4b 100644
+--- a/tests/test_wave7.py
++++ b/tests/test_wave7.py
+@@ -427,7 +427,7 @@ class TestCatalogSurface(unittest.TestCase):
+                                         "kompas_cabinet_layout_check": "cabinet.layout_check"}[name])
+ 
+     def test_surface_grew_to_forty_nine(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_registry_wired(self):
+         """engineering_capabilities не импортируется статически (win32com),
+diff --git a/tests/test_wave8.py b/tests/test_wave8.py
+index ba26686..c57534d 100644
+--- a/tests/test_wave8.py
++++ b/tests/test_wave8.py
+@@ -72,7 +72,7 @@ def build(lines, library=None, plate=None, rail=None, defaults=None, ducts=None)
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_build_tool_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]
+diff --git a/tests/test_wave9.py b/tests/test_wave9.py
+index 8a40268..8db3710 100644
+--- a/tests/test_wave9.py
++++ b/tests/test_wave9.py
+@@ -101,7 +101,7 @@ class FakeExecutor:
+ 
+ class ToolSurface(unittest.TestCase):
+     def test_tool_count_is_56(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 58)
++        self.assertEqual(len(tools_catalog.TOOLS), 59)
+ 
+     def test_both_tools_declared(self):
+         names = [t["name"] for t in tools_catalog.TOOLS]

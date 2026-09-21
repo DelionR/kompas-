@@ -1,0 +1,1299 @@
+diff --git a/VERSION.json b/VERSION.json
+index d8b9235..9e3bb8f 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -7,7 +7,7 @@
+     "2025-06-18",
+     "2025-11-25"
+   ],
+-  "mcp_tool_count": 46,
++  "mcp_tool_count": 47,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -37,6 +37,7 @@
+     "kompas_dialogs",
+     "kompas_version_check",
+     "kompas_export",
++    "kompas_dry_run",
+     "kompas_drawing_info",
+     "kompas_stamp_read",
+     "kompas_stamp_write",
+diff --git b/docs/WAVE6_CHANGES.md b/docs/WAVE6_CHANGES.md
+new file mode 100644
+index 0000000..63df7db
+--- /dev/null
++++ b/docs/WAVE6_CHANGES.md
+@@ -0,0 +1,123 @@
++# Волна 6: сухой прогон (dry run) мутирующих инструментов
++
++Поверхность инструментов: **46 → 47**.
++
++Патч `wave6.patch` накладывается поверх `wave1` … `wave5`.
++
++## Зачем
++
++До этой волны у моста был ровно один инструмент с сухим прогоном —
++`kompas_export` с `apply=false`. Все остальные мутирующие операции агент
++вызывал вслепую: опечатка в аргументе, файл не в рабочем каталоге, запись в
++защищённый корень, незащищённая версия КОМПАСа — всё это обнаруживалось уже
++после того, как вызов ушёл в COM, а иногда и после того, как файл был
++перезаписан.
++
++Добавлять параметр `dry_run` в схему каждого из двух десятков инструментов
++значило бы расплодить двадцать разных реализаций «почти того же». Вместо
++этого сделан один инструмент-предпросмотр, который знает о каждом мутирующем
++действии из явного манифеста.
++
++## Что добавлено
++
++**`kompas_dry_run`** (`dryrun.plan`) — один инструмент на все мутирующие
++вызовы:
++
++```json
++{"tool": "kompas_material_set",
++ "arguments": {"filename": "part_AGENT_COPY.m3d", "material_name": "Steel",
++               "density": 7.85, "evidence_source_relative_path": "src_AGENT_COPY.m3d"},
++ "version": "25.0.0.1234"}
++```
++
++Ответ содержит:
++
++- `verdict` — `blocked` / `ready_with_unknowns` / `ready`;
++- `blocking_checks`, `unknown_checks` — имена проверок, а не «что-то не так»;
++- `checks` — каждая проверка со статусом `pass` / `fail` / `unknown` / `note`
++  и пояснением;
++- `argument_problems` — конкретные нарушения схемы с путём до поля;
++- `target`, `work_directory`, `version_guard`;
++- `unverifiable` — то, что без Automation узнать нельзя;
++- `limits` — прямое напоминание, что сухой прогон не доказывает успех.
++
++## Что именно проверяется
++
++| Проверка | Что даёт |
++|---|---|
++| `tool_known` | инструмент существует |
++| `mutating` | есть ли смысл в сухом прогоне (для read-only — `note`) |
++| `arguments` | схема аргументов целиком: типы, enum, границы, лишние поля |
++| `target_path` | путь относительный и не выходит из рабочего каталога |
++| `target_exists` / `target_absent` | файл есть (для изменения) или его нет (для создания) |
++| `target_suffix` | расширение соответствует действию |
++| `agent_copy` | в имени есть `_AGENT_COPY` там, где это требуется |
++| `write_root` | путь внутри разрешённых корней записи |
++| `not_protected` | путь не внутри защищённого корня |
++| `job_allowlist` | задание перечислено в `jobs/allowlist.json` |
++| `version_guard` | действие не запрещено матрицей версий |
++
++Валидатор схемы — минимальная реализация подмножества JSON Schema, которое
++реально используется каталогом: `type`, `enum`, `oneOf`, минимумы и максимумы,
++длины строк, `minItems`/`maxItems`, вложенные `properties`,
++`additionalProperties`, `minProperties`/`maxProperties`. Внешних зависимостей
++нет.
++
++## Ключевые решения
++
++**Манифест вместо разбросанных проверок.** `ACTION_PREFLIGHT` в `src/dryrun.py`
++явно описывает каждое мутирующее действие: какой параметр держит путь, какое
++расширение ожидается, нужен ли `_AGENT_COPY`, что действие делает (`create` /
++`modify` / `export` / `restore` / `script` / `view` / `ui` / `document` /
++`none`). Тест `test_every_mutating_action_has_a_manifest_entry` требует запись
++для каждого мутирующего инструмента каталога — иначе сухой прогон молча
++проверит только схему аргументов и отрапортует «готово». Обратный тест ловит
++устаревшие записи.
++
++**Неизвестное названо неизвестным.** Если действие работает с активным
++документом (`stamp.write`), путь из аргументов узнать нельзя, и проверка
++получает статус `unknown`, а не `pass`. Итог тогда
++`ready_with_unknowns` — агент видит, чего он не знает.
++
++**Без версии — «неизвестно», а не «заблокировано».** Для действия из
++`guarded_actions` сухой прогон без переданной версии отвечает `unknown`:
++поднимать `fail` значило бы утверждать, что мост знает версию running-КОМПАСа.
++Версия читается только когда действие действительно защищено — так же, как в
++воркере.
++
++**Сухой прогон ничего не делает.** В ответе всегда `would_execute: false`. Тест
++сверяет байтовый хэш целевого файла и список файлов рабочего каталога до и
++после: ни записи, ни новых файлов.
++
++**Всё, что требует COM, уходит в `unverifiable`.** Сухой прогон не обещает, что
++интерфейс существует, что геометрия получится или что чтение после перезаписи
++подтвердит изменение. В `limits` прямо сказано: прогон доказывает, что ничего
++обнаружимого не мешает, а не то, что вызов удастся.
++
++## Попутно исправлено
++
++- У `kompas_open_copy` отсутствовали `annotations`. Теперь они есть у всех
++  инструментов — это проверяется тестом `test_every_tool_has_annotations`.
++
++## Что изменится для оператора
++
++- Один новый инструмент; число инструментов 47.
++- Ожидания в `tests/test_wave1..5.py` обновлены с 46 на 47 осознанно.
++- Для агента появился обязательный шаг: перед мутирующим вызовом —
++  `kompas_dry_run`, раздел «Dry run before a mutating call» в `SKILL.md`.
++
++## Как проверить
++
++```bash
++python -m unittest discover -s tests -p "test_wave6.py" -v
++python tests/test_mcp_stdio.py          # PASS test_mcp_stdio 47
++```
++
++## Что намеренно не сделано
++
++1. Добавление `dry_run` в схему каждого мутирующего инструмента — один
++   предпросмотр покрывает их все и не расходится по реализациям.
++2. Проверки, требующие КОМПАС: существование интерфейса, состав сборки,
++   достижимость селектора. Они в `unverifiable`.
++3. Откат по результату сухого прогона: он и так ничего не меняет.
++4. Подтверждение на живом КОМПАСе — стенда не было.
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index 8d7103e..cda6aa2 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -90,6 +90,7 @@ TOOLS = [
+     {"name":"kompas_dialogs","description":"Scan KOMPAS for stuck modal dialogs and report which of them block the bridge. Deliberately avoids COM, because an Automation call would hang on the very dialog being diagnosed. apply=false only reports; apply=true closes at most three informational dialogs whose policy is close. Dialogs that ask to save, choose or confirm are never closed automatically - they are reported for a human to decide.","inputSchema":{"type":"object","properties":{"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
+     {"name":"kompas_version_check","description":"Read the running KOMPAS version and its verdict against the version support matrix from config (kompas.version_matrix): matched pattern, support level, and which actions are guarded. Call it before trusting a write on an unfamiliar KOMPAS build. An empty matrix means 'not verified', not 'supported'. Pass version explicitly to evaluate a build without a running KOMPAS.","inputSchema":{"type":"object","properties":{"version":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_export","description":"Export the active document to STEP, DXF or PDF into the bridge work directory and verify the produced file by its content in the same call. A KOMPAS export method raises nothing even when the file ends up empty or truncated, so a returned call is never treated as proof: the artifact is checked by signature, sections, entity counts or page count, and ok=false means the export failed. apply=false is a dry run that reports the plan and the method names it would try, without any COM call. SaveAs is deliberately excluded from the method list because it overwrites the document itself. When verification fails the file is kept for inspection, not deleted.","inputSchema":{"type":"object","required":["relative_path","format"],"properties":{"relative_path":{"type":"string","minLength":1},"format":{"type":"string","enum":["step","dxf","pdf"]},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++    {"name":"kompas_dry_run","description":"Plan a mutating call without executing it: checks the argument schema, resolves the target file, and verifies path policy (inside the work directory, writable, not protected, _AGENT_COPY where required), the version guard and the job allow-list. Returns verdict blocked / ready_with_unknowns / ready. It never opens, writes or saves anything and never claims the call would succeed - everything that needs Automation is listed under unverifiable instead of guessed. Pass version to evaluate a version-guarded action.","inputSchema":{"type":"object","required":["tool"],"properties":{"tool":{"type":"string","minLength":1},"arguments":{"type":"object"},"version":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_drawing_info","description":"Read the 2D document inventory of the active drawing or fragment: sheet count, per-sheet format (width, height, format id, name) and the view inventory with name, scale and projection type when the view collection resolves. Use it before any drawing edit to confirm which sheet and which views exist, and to learn the sheet index the stamp tools need. Fails with a clear error when the active document is a 3D model.","inputSchema":{"type":"object","properties":{"sheet_index":{"type":"integer","minimum":0,"maximum":99},"max_views":{"type":"integer","minimum":1,"maximum":200,"default":50},"include_views":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_stamp_read","description":"Read cells of the title block (stamp) of the active 2D document by cell number. Pass explicit cells to read chosen numbers, or omit them to read the first 60 so you can map the block of this template once. Cell numbering follows the title block style of the document, so the bridge reports numbers and values and does not invent names for them. An empty value means empty, not missing.","inputSchema":{"type":"object","properties":{"cells":{"type":"array","items":{"type":"integer","minimum":1,"maximum":200},"minItems":1,"maxItems":200},"sheet_index":{"type":"integer","minimum":0,"maximum":99}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_stamp_write","description":"Write text into title block cells of the active 2D document, at most 20 cells per call, each text up to 255 characters with no control characters. Requires the active document to be a saved _AGENT_COPY inside approved bridge roots. Takes a checkpoint first, writes, reads every cell back, then Save, Close and Reopen and reads back again; any mismatch rolls the file back from the checkpoint and reports the checkpoint id. Set checkpoint to false only if you have another snapshot.","inputSchema":{"type":"object","required":["cells"],"properties":{"cells":{"type":"object","minProperties":1,"maxProperties":20,"additionalProperties":{"type":"string","maxLength":255}},"sheet_index":{"type":"integer","minimum":0,"maximum":99},"checkpoint":{"type":"boolean","default":True}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":True,"idempotentHint":True}},
+@@ -114,7 +115,7 @@ TOOLS = [
+ WRAPPER_SIDE_TOOLS: Tuple[str, ...] = ['kompas_open_copy', 'kompas_component_translate_xy']
+ 
+ TOOLS.extend([
+-    {"name":"kompas_open_copy","description":"Create a disposable working COPY and open it as the active visible writable KOMPAS document. Source is never edited directly. Omit source to use the active document. name must be a filename only.","inputSchema":{"type":"object","properties":{"source":{"type":"string"},"name":{"type":"string"}},"additionalProperties":False}},
++    {"name":"kompas_open_copy","description":"Create a disposable working COPY and open it as the active visible writable KOMPAS document. Source is never edited directly. Omit source to use the active document. name must be a filename only.","inputSchema":{"type":"object","properties":{"source":{"type":"string"},"name":{"type":"string"}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False,"idempotentHint":False}},
+     {"name":"kompas_component_translate_xy","description":"COPY-only bounded real geometry translation for one top-level component. Moves component origin in assembly XY by at most 5 mm per call. apply=false is dry-run. apply=true requires exact expected_name. Never saves automatically; perform API and fresh viewport QA before kompas_save.","inputSchema":{"type":"object","required":["selector","dx_mm","dy_mm"],"properties":{"selector":{"type":"integer","minimum":0},"expected_name":{"type":"string","minLength":1},"dx_mm":{"type":"number","minimum":-5,"maximum":5},"dy_mm":{"type":"number","minimum":-5,"maximum":5},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
+ ])
+ 
+@@ -152,6 +153,7 @@ ACTION_MAP = {
+     "kompas_version_check": ("version.check", lambda a: a),
+     "kompas_export": ("export.file", lambda a: a),
+     "kompas_checkpoints": ("checkpoint.manage", lambda a: a),
++    "kompas_dry_run": ("dryrun.plan", lambda a: a),
+     "kompas_drawing_info": ("drawing.info", lambda a: a),
+     "kompas_stamp_read": ("stamp.read", lambda a: a),
+     "kompas_stamp_write": ("stamp.write", lambda a: a),
+diff --git a/skills/kompas-engineering/SKILL.md b/skills/kompas-engineering/SKILL.md
+index ee40dc0..c76125b 100644
+--- a/skills/kompas-engineering/SKILL.md
++++ b/skills/kompas-engineering/SKILL.md
+@@ -59,6 +59,13 @@ Read them from the model/source requirements or explicitly mark them unresolved.
+ - Snapshots accumulate. Run `prune` with a `keep` value as regular maintenance.
+ - A snapshot is file-level. It does not undo a change to a document that KOMPAS still holds open and unsaved.
+ 
++## Dry run before a mutating call
++- Run `kompas_dry_run` with the tool name and the arguments you intend to pass. It checks the argument schema, resolves the target file, and verifies path policy, the version guard and the job allow-list - without opening, writing or saving anything.
++- `verdict: blocked` means a named check failed. Read `blocking_checks` and fix the cause; do not retry the real call hoping it behaves differently.
++- `verdict: ready_with_unknowns` means nothing detectable blocks the call, but something could not be answered without Automation. Look at `unknown_checks` before proceeding - for actions on the active document, run `kompas_active_document` first and then re-run the dry run.
++- `ready` is not a promise that the operation succeeds. Everything that needs the live application is listed under `unverifiable` instead of being guessed.
++- A dry run for a read-only tool adds nothing; it says so instead of inventing work.
++
+ ## Drawings, title block, specification
+ - A 3D model and a 2D drawing are different documents. Before any drawing work, confirm which document is active with `kompas_active_document`; `kompas_drawing_info` refuses a 3D document with a clear error instead of silently reading nothing.
+ - Use `kompas_drawing_info` to learn the sheet count, the format of each sheet and the sheet index the stamp tools need. It also lists views when the view collection resolves; `confirmed: false` means the bridge could not reach the view collection - that is not the same answer as "there are no views".
+diff --git b/src/dryrun.py b/src/dryrun.py
+new file mode 100644
+index 0000000..e840ea1
+--- /dev/null
++++ b/src/dryrun.py
+@@ -0,0 +1,476 @@
++"""Dry run (preflight) for mutating tools.
++
++A dry run answers one question: *what stands between these arguments and the
++first COM call?* It never opens, writes or saves anything, and it never claims
++the operation would succeed - only that nothing detectable blocks it.
++
++Everything here is pure: file policy, argument schema, path resolution, the
++version guard and the job allow-list. Anything that needs Automation is
++reported under ``unverifiable`` instead of being guessed.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any, Dict, List, Optional, Tuple
++
++# --------------------------------------------------------------------------
++# declarative manifest: what each mutating action touches
++# --------------------------------------------------------------------------
++#
++# kind:
++#   create  - makes a new file, target must NOT exist
++#   modify  - rewrites an existing file
++#   export  - writes a new artifact next to the source
++#   restore - overwrites an existing file from a snapshot
++#   script  - arbitrary code behind the allow-list
++#   view    - temporary visual state, no file write
++#   ui      - window management, no file write
++#   document - document lifecycle (save/close/reopen)
++#
++ACTION_PREFLIGHT: Dict[str, Dict[str, Any]] = {
++    "part.create": {"kind": "create", "target_key": "filename", "suffix": ".m3d"},
++    "part.primitive": {"kind": "modify", "target_key": "filename", "suffix": ".m3d", "agent_copy": True},
++    "part.hole": {"kind": "modify", "target_key": "filename", "suffix": ".m3d", "agent_copy": True},
++    "assembly.create": {"kind": "create", "target_key": "filename", "suffix": ".a3d"},
++    "assembly.insert_component": {"kind": "modify", "target_key": "assembly_filename", "suffix": ".a3d", "agent_copy": True},
++    "component.transform": {"kind": "modify", "target_key": "assembly_filename", "suffix": ".a3d", "agent_copy": True},
++    "component.pattern_linear": {"kind": "modify", "target_key": "assembly_filename", "suffix": ".a3d", "agent_copy": True},
++    "component.properties_set": {"kind": "modify", "target_key": "assembly_filename", "suffix": ".a3d", "agent_copy": True},
++    "mate.create": {"kind": "modify", "target_key": "assembly_filename", "suffix": ".a3d", "agent_copy": True},
++    "material.set": {"kind": "modify", "target_key": "filename", "suffix": ".m3d", "agent_copy": True},
++    "pmi.dimension_create": {"kind": "modify", "target_key": "filename", "suffix": ".m3d", "agent_copy": True},
++    "stamp.write": {"kind": "modify", "target_key": None, "active_document": True, "agent_copy": True},
++    "export.file": {"kind": "export", "target_key": "relative_path", "suffix": None, "agent_copy": False},
++    "checkpoint.manage": {"kind": "restore", "target_key": "target", "suffix": None, "agent_copy": False},
++    "run_job": {"kind": "script", "target_key": "script", "allowlist": True},
++    "dialogs.watch": {"kind": "ui", "target_key": None},
++    "view.set": {"kind": "view", "target_key": None},
++    "view.fit": {"kind": "view", "target_key": None},
++    "view.rotate": {"kind": "view", "target_key": None},
++    "view.visibility": {"kind": "view", "target_key": None},
++    "document.save": {"kind": "document", "target_key": None},
++    "document.close": {"kind": "document", "target_key": None},
++    "document.reopen": {"kind": "document", "target_key": None},
++    "dryrun.plan": {"kind": "none", "target_key": None},
++}
++
++KIND_NOTES = {
++    "create": "Creates a new file; the target must not exist yet.",
++    "modify": "Rewrites an existing file.",
++    "export": "Writes a new artifact; the source document is not modified.",
++    "restore": "Overwrites an existing file from a snapshot.",
++    "script": "Runs a script from the allow-list; its own effects are not predictable from arguments.",
++    "view": "Temporary visual state only; no file is written.",
++    "ui": "Window management only; no file is written.",
++    "document": "Document lifecycle; acts on the active document.",
++    "none": "Does not touch KOMPAS at all.",
++}
++
++GENERAL_UNVERIFIABLE = [
++    "Whether the KOMPAS interface this action needs exists on the running build.",
++    "Whether the operation produces the intended geometry or text.",
++    "Whether readback after Save, Close and Reopen confirms the change.",
++    "Whether a modal dialog appears during the call.",
++]
++
++
++# --------------------------------------------------------------------------
++# minimal JSON Schema validation (the subset the catalog actually uses)
++# --------------------------------------------------------------------------
++
++
++def _type_name(value: Any) -> str:
++    if isinstance(value, bool):
++        return "boolean"
++    if isinstance(value, int):
++        return "integer"
++    if isinstance(value, float):
++        return "number"
++    if isinstance(value, str):
++        return "string"
++    if isinstance(value, list):
++        return "array"
++    if isinstance(value, dict):
++        return "object"
++    if value is None:
++        return "null"
++    return type(value).__name__
++
++
++def _matches_type(value: Any, expected: str) -> bool:
++    actual = _type_name(value)
++    if expected == "number":
++        return actual in ("integer", "number")
++    if expected == "integer":
++        return actual == "integer"
++    return actual == expected
++
++
++def validate_value(value: Any, schema: Dict[str, Any], path: str, problems: List[Dict[str, str]]):
++    if not isinstance(schema, dict):
++        return
++
++    if "oneOf" in schema:
++        if not any(_try_schema(value, sub) for sub in schema["oneOf"]):
++            problems.append({"path": path, "problem": "value matches none of the oneOf branches"})
++        return
++
++    expected = schema.get("type")
++    if expected:
++        names = expected if isinstance(expected, list) else [expected]
++        if not any(_matches_type(value, name) for name in names):
++            problems.append(
++                {"path": path, "problem": "expected type %s, got %s" % ("/".join(names), _type_name(value))}
++            )
++            return
++
++    if "enum" in schema and value not in schema["enum"]:
++        problems.append(
++            {"path": path, "problem": "value %r is not one of %s" % (value, schema["enum"])}
++        )
++
++    if isinstance(value, bool):
++        return
++
++    if isinstance(value, (int, float)):
++        for key, word in (("minimum", "below minimum"), ("exclusiveMinimum", "at or below exclusive minimum")):
++            limit = schema.get(key)
++            if limit is not None and value < limit:
++                problems.append({"path": path, "problem": "%s %s" % (word, limit)})
++        for key, word in (("maximum", "above maximum"), ("exclusiveMaximum", "at or above exclusive maximum")):
++            limit = schema.get(key)
++            if limit is not None and value > limit:
++                problems.append({"path": path, "problem": "%s %s" % (word, limit)})
++
++    if isinstance(value, str):
++        if "minLength" in schema and len(value) < schema["minLength"]:
++            problems.append({"path": path, "problem": "shorter than minLength %s" % schema["minLength"]})
++        if "maxLength" in schema and len(value) > schema["maxLength"]:
++            problems.append({"path": path, "problem": "longer than maxLength %s" % schema["maxLength"]})
++
++    if isinstance(value, list):
++        if "minItems" in schema and len(value) < schema["minItems"]:
++            problems.append({"path": path, "problem": "fewer than minItems %s" % schema["minItems"]})
++        if "maxItems" in schema and len(value) > schema["maxItems"]:
++            problems.append({"path": path, "problem": "more than maxItems %s" % schema["maxItems"]})
++        items = schema.get("items")
++        if isinstance(items, dict):
++            for index, item in enumerate(value):
++                validate_value(item, items, "%s[%d]" % (path, index), problems)
++
++    if isinstance(value, dict):
++        for key in schema.get("required", []):
++            if key not in value:
++                problems.append({"path": path or "<root>", "problem": "missing required property %r" % key})
++        properties = schema.get("properties", {})
++        for key, item in value.items():
++            sub_schema = properties.get(key)
++            if sub_schema is None:
++                extra = schema.get("additionalProperties")
++                if extra is False:
++                    problems.append({"path": path, "problem": "unexpected property %r" % key})
++                elif isinstance(extra, dict):
++                    validate_value(item, extra, "%s.%s" % (path, key), problems)
++            else:
++                validate_value(item, sub_schema, "%s.%s" % (path, key), problems)
++        if "minProperties" in schema and len(value) < schema["minProperties"]:
++            problems.append({"path": path, "problem": "fewer than minProperties %s" % schema["minProperties"]})
++        if "maxProperties" in schema and len(value) > schema["maxProperties"]:
++            problems.append({"path": path, "problem": "more than maxProperties %s" % schema["maxProperties"]})
++
++
++def _try_schema(value: Any, schema: Dict[str, Any]) -> bool:
++    problems: List[Dict[str, str]] = []
++    validate_value(value, schema, "", problems)
++    return not problems
++
++
++def validate_arguments(schema: Dict[str, Any], arguments: Dict[str, Any]) -> List[Dict[str, str]]:
++    problems: List[Dict[str, str]] = []
++    validate_value(arguments, schema, "", problems)
++    return problems
++
++
++# --------------------------------------------------------------------------
++# preflight
++# --------------------------------------------------------------------------
++
++
++def _check(name: str, status: str, detail: str = "") -> Dict[str, str]:
++    return {"check": name, "status": status, "detail": detail}
++
++
++def _resolve_target(root: Path, work: Path, raw: str) -> Tuple[Optional[Path], Optional[str]]:
++    if not isinstance(raw, str) or not raw.strip():
++        return None, "target argument is empty"
++    candidate = Path(raw.strip().replace("/", "\\"))
++    if candidate.is_absolute():
++        return None, "target must be relative to the bridge work directory"
++    target = (work / candidate).resolve()
++    try:
++        target.relative_to(work)
++    except Exception:
++        return None, "target escapes the bridge work directory"
++    return target, None
++
++
++def preflight(
++    bridge_root: Any,
++    tool_name: str,
++    arguments: Optional[Dict[str, Any]] = None,
++    version: Optional[str] = None,
++    tool_index: Optional[Dict[str, Dict[str, Any]]] = None,
++    action_map: Optional[Dict[str, Tuple[str, Any]]] = None,
++) -> Dict[str, Any]:
++    """Build a dry-run report. Never touches KOMPAS and never writes anything."""
++    from settings import settings_for
++
++    if tool_index is None or action_map is None:
++        from tools_catalog import ACTION_MAP, TOOL_INDEX
++
++        tool_index = tool_index or TOOL_INDEX
++        action_map = action_map or ACTION_MAP
++
++    arguments = dict(arguments or {})
++    checks: List[Dict[str, str]] = []
++    unverifiable = list(GENERAL_UNVERIFIABLE)
++    notes: List[str] = []
++
++    tool = tool_index.get(str(tool_name or ""))
++    if tool is None:
++        return {
++            "tool": str(tool_name or ""),
++            "action": None,
++            "known_tool": False,
++            "would_execute": False,
++            "verdict": "blocked",
++            "checks": [_check("tool_known", "fail", "unknown tool %r" % str(tool_name or ""))],
++            "unverifiable": unverifiable,
++            "limits": ["A dry run for an unknown tool cannot say anything useful."],
++        }
++
++    entry = action_map.get(tool["name"])
++    action = entry[0] if entry else None
++    annotations = tool.get("annotations") or {}
++    read_only = annotations.get("readOnlyHint") is True
++    spec = ACTION_PREFLIGHT.get(action or "", {})
++
++    checks.append(_check("tool_known", "pass", tool["name"]))
++    checks.append(
++        _check(
++            "mutating",
++            "pass" if not read_only else "note",
++            "action=%s" % action if not read_only else "tool is read-only; a dry run adds nothing",
++        )
++    )
++
++    if not spec:
++        checks.append(
++            _check(
++                "manifest_coverage",
++                "unknown",
++                "action %r has no preflight manifest entry; only the argument schema was checked" % action,
++            )
++        )
++        unverifiable.append("What files this action touches (not described in the preflight manifest).")
++
++    # --- arguments -------------------------------------------------------
++    problems = validate_arguments(tool.get("inputSchema") or {}, arguments)
++    checks.append(
++        _check(
++            "arguments",
++            "pass" if not problems else "fail",
++            "schema ok" if not problems else "%d problem(s)" % len(problems),
++        )
++    )
++
++    # --- target ----------------------------------------------------------
++    root = Path(bridge_root).resolve()
++    policy = settings_for(root)
++    work = Path(policy.work_dir).resolve()
++    kind = spec.get("kind")
++    target_key = spec.get("target_key")
++    target: Optional[Path] = None
++
++    if kind in ("view", "ui", "document"):
++        checks.append(_check("file_target", "note", KIND_NOTES.get(kind, "")))
++        if kind == "document":
++            unverifiable.append("Which document will be active when the call runs.")
++    elif target_key is None:
++        checks.append(
++            _check(
++                "file_target",
++                "unknown",
++                "action %r works on the active document; run kompas_active_document to know what that is" % action,
++            )
++        )
++    elif target_key not in arguments:
++        checks.append(_check("file_target", "unknown", "no %r argument supplied" % target_key))
++    else:
++        raw = arguments[target_key]
++        if kind == "script":
++            jobs = _allowlist_names(root)
++            name = str(raw or "")
++            allowed = name in jobs
++            checks.append(
++                _check(
++                    "job_allowlist",
++                    "pass" if allowed else "fail",
++                    "allowed jobs: %s" % (sorted(jobs) or "none - allow-list is empty or missing"),
++                )
++            )
++        else:
++            target, error = _resolve_target(root, work, raw)
++            if error:
++                checks.append(_check("target_path", "fail", error))
++            else:
++                checks.append(_check("target_path", "pass", str(target)))
++                exists = target.is_file()
++                if kind == "create":
++                    checks.append(
++                        _check(
++                            "target_absent",
++                            "pass" if not exists else "fail",
++                            "must not exist for a create action",
++                        )
++                    )
++                else:
++                    checks.append(
++                        _check(
++                            "target_exists",
++                            "pass" if exists else "fail",
++                            str(target) if exists else "file not found",
++                        )
++                    )
++                    suffix = spec.get("suffix")
++                    if suffix:
++                        ok = target.suffix.lower() == suffix
++                        checks.append(
++                            _check("target_suffix", "pass" if ok else "fail", "expected %s" % suffix)
++                        )
++                    if spec.get("agent_copy"):
++                        ok = "_agent_copy" in target.stem.lower()
++                        checks.append(
++                            _check(
++                                "agent_copy",
++                                "pass" if ok else "fail",
++                                "stem must contain _AGENT_COPY",
++                            )
++                        )
++                    if exists:
++                        writable = policy.is_writable(target)
++                        checks.append(
++                            _check("write_root", "pass" if writable else "fail", str(target.parent))
++                        )
++                        protected = policy.is_protected(target)
++                        checks.append(
++                            _check(
++                                "not_protected",
++                                "pass" if not protected else "fail",
++                                "path is inside a protected root" if protected else "",
++                            )
++                        )
++
++    # --- version guard ---------------------------------------------------
++    guard = _version_guard(root, action, version)
++    checks.append(guard["check"])
++    if guard["check"]["status"] == "unknown":
++        unverifiable.append("Whether the version guard allows this action on the running build.")
++
++    # --- verdict ---------------------------------------------------------
++    failed = [row for row in checks if row["status"] == "fail"]
++    unknown = [row for row in checks if row["status"] == "unknown"]
++    if failed:
++        verdict = "blocked"
++    elif unknown:
++        verdict = "ready_with_unknowns"
++    else:
++        verdict = "ready"
++
++    if not read_only:
++        notes.append("Nothing was executed, opened, written or saved.")
++    if kind == "modify":
++        notes.append("A checkpoint is taken before the write when the tool supports it.")
++    if kind == "script":
++        notes.append("The allow-list is a boundary for the script name, not for what the script does.")
++
++    return {
++        "tool": tool["name"],
++        "action": action,
++        "known_tool": True,
++        "read_only_tool": read_only,
++        "kind": kind,
++        "kind_note": KIND_NOTES.get(kind, ""),
++        "would_execute": False,
++        "verdict": verdict,
++        "blocking_checks": [row["check"] for row in failed],
++        "unknown_checks": [row["check"] for row in unknown],
++        "checks": checks,
++        "argument_problems": problems,
++        "target": str(target) if target is not None else None,
++        "work_directory": str(work),
++        "version_guard": guard["detail"],
++        "unverifiable": unverifiable,
++        "notes": notes,
++        "limits": [
++            "A dry run proves that nothing detectable blocks the call. It does not prove the call succeeds.",
++            "Checks that need Automation are listed under unverifiable instead of being guessed.",
++        ],
++    }
++
++
++def _allowlist_names(root: Path) -> set:
++    try:
++        from jobs import allowed_jobs
++
++        return {str(row.get("name") or row.get("id") or "") for row in allowed_jobs(root)}
++    except Exception:
++        return set()
++
++
++def _version_guard(root: Path, action: Optional[str], version: Optional[str]) -> Dict[str, Any]:
++    """Версия читается только если действие защищено - как и в воркере.
++
++    Без переданной версии честный ответ «неизвестно»: поднимать «заблокировано»
++    значило бы утверждать, что мы знаем версию running-КОМПАСа.
++    """
++    try:
++        from settings import settings_for
++        from version_matrix import guard_action, load_matrix
++
++        matrix = settings_for(root).version_matrix
++        guarded = (action or "") in load_matrix(matrix)["guarded_actions"]
++    except Exception as exc:
++        return {
++            "check": _check("version_guard", "unknown", "matrix unavailable: %s" % type(exc).__name__),
++            "detail": {"guarded": None, "allowed": None},
++        }
++
++    if not guarded:
++        return {
++            "check": _check("version_guard", "pass", "action is not version-guarded"),
++            "detail": {"guarded": False, "allowed": True},
++        }
++
++    if not version:
++        return {
++            "check": _check(
++                "version_guard",
++                "unknown",
++                "action is version-guarded; pass version to evaluate it",
++            ),
++            "detail": {"guarded": True, "allowed": None},
++        }
++
++    try:
++        result = guard_action(action or "", version, matrix)
++    except RuntimeError as exc:
++        return {
++            "check": _check("version_guard", "fail", str(exc)),
++            "detail": {"guarded": True, "allowed": False},
++        }
++    return {
++        "check": _check("version_guard", "pass", "guarded action allowed on this version"),
++        "detail": result,
++    }
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index ffd1d81..7f3a18a 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -25,6 +25,7 @@ from version_matrix import classify_version
+ from export_tools import export_file, manage_checkpoints
+ from drawing_tools import drawing_info, stamp_read, stamp_write
+ from spec_tools import specification_read
++from dryrun import preflight
+ from view_tools import set_view, fit, rotate, visibility, projections
+ 
+ 
+@@ -171,6 +172,7 @@ def drawing_information(s, p): return ok("drawing.info", drawing_info(s, p.get("
+ def stamp_information(s, p): return ok("stamp.read", stamp_read(s, p.get("cells"), p.get("sheet_index")))
+ def stamp_update(s, p): return ok("stamp.write", stamp_write(s, p["cells"], p.get("sheet_index"), p.get("checkpoint", True)))
+ def specification_report(s, p): return ok("specification.read", specification_read(s, p.get("max_depth", 8)))
++def dry_run(s, p): return ok("dryrun.plan", preflight(s.root, p["tool"], p.get("arguments"), p.get("version")))
+ 
+ 
+ def dialogs_watch(s, p):
+@@ -308,6 +310,7 @@ registry = {
+     "stamp.read": stamp_information,
+     "stamp.write": stamp_update,
+     "specification.read": specification_report,
++    "dryrun.plan": dry_run,
+     "dialogs.watch": dialogs_watch,
+     "version.check": version_check,
+     "model.bbox": bbox,
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index bee4f3a..bf1ddd0 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,47 +6,53 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/9] Python compileall"
++Write-Host "[1/10] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/9] MCP stdio contract"
++Write-Host "[2/10] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/9] MCP file-routing + image attachment contract"
++Write-Host "[3/10] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/9] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Write-Host "[4/10] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 1 tests failed" }
+-Write-Host "[5/9] Wave 2: assembly mates, artifact verification"
++Write-Host "[5/10] Wave 2: assembly mates, artifact verification"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave2.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 2 tests failed" }
+-Write-Host "[6/9] Wave 3: modal dialog watchdog, version support matrix"
++Write-Host "[6/10] Wave 3: modal dialog watchdog, version support matrix"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave3.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 3 tests failed" }
+-Write-Host "[7/9] Wave 4: verified export, checkpoints"
++Write-Host "[7/10] Wave 4: verified export, checkpoints"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave4.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 4 tests failed" }
+-Write-Host "[8/9] Wave 5: drawings, stamp, specification"
++Write-Host "[8/10] Wave 5: drawings, stamp, specification"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave5.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 5 tests failed" }
+-Write-Host "[9/9] Required files"
+-$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\checkpoint.py","src\export_tools.py","src\drawing_tools.py","src\spec_tools.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\test_wave4.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[9/10] Wave 6: dry run for mutating tools"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave6.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 6 tests failed" }
++Write-Host "[10/10] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\checkpoint.py","src\export_tools.py","src\drawing_tools.py","src\spec_tools.py","src\dryrun.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\test_wave4.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index 4378298..195aaf5 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 46, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 47, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 2726afe..c2c13fe 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -321,7 +321,7 @@ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 46)
++        self.assertEqual(len(tools_catalog.TOOLS), 47)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index f58a621..8d02a07 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -315,7 +315,7 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ class TestCatalogWave3(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 46)
++        self.assertEqual(len(tools_catalog.TOOLS), 47)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git a/tests/test_wave4.py b/tests/test_wave4.py
+index b5abb46..ae45997 100644
+--- a/tests/test_wave4.py
++++ b/tests/test_wave4.py
+@@ -317,7 +317,7 @@ class TestCheckpointManagement(TempRootCase):
+ 
+ class TestCatalogWave4(unittest.TestCase):
+     def test_tool_count_is_42(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 46)
++        self.assertEqual(len(tools_catalog.TOOLS), 47)
+ 
+     def test_new_tools_are_routed(self):
+         self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
+diff --git a/tests/test_wave5.py b/tests/test_wave5.py
+index 5bcbedc..eb863ea 100644
+--- a/tests/test_wave5.py
++++ b/tests/test_wave5.py
+@@ -392,7 +392,7 @@ class TestSpecificationClassification(unittest.TestCase):
+ 
+ class TestCatalogSurface(unittest.TestCase):
+     def test_tool_count_is_46(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 46)
++        self.assertEqual(len(tools_catalog.TOOLS), 47)
+ 
+     def test_new_tools_exist_and_route(self):
+         expected = {
+diff --git b/tests/test_wave6.py b/tests/test_wave6.py
+new file mode 100644
+index 0000000..29b3b97
+--- /dev/null
++++ b/tests/test_wave6.py
+@@ -0,0 +1,453 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 6»: сухой прогон (dry run) мутирующих инструментов.
++
++Все тесты работают без КОМПАСа, без COM и без сети. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave6.py" -v
++
++Что проверяется по существу:
++
++* сухой прогон ничего не выполняет: файлы остаются побайтово теми же, новых
++  файлов в рабочем каталоге не появляется;
++* заблокированный вызов назван заблокированным, а не «вероятно сработает»;
++* манифест предпросмотра покрывает каждое мутирующее действие каталога -
++  иначе сухой прогон молча проверит только схему аргументов;
++* то, что требует Automation, попадает в `unverifiable`, а не угадывается;
++* без переданной версии защищённое действие даёт «неизвестно», а не
++  «заблокировано»: мост не делает вид, что знает версию running-КОМПАСа.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import dryrun          # noqa: E402
++import settings        # noqa: E402
++import tools_catalog   # noqa: E402
++
++
++def _sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++class DryRunCase(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.TemporaryDirectory(prefix="kompas_wave6_")
++        self.root = Path(self._tmp.name).resolve()
++        self.work = self.root / "work"
++        self.work.mkdir(parents=True, exist_ok=True)
++        settings.reset_cache()
++
++    def tearDown(self):
++        settings.reset_cache()
++        self._tmp.cleanup()
++
++    def write_config(self, payload):
++        config_dir = self.root / "config"
++        config_dir.mkdir(parents=True, exist_ok=True)
++        (config_dir / "agent_config.json").write_text(
++            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
++        )
++        settings.reset_cache()
++
++    def write_allowlist(self, jobs):
++        jobs_dir = self.root / "jobs"
++        jobs_dir.mkdir(parents=True, exist_ok=True)
++        (jobs_dir / "allowlist.json").write_text(
++            json.dumps({"version": 1, "jobs": jobs}, ensure_ascii=False), encoding="utf-8"
++        )
++        settings.reset_cache()
++
++    def make_file(self, name: str, content: bytes = b"model") -> Path:
++        path = self.work / name
++        path.write_bytes(content)
++        return path
++
++    def plan(self, tool, arguments=None, version=None):
++        return dryrun.preflight(self.root, tool, arguments, version)
++
++    def status_of(self, report, check_name):
++        for row in report["checks"]:
++            if row["check"] == check_name:
++                return row["status"]
++        return None
++
++
++class TestSchemaValidation(DryRunCase):
++    """Минимальный валидатор схемы - первая линия сухого прогона."""
++
++    def _problems(self, tool, arguments):
++        tool_row = tools_catalog.TOOL_INDEX[tool]
++        return dryrun.validate_arguments(tool_row["inputSchema"], arguments)
++
++    def test_valid_arguments_pass(self):
++        problems = self._problems(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "src_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(problems, [])
++
++    def test_missing_required_is_reported(self):
++        problems = self._problems("kompas_material_set", {"filename": "a.m3d"})
++        self.assertTrue(any("required" in item["problem"] for item in problems))
++
++    def test_wrong_type_is_reported(self):
++        problems = self._problems("kompas_dry_run", {"tool": 42})
++        self.assertTrue(any("expected type" in item["problem"] for item in problems))
++
++    def test_enum_violation_is_reported(self):
++        problems = self._problems("kompas_mate_create", {"kind": "glue"})
++        self.assertTrue(any("not one of" in item["problem"] for item in problems))
++
++    def test_numeric_bounds_are_reported(self):
++        problems = self._problems(
++            "kompas_component_translate_xy",
++            {"selector": 0, "dx_mm": 99, "dy_mm": 0},
++        )
++        self.assertTrue(any("above maximum" in item["problem"] for item in problems))
++
++    def test_unexpected_property_is_reported(self):
++        problems = self._problems("kompas_dry_run", {"tool": "x", "extra": 1})
++        self.assertTrue(any("unexpected property" in item["problem"] for item in problems))
++
++    def test_array_item_bounds_are_reported(self):
++        problems = self._problems("kompas_stamp_read", {"cells": [1, 500]})
++        self.assertTrue(problems)
++
++    def test_oneOf_branch_is_accepted(self):
++        problems = self._problems(
++            "kompas_component_info", {"selector": [0, 2]}
++        )
++        self.assertEqual(problems, [])
++
++
++class TestNothingIsExecuted(DryRunCase):
++    def test_files_are_untouched(self):
++        target = self.make_file("part_AGENT_COPY.m3d", b"before")
++        before_hash = _sha256(target)
++        listing_before = sorted(p.name for p in self.work.iterdir())
++
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++        )
++
++        self.assertFalse(report["would_execute"])
++        self.assertEqual(_sha256(target), before_hash)
++        self.assertEqual(sorted(p.name for p in self.work.iterdir()), listing_before)
++        self.assertTrue(any("Nothing was executed" in note for note in report["notes"]))
++
++    def test_read_only_tool_is_marked_as_such(self):
++        report = self.plan("kompas_model_tree", {})
++        self.assertTrue(report["read_only_tool"])
++        self.assertEqual(self.status_of(report, "mutating"), "note")
++
++
++class TestTargetChecks(DryRunCase):
++    def test_ready_call_is_ready(self):
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(report["verdict"], "ready")
++        self.assertEqual(report["blocking_checks"], [])
++
++    def test_missing_file_blocks(self):
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "absent_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "absent_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "target_exists"), "fail")
++        self.assertEqual(report["verdict"], "blocked")
++        self.assertIn("target_exists", report["blocking_checks"])
++
++    def test_absolute_path_blocks(self):
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "C:/secret/model.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "x.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "target_path"), "fail")
++
++    def test_escaping_work_directory_blocks(self):
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "../outside_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "x.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "target_path"), "fail")
++
++    def test_wrong_extension_blocks(self):
++        self.make_file("drawing_AGENT_COPY.cdw")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "drawing_AGENT_COPY.cdw",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "drawing_AGENT_COPY.cdw",
++            },
++        )
++        self.assertEqual(self.status_of(report, "target_suffix"), "fail")
++
++    def test_without_agent_copy_blocks(self):
++        self.make_file("original.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "original.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "original.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "agent_copy"), "fail")
++
++    def test_create_action_refuses_existing_file(self):
++        self.make_file("new_part.m3d")
++        report = self.plan("kompas_part_create", {"filename": "new_part.m3d"})
++        self.assertEqual(self.status_of(report, "target_absent"), "fail")
++
++    def test_protected_path_blocks(self):
++        self.write_config(
++            {"safety": {"protected_roots": ["{bridge_root}/work/protected"]}}
++        )
++        protected = self.work / "protected"
++        protected.mkdir(parents=True, exist_ok=True)
++        (protected / "part_AGENT_COPY.m3d").write_bytes(b"model")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "protected/part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "protected/part_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "not_protected"), "fail")
++
++    def test_action_on_active_document_is_unknown_not_silent(self):
++        report = self.plan("kompas_stamp_write", {"cells": {"1": "text"}})
++        self.assertEqual(self.status_of(report, "file_target"), "unknown")
++        self.assertEqual(report["verdict"], "ready_with_unknowns")
++
++
++class TestVersionGuard(DryRunCase):
++    def test_unguarded_action_passes(self):
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "version_guard"), "pass")
++
++    def test_guarded_action_without_version_is_unknown(self):
++        self.write_config(
++            {
++                "kompas": {
++                    "version_matrix": {
++                        "default_level": "unverified",
++                        "entries": [],
++                        "guarded_actions": ["material.set"],
++                    }
++                }
++            }
++        )
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++        )
++        self.assertEqual(self.status_of(report, "version_guard"), "unknown")
++        self.assertEqual(report["verdict"], "ready_with_unknowns")
++
++    def test_guarded_action_on_unverified_version_blocks(self):
++        self.write_config(
++            {
++                "kompas": {
++                    "version_matrix": {
++                        "default_level": "unverified",
++                        "entries": [],
++                        "guarded_actions": ["material.set"],
++                    }
++                }
++            }
++        )
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++            version="25.0.0.1",
++        )
++        self.assertEqual(self.status_of(report, "version_guard"), "fail")
++
++    def test_guarded_action_on_certified_version_passes(self):
++        self.write_config(
++            {
++                "kompas": {
++                    "version_matrix": {
++                        "default_level": "unverified",
++                        "entries": [{"pattern": "25.*", "level": "certified", "notes": ""}],
++                        "guarded_actions": ["material.set"],
++                    }
++                }
++            }
++        )
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++            version="25.0.0.1",
++        )
++        self.assertEqual(self.status_of(report, "version_guard"), "pass")
++
++
++class TestJobAllowList(DryRunCase):
++    def test_unlisted_script_blocks(self):
++        self.write_allowlist([{"name": "job_template.py", "enabled": True}])
++        report = self.plan("kompas_run_job", {"script": "sneaky.py"})
++        self.assertEqual(self.status_of(report, "job_allowlist"), "fail")
++
++    def test_listed_script_passes(self):
++        self.write_allowlist([{"name": "job_template.py", "enabled": True}])
++        report = self.plan("kompas_run_job", {"script": "job_template.py"})
++        self.assertEqual(self.status_of(report, "job_allowlist"), "pass")
++
++    def test_missing_manifest_is_empty_not_allowed(self):
++        report = self.plan("kompas_run_job", {"script": "anything.py"})
++        self.assertEqual(self.status_of(report, "job_allowlist"), "fail")
++        detail = [row for row in report["checks"] if row["check"] == "job_allowlist"][0]
++        self.assertIn("none", detail["detail"])
++
++
++class TestUnknownToolAndLimits(DryRunCase):
++    def test_unknown_tool_is_blocked(self):
++        report = self.plan("kompas_teleport_model", {})
++        self.assertFalse(report["known_tool"])
++        self.assertEqual(report["verdict"], "blocked")
++
++    def test_unverifiable_is_not_empty(self):
++        self.make_file("part_AGENT_COPY.m3d")
++        report = self.plan(
++            "kompas_material_set",
++            {
++                "filename": "part_AGENT_COPY.m3d",
++                "material_name": "Steel",
++                "density": 7.85,
++                "evidence_source_relative_path": "part_AGENT_COPY.m3d",
++            },
++        )
++        self.assertTrue(report["unverifiable"])
++        self.assertTrue(any("interface" in item.lower() for item in report["unverifiable"]))
++
++    def test_limits_say_it_does_not_prove_success(self):
++        report = self.plan("kompas_model_tree", {})
++        self.assertTrue(any("does not prove" in item for item in report["limits"]))
++
++
++class TestManifestCoverage(unittest.TestCase):
++    """Сухой прогон без манифеста проверяет только схему - это надо ловить."""
++
++    def test_every_mutating_action_has_a_manifest_entry(self):
++        missing = []
++        for tool in tools_catalog.TOOLS:
++            if tool["name"] in tools_catalog.WRAPPER_SIDE_TOOLS:
++                continue  # обслуживается обёрткой, через воркер не идёт
++            if (tool.get("annotations") or {}).get("readOnlyHint") is True:
++                continue
++            entry = tools_catalog.ACTION_MAP.get(tool["name"])
++            action = entry[0] if entry else None
++            if action not in dryrun.ACTION_PREFLIGHT:
++                missing.append((tool["name"], action))
++        self.assertEqual(missing, [], "нет записи в ACTION_PREFLIGHT: %s" % missing)
++
++    def test_every_manifest_action_exists_in_the_catalog(self):
++        known = {
++            entry[0] for entry in tools_catalog.ACTION_MAP.values() if isinstance(entry, (list, tuple))
++        }
++        stale = [action for action in dryrun.ACTION_PREFLIGHT if action not in known]
++        self.assertEqual(stale, [], "устаревшая запись манифеста: %s" % stale)
++
++    def test_every_kind_has_a_note(self):
++        for action, spec in dryrun.ACTION_PREFLIGHT.items():
++            self.assertIn(spec.get("kind"), dryrun.KIND_NOTES, action)
++
++
++class TestCatalogSurface(unittest.TestCase):
++    def test_tool_count_is_47(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 47)
++
++    def test_dry_run_tool_exists_and_is_read_only(self):
++        self.assertIn("kompas_dry_run", tools_catalog.TOOL_INDEX)
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_dry_run"][0], "dryrun.plan")
++        self.assertTrue(
++            tools_catalog.TOOL_INDEX["kompas_dry_run"]["annotations"]["readOnlyHint"]
++        )
++
++    def test_every_tool_has_annotations(self):
++        for tool in tools_catalog.TOOLS:
++            self.assertIn("annotations", tool, tool["name"])
++
++
++if __name__ == "__main__":
++    unittest.main()

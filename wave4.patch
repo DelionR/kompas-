@@ -1,0 +1,1281 @@
+diff --git a/VERSION.json b/VERSION.json
+index 4afdc49..624be40 100644
+--- a/VERSION.json
++++ b/VERSION.json
+@@ -3,8 +3,11 @@
+   "worker_version": "1.1.14_CAP2",
+   "protocol_version": "1.1.11",
+   "mcp_protocol_version": "2025-11-25",
+-  "mcp_supported_protocol_versions": ["2025-06-18", "2025-11-25"],
+-  "mcp_tool_count": 40,
++  "mcp_supported_protocol_versions": [
++    "2025-06-18",
++    "2025-11-25"
++  ],
++  "mcp_tool_count": 42,
+   "mcp_tools": [
+     "kompas_status",
+     "kompas_active_document",
+@@ -33,6 +36,8 @@
+     "kompas_artifact_check",
+     "kompas_dialogs",
+     "kompas_version_check",
++    "kompas_export",
++    "kompas_checkpoints",
+     "kompas_model_bbox",
+     "kompas_set_view",
+     "kompas_fit_view",
+diff --git b/docs/WAVE4_CHANGES.md b/docs/WAVE4_CHANGES.md
+new file mode 100644
+index 0000000..1761891
+--- /dev/null
++++ b/docs/WAVE4_CHANGES.md
+@@ -0,0 +1,145 @@
++# Волна 4: экспорт с проверкой результата и контрольные точки
++
++Изменения четвёртого приоритета: экспорт перестал считаться выполненным по
++факту возврата из COM-метода, а снимки перед записью превратились из
++одноразовых файлов в управляемые контрольные точки.
++
++Всё проверяется **без КОМПАСа**: 31 тест в `tests/test_wave4.py` плюс 42 теста
++волны 1, 39 - волны 2, 41 - волны 3 и контрактные тесты.
++
++## Проверка
++
++```powershell
++cd <bridge_root>
++python -m unittest discover -s tests -p "test_wave4.py" -v
++powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\RUN_STATIC_TESTS.ps1 -Root (Resolve-Path .)
++```
++
++## Что сделано
++
++### 1. Экспорт с обязательной проверкой (B4)
++
++**Было.** Волна 2 дала `kompas_artifact_check` - проверку файла по содержимому.
++Но экспорт и проверка оставались двумя разными вызовами: агент мог объявить
++задачу выполненной сразу после экспорта, а файл при этом был пустым или
++обрезанным. Метод экспорта в КОМПАСе возвращает управление без исключения
++в обоих случаях.
++
++**Стало.** `src/export_tools.py` и инструмент `kompas_export`. Экспорт и
++проверка объединены: **файл считается экспортированным только если он прошёл
++проверку по содержимому**.
++
++Как это устроено:
++
++* форматы `step`, `dxf`, `pdf`; имя файла - только basename внутри рабочего
++  каталога, суффикс обязан соответствовать формату; существующий файл не
++  перезаписывается;
++* `apply=false` - сухой прогон: возвращает план и список имён методов,
++  которые будут испробованы, **не делая ни одного обращения к COM**
++  (проверяется тестом со счётчиком вызовов);
++* после экспорта файл прогоняется через `artifact_check`, и вердикт попадает
++  в ответ; `ok: false` - операция считается неудачной;
++* файл, не прошедший проверку, **не удаляется** - его нужно посмотреть, а
++  удаление скрыло бы улики;
++* `SaveAs` намеренно исключён из списка методов: он сохраняет сам документ,
++  а не выгружает копию, и ошибка в аргументах может перезаписать модель;
++* интерфейс экспорта не подтверждён на стенде, поэтому имена методов
++  перебираются, фактически сработавший путь возвращается в
++  `interface.method`, а если не сработал ни один - поднимается
++  `export_interface_not_available` со списком попыток.
++
++### 2. Контрольные точки (D5)
++
++**Было.** Снимки перед записью делались в каждом инструменте своим кодом:
++`shutil.copy2` в каталог `_BACKUPS` с именем из `uuid4`. Их нельзя было
++перечислить, они копились бесконечно, а откат существовал только внутри
++того вызова, который снимок сделал.
++
++**Стало.** `src/checkpoint.py` и инструмент `kompas_checkpoints`:
++
++* `list` - список снимков с флагом `exists`, фильтр по файлу;
++* `restore` - возврат снимка на место исходного файла; требует точный id и
++  совпадающее имя файла, работает только внутри разрешённых корней;
++* `prune` - уборка старых снимков сверх лимита с подсчётом освобождённого
++  места;
++* индекс пишется атомарно (`tmp` + `os.replace`), поэтому прерванная запись
++  не оставляет битого журнала.
++
++### 3. Найденный и исправленный баг в волне 2
++
++Тесты волны 4 вскрыли настоящий дефект, который не был виден раньше:
++вспомогательная функция `_attr` **вызывает** найденное значение
++(`value() if callable(value) else value`). Для COM-свойств это верно, но
++для методов вроде `ExportToFile(path)` или `AddMateConstraint(...)` вызов
++без аргументов давал `TypeError`, исключение молча гасилось, и всё выглядело
++как «метода нет».
++
++Это означает, что `kompas_mate_create` из волны 2 **не работал бы** на живом
++КОМПАСе: он всегда возвращал бы `mate_create_interface_not_available`, даже
++если нужный метод есть. Тесты волн 2 и 3 этого не замечали, потому что
++проверяли чистые функции и каталог, а не COM-слой.
++
++Исправлено введением `_method()` - получения вызываемого метода без вызова:
++в `_export_call`, `_create_mate` и `_find_collection` (`mate_tools.py`).
++
++Вывод на будущее: COM-обёртку нужно проверять на подставном объекте, а не
++только на чистых функциях. В тестах волны 4 так и сделано - используется
++`FakeCom` с методами, записывающими реальные файлы.
++
++## Изменения, заметные оператору
++
++1. **Поверхность выросла с 40 до 42 инструментов:** `kompas_export`,
++   `kompas_checkpoints`. `VERSION.json` обновлён.
++2. **`kompas_export` по умолчанию ничего не делает** - `apply=false`. Первый
++   вызов на новой сборке КОМПАСа безопасен именно поэтому.
++3. **`kompas_checkpoints` помечен как разрушительный** (`destructiveHint`,
++   потому что `restore` перезаписывает файл. Клиент запросит подтверждение -
++   это осознанно.
++4. **Существующий файл экспорта не перезаписывается.** Если `out.step` уже
++   есть, вызов отклоняется до обращения к КОМПАСу.
++5. **Тесты-«стоп-краны» с числом инструментов обновлены** в `test_wave1.py`,
++   `test_wave2.py` и `test_wave3.py` - теперь 42.
++6. **Версия сборки по-прежнему не поднята** - `1.1.14_CAP2`, по той же
++   причине, что и раньше: строка зашита в десяти местах, включая сборку
++   golden-пакета.
++
++## Чего в этой волне нет
++
++* чертежи, основная надпись, экспорт DXF как операция над чертежом (B2);
++* спецификация как документ (B3);
++* обратный импорт STEP и сверка габаритов - экспорт проверяет только
++  целостность файла, а не совпадение геометрии;
++* dry-run для всех остальных мутирующих инструментов (D4): сейчас он есть
++  только у экспорта;
++* устойчивые ссылки на объекты (D2), самокалибровка кадра (D6);
++* упаковка, CI, лицензия (E1-E3).
++
++Отдельно про миграцию на `checkpoint.py`: остальные инструменты пока делают
++снимки старым кодом. Модуль совместим с ними по формату каталога
++(`_BACKUPS`), поэтому переход можно делать инструмент за инструментом - это
++не требует одновременной переделки всего проекта.
++
++Актуальный список приоритетов - в отчёте `KOMPAS-3D_AI_Bridge_audit_plan.html`.
++
++## Состав изменений
++
++Новые файлы:
++
++| Файл | Назначение |
++|---|---|
++| `src/export_tools.py` | экспорт с проверкой результата, операции над снимками |
++| `src/checkpoint.py` | контрольные точки: create, list, restore, prune |
++| `tests/test_wave4.py` | 31 тест без КОМПАСа |
++| `docs/WAVE4_CHANGES.md` | этот документ |
++
++Изменённые файлы:
++
++| Файл | Что изменилось |
++|---|---|
++| `src/mate_tools.py` | `_method()` вместо `_attr()` - найденный баг |
++| `src/engineering_capabilities.py` | действия `export.file`, `checkpoint.manage` |
++| `mcp/tools_catalog.py` | два новых инструмента и их маршрутизация |
++| `VERSION.json` | 42 инструмента |
++| `tests/test_wave1.py`, `test_wave2.py`, `test_wave3.py` | ожидаемое число инструментов 42 |
++| `tests/RUN_STATIC_TESTS.ps1` | шаг волны 4, новые обязательные файлы |
++| `skills/kompas-engineering/SKILL.md` | правила экспорта и работы со снимками |
+diff --git a/mcp/tools_catalog.py b/mcp/tools_catalog.py
+index af4c425..6886f4c 100644
+--- a/mcp/tools_catalog.py
++++ b/mcp/tools_catalog.py
+@@ -89,6 +89,8 @@ TOOLS = [
+     {"name":"kompas_artifact_check","description":"Verify an exported artifact by its content instead of trusting that the export call returned without error: STEP header/end markers plus entity and solid counts, DXF sections plus entity count, PDF page count, PNG dimensions. Use it after any export or kompas_run_job that produced a file, because a failed KOMPAS export normally raises nothing at all.","inputSchema":{"type":"object","required":["relative_path"],"properties":{"relative_path":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_dialogs","description":"Scan KOMPAS for stuck modal dialogs and report which of them block the bridge. Deliberately avoids COM, because an Automation call would hang on the very dialog being diagnosed. apply=false only reports; apply=true closes at most three informational dialogs whose policy is close. Dialogs that ask to save, choose or confirm are never closed automatically - they are reported for a human to decide.","inputSchema":{"type":"object","properties":{"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
+     {"name":"kompas_version_check","description":"Read the running KOMPAS version and its verdict against the version support matrix from config (kompas.version_matrix): matched pattern, support level, and which actions are guarded. Call it before trusting a write on an unfamiliar KOMPAS build. An empty matrix means 'not verified', not 'supported'. Pass version explicitly to evaluate a build without a running KOMPAS.","inputSchema":{"type":"object","properties":{"version":{"type":"string","minLength":1}},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
++    {"name":"kompas_export","description":"Export the active document to STEP, DXF or PDF into the bridge work directory and verify the produced file by its content in the same call. A KOMPAS export method raises nothing even when the file ends up empty or truncated, so a returned call is never treated as proof: the artifact is checked by signature, sections, entity counts or page count, and ok=false means the export failed. apply=false is a dry run that reports the plan and the method names it would try, without any COM call. SaveAs is deliberately excluded from the method list because it overwrites the document itself. When verification fails the file is kept for inspection, not deleted.","inputSchema":{"type":"object","required":["relative_path","format"],"properties":{"relative_path":{"type":"string","minLength":1},"format":{"type":"string","enum":["step","dxf","pdf"]},"apply":{"type":"boolean","default":False}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":False}},
++    {"name":"kompas_checkpoints","description":"Manage the byte snapshots taken before mutating operations. list shows snapshots with target, time and size; prune removes the oldest beyond keep; restore writes one exact snapshot back over its original file and requires the exact id plus the matching target name. Restore never touches files outside approved bridge roots. If KOMPAS holds the file open, close and reopen the document after a restore.","inputSchema":{"type":"object","required":["operation"],"properties":{"operation":{"type":"string","enum":["list","prune","restore","create"]},"id":{"type":"string","minLength":1},"keep":{"type":"integer","minimum":0,"maximum":1000},"target":{"type":"string","minLength":1},"action":{"type":"string","minLength":1,"maxLength":80}},"additionalProperties":False},"annotations":{"readOnlyHint":False,"destructiveHint":True}},
+     {"name":"kompas_model_bbox","description":"Read the exact native bounding box of the active top-level model. Use it to sanity-check overall size before and after geometry edits. It is a whole-model measure and is not a substitute for the per-component bounding box returned by kompas_component_info.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":True}},
+     {"name":"kompas_set_view","description":"Set a standard 3D projection through KOMPAS API5. Supported: front,rear,top,bottom,left,right,iso,dimetric.","inputSchema":{"type":"object","required":["view"],"properties":{"view":{"type":"string","enum":["front","rear","top","bottom","left","right","iso","dimetric"]}},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+     {"name":"kompas_fit_view","description":"Fit the active 3D model in the KOMPAS viewport using API5 ZoomPrevNextOrAll(2). Call it before kompas_viewport_capture when the model may be out of frame or off-screen. It changes only the camera, never geometry, and performs no Save.","inputSchema":{"type":"object","properties":{},"additionalProperties":False},"annotations":{"readOnlyHint":False}},
+@@ -144,6 +146,8 @@ ACTION_MAP = {
+     "kompas_artifact_check": ("artifact.check", lambda a: a),
+     "kompas_dialogs": ("dialogs.watch", lambda a: a),
+     "kompas_version_check": ("version.check", lambda a: a),
++    "kompas_export": ("export.file", lambda a: a),
++    "kompas_checkpoints": ("checkpoint.manage", lambda a: a),
+     "kompas_model_bbox": ("model.bbox", lambda a: {}),
+     "kompas_set_view": ("view.set", lambda a: a),
+     "kompas_fit_view": ("view.fit", lambda a: {}),
+diff --git a/skills/kompas-engineering/SKILL.md b/skills/kompas-engineering/SKILL.md
+index 607ce45..5682881 100644
+--- a/skills/kompas-engineering/SKILL.md
++++ b/skills/kompas-engineering/SKILL.md
+@@ -47,10 +47,17 @@ Read them from the model/source requirements or explicitly mark them unresolved.
+ - Record the `interface.create_method` value from the response when working on a new KOMPAS version.
+ 
+ ## Export verification
+-- A successful export call is not evidence that a file was produced. KOMPAS export methods raise nothing when the result is empty, truncated or header-only.
+-- After every export, run `kompas_artifact_check` on the produced file and require `ok: true` before treating the artifact as a deliverable.
+-- `ok: false` means the export failed. Fix the cause; do not hand the file to the user.
+-- The check is structural only. When STEP is a deliverable, additionally open/import the exported STEP and compare overall dimensions against the model - `kompas_artifact_check` does not prove geometry equivalence.
++- Use `kompas_export` for STEP/DXF/PDF: it exports and verifies the file in the same call, so "the call returned" and "the file is good" become the same event.
++- A KOMPAS export method raises nothing when the result is empty, truncated or header-only. `ok: false` from `kompas_export` means the export failed - fix the cause, do not hand the file to the user. The bad file is kept on purpose so it can be inspected.
++- `apply=false` is a dry run: it reports the plan and the method names it would try, without any COM call. Use it before a first export on an unfamiliar build.
++- For files produced by `kompas_run_job`, run `kompas_artifact_check` separately - that is the only confirmation available for them.
++- The check is structural. When STEP is a deliverable, additionally import it back and compare overall dimensions: neither `kompas_export` nor `kompas_artifact_check` proves geometry equivalence.
++
++## Checkpoints and rollback
++- `kompas_checkpoints list` shows the byte snapshots taken before mutating operations. Before a risky multi-step change, know which snapshot you could return to.
++- `restore` needs the exact id and the matching target name, and works only inside approved bridge roots. After a restore, close and reopen the document in KOMPAS: an open document still holds the old content in memory.
++- Snapshots accumulate. Run `prune` with a `keep` value as regular maintenance.
++- A snapshot is file-level. It does not undo a change to a document that KOMPAS still holds open and unsaved.
+ 
+ ## Stuck modal dialogs
+ - A stuck modal dialog freezes the whole bridge: COM calls hang and every later tool times out. When a call times out with no obvious cause, run `kompas_dialogs` before retrying anything.
+diff --git b/src/checkpoint.py b/src/checkpoint.py
+new file mode 100644
+index 0000000..c9c1b3e
+--- /dev/null
++++ b/src/checkpoint.py
+@@ -0,0 +1,218 @@
++"""Контрольные точки: снимки файлов перед изменяющими операциями.
++
++Зачем этот модуль существует
++---------------------------
++Снимки перед записью в проекте уже делались - но в каждом инструменте своим
++кодом: ``shutil.copy2`` в каталог ``_BACKUPS``, уникальное имя на ``uuid4``
++и больше ничего. В результате снимки копились бесконечно, их было нельзя
++перечислить, а откат существовал только внутри того вызова, который снимок
++сделал: если операция уже вернула управление, достать снимок было нечем.
++
++Здесь снимок становится объектом с идентификатором и журналом:
++
++* ``create`` - снимок с записью в индекс (атомарно);
++* ``list`` - перечисление снимков, в том числе по конкретному файлу;
++* ``restore`` - возврат снимка на место исходного файла с проверкой,
++  что файл лежит в разрешённом корне;
++* ``prune`` - уборка старых снимков сверх лимита.
++
++Границы
++-------
++Модуль работает с файлами, а не с КОМПАСом, поэтому проверяется тестами без
++COM. Восстановление возможно только внутри корней, куда мосту разрешена
++запись: вернуть снимок в защищённый исходник модуль откажется.
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import shutil
++import time
++import uuid
++from datetime import datetime, timezone
++from pathlib import Path
++from typing import Any, Dict, List, Optional
++
++from settings import settings_for
++
++CHECKPOINT_DIRNAME = "_BACKUPS"
++INDEX_NAME = "checkpoints.json"
++DEFAULT_KEEP = 20
++
++
++def _now() -> str:
++    return datetime.now(timezone.utc).astimezone().isoformat()
++
++
++def checkpoint_dir(bridge_root: Any) -> Path:
++    """Каталог снимков. Создаётся при первом обращении."""
++    target = Path(str(bridge_root)).resolve() / CHECKPOINT_DIRNAME
++    target.mkdir(parents=True, exist_ok=True)
++    return target
++
++
++def _index_path(bridge_root: Any) -> Path:
++    return checkpoint_dir(bridge_root) / INDEX_NAME
++
++
++def sha256(path: Path) -> str:
++    digest = hashlib.sha256()
++    with Path(path).open("rb") as handle:
++        for chunk in iter(lambda: handle.read(1 << 20), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def _load_index(bridge_root: Any) -> List[Dict[str, Any]]:
++    path = _index_path(bridge_root)
++    if not path.is_file():
++        return []
++    try:
++        data = json.loads(path.read_text(encoding="utf-8-sig"))
++    except (OSError, ValueError):
++        return []
++    return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
++
++
++def _save_index(bridge_root: Any, rows: List[Dict[str, Any]]) -> None:
++    path = _index_path(bridge_root)
++    tmp = path.with_suffix(path.suffix + ".tmp")
++    tmp.write_text(
++        json.dumps(rows, ensure_ascii=False, indent=2),
++        encoding="utf-8",
++    )
++    os.replace(tmp, path)
++
++
++def create(bridge_root: Any, target: Any, action: str = "") -> Dict[str, Any]:
++    """Снять копию файла и записать её в журнал."""
++    source = Path(str(target)).resolve()
++    if not source.is_file():
++        raise FileNotFoundError(str(source))
++
++    directory = checkpoint_dir(bridge_root)
++    identifier = time.strftime("%Y%m%dT%H%M%S") + "_" + uuid.uuid4().hex[:8]
++    snapshot = directory / f"{identifier}__{source.name}"
++    shutil.copy2(source, snapshot)
++
++    row = {
++        "id": identifier,
++        "created": _now(),
++        "action": str(action or ""),
++        "target": str(source),
++        "target_name": source.name,
++        "snapshot": str(snapshot),
++        "size_bytes": snapshot.stat().st_size,
++        "sha256": sha256(source),
++        "snapshot_sha256": sha256(snapshot),
++    }
++
++    rows = _load_index(bridge_root)
++    rows.append(row)
++    _save_index(bridge_root, rows)
++    return row
++
++
++def list_checkpoints(bridge_root: Any, target: Any = None) -> List[Dict[str, Any]]:
++    """Список снимков, при необходимости - только по одному файлу."""
++    rows = _load_index(bridge_root)
++    if target is not None:
++        wanted = str(Path(str(target)).resolve()).lower()
++        rows = [row for row in rows if str(row.get("target", "")).lower() == wanted]
++    alive = []
++    for row in rows:
++        snapshot = Path(str(row.get("snapshot") or ""))
++        row = dict(row)
++        row["exists"] = snapshot.is_file()
++        alive.append(row)
++    return sorted(alive, key=lambda row: str(row.get("created") or ""), reverse=True)
++
++
++def find(bridge_root: Any, checkpoint_id: str) -> Optional[Dict[str, Any]]:
++    for row in _load_index(bridge_root):
++        if str(row.get("id") or "") == str(checkpoint_id or "").strip():
++            return row
++    return None
++
++
++def restore(bridge_root: Any, checkpoint_id: str, expected_target: Any = None) -> Dict[str, Any]:
++    """Вернуть снимок на место исходного файла."""
++    row = find(bridge_root, checkpoint_id)
++    if row is None:
++        raise LookupError(f"checkpoint_not_found: {checkpoint_id}")
++
++    snapshot = Path(str(row.get("snapshot") or ""))
++    if not snapshot.is_file():
++        raise FileNotFoundError(str(snapshot))
++
++    target = Path(str(row.get("target") or ""))
++    if expected_target is not None:
++        raw = Path(str(expected_target))
++        # Относительное имя - это файл в рабочем каталоге моста, а не путь
++        # относительно текущего каталога процесса.
++        if raw.is_absolute():
++            wanted = str(raw.resolve())
++        else:
++            wanted = str((settings_for(bridge_root).work_dir / raw).resolve())
++        if wanted.lower() != str(target).lower():
++            raise ValueError(
++                "checkpoint_target_mismatch: "
++                f"checkpoint={target.name}; expected={Path(wanted).name}"
++            )
++
++    if not settings_for(bridge_root).is_writable(target):
++        raise RuntimeError("path_not_allowed:" + str(target))
++    if settings_for(bridge_root).is_protected(target):
++        raise RuntimeError("path_protected:" + str(target))
++
++    before = sha256(target) if target.is_file() else None
++    shutil.copy2(snapshot, target)
++    after = sha256(target)
++
++    return {
++        "id": row["id"],
++        "restored_to": str(target),
++        "snapshot": str(snapshot),
++        "sha256_before_restore": before,
++        "sha256_after_restore": after,
++        "matches_snapshot": after == row.get("snapshot_sha256"),
++        "action": row.get("action") or "",
++        "created": row.get("created") or "",
++    }
++
++
++def prune(bridge_root: Any, keep: int = DEFAULT_KEEP) -> Dict[str, Any]:
++    """Удалить снимки сверх лимита. Возвращает, что удалено и сколько места."""
++    limit = max(0, int(keep))
++    rows = sorted(
++        _load_index(bridge_root),
++        key=lambda row: str(row.get("created") or ""),
++        reverse=True,
++    )
++    survivors = rows[:limit]
++    doomed = rows[limit:]
++
++    removed: List[str] = []
++    freed = 0
++    for row in doomed:
++        snapshot = Path(str(row.get("snapshot") or ""))
++        if snapshot.is_file():
++            try:
++                freed += snapshot.stat().st_size
++                snapshot.unlink()
++                removed.append(row.get("id") or "")
++            except OSError:
++                continue
++
++    # Выжившие остаются в индексе даже если файл снимка удалён вручную:
++    # в списке у каждой записи есть флаг exists, и его видно оператору.
++    _save_index(bridge_root, survivors)
++
++    return {
++        "keep": limit,
++        "removed_count": len(removed),
++        "removed": removed,
++        "freed_bytes": freed,
++        "remaining": len(survivors),
++    }
+diff --git a/src/engineering_capabilities.py b/src/engineering_capabilities.py
+index 41e158f..9857d40 100644
+--- a/src/engineering_capabilities.py
++++ b/src/engineering_capabilities.py
+@@ -22,6 +22,7 @@ from mate_tools import mate_create, mate_read
+ from artifact_check import artifact_check
+ from dialogs import classify, describe_policy, dismiss_plan, summarize
+ from version_matrix import classify_version
++from export_tools import export_file, manage_checkpoints
+ from view_tools import set_view, fit, rotate, visibility, projections
+ 
+ 
+@@ -162,6 +163,10 @@ def create_mate(s, p): return ok("mate.create", mate_create(s, p["assembly_filen
+ def check_artifact(s, p): return ok("artifact.check", artifact_check(s.root, p["relative_path"]))
+ 
+ 
++def export_document(s, p): return ok("export.file", export_file(s, p["relative_path"], p["format"], p.get("apply", False)))
++def checkpoints(s, p): return ok("checkpoint.manage", manage_checkpoints(s.root, p))
++
++
+ def dialogs_watch(s, p):
+     """Сторож модальных диалогов. Работает без COM: если КОМПАС висит на
+     модальном окне, обращение через Automation тоже повиснет, поэтому
+@@ -291,6 +296,8 @@ registry = {
+     "mate.read": read_mates,
+     "mate.create": create_mate,
+     "artifact.check": check_artifact,
++    "export.file": export_document,
++    "checkpoint.manage": checkpoints,
+     "dialogs.watch": dialogs_watch,
+     "version.check": version_check,
+     "model.bbox": bbox,
+diff --git b/src/export_tools.py b/src/export_tools.py
+new file mode 100644
+index 0000000..f95e6c2
+--- /dev/null
++++ b/src/export_tools.py
+@@ -0,0 +1,282 @@
++"""Экспорт из КОМПАСа с обязательной проверкой результата.
++
++Зачем этот модуль существует
++---------------------------
++Экспорт - единственная операция моста, результат которой уходит наружу,
++и при этом самая лживая: COM-метод возвращает управление без исключения
++даже тогда, когда файл не создан, пуст или обрезан. Волна 2 дала проверку
++артефактов (`kompas_artifact_check`), но проверять приходилось вручную
++и отдельным вызовом - то есть «экспорт выполнен» и «файл годен» оставались
++двумя разными событиями.
++
++Здесь они объединены: экспорт считается успешным только если файл прошёл
++проверку по содержимому.
++
++Границы честности
++-----------------
++Интерфейс экспорта в КОМПАСе не подтверждён на стенде, поэтому:
++
++* методы перебираются из списка известных вариантов, и фактически
++  сработавший путь возвращается в ответе (`interface.method`);
++* `SaveAs` в перечень **не** включён намеренно: он сохраняет сам документ,
++  а не выгружает его копию, и ошибка в аргументах может перезаписать модель;
++* если файл не прошёл проверку, операция считается неудачной
++  (`ok: false`), но файл не удаляется - его нужно посмотреть;
++* `apply=false` - сухой прогон: ни одного обращения к COM.
++"""
++from __future__ import annotations
++
++import json
++from pathlib import Path
++from typing import Any, Dict, List, Optional, Sequence, Tuple
++
++from artifact_check import artifact_check, detect_kind
++from settings import settings_for
++
++SUPPORTED_FORMATS: Dict[str, Dict[str, Any]] = {
++    "step": {"suffixes": (".step", ".stp"), "needs_3d": True, "label": "STEP AP214/AP242"},
++    "dxf": {"suffixes": (".dxf",), "needs_3d": False, "label": "DXF"},
++    "pdf": {"suffixes": (".pdf",), "needs_3d": False, "label": "PDF"},
++}
++
++# Кандидаты на метод экспорта. Общие (ExportToFile, Export) идут последними:
++# специфичные методы точнее по смыслу аргументов. SaveAs исключён намеренно.
++EXPORT_METHODS: Dict[str, Tuple[str, ...]] = {
++    "step": ("ExportToStep", "ExportSTEP", "ExportToFile", "Export"),
++    "dxf": ("ExportToDxf", "ExportDXF", "ExportToFile", "Export"),
++    "pdf": ("ExportToPdf", "ExportPDF", "ExportToFile", "Export"),
++}
++
++MAX_NAME_LENGTH = 120
++
++
++def _attr(obj: Any, name: str, default: Any = None) -> Any:
++    """Прочитать свойство: для COM-свойств вызов без аргументов - норма."""
++    try:
++        value = getattr(obj, name)
++        return value() if callable(value) else value
++    except Exception:
++        return default
++
++
++def _method(obj: Any, name: str) -> Any:
++    """Получить вызываемый метод, НЕ вызывая его.
++
++    Отдельная функция именно потому, что ``_attr`` вызывает найденное: для
++    свойств это верно, а для методов вроде ``ExportToFile(path)`` приводит
++    к TypeError, который молча гасится и выглядит как «метода нет».
++    """
++    try:
++        value = getattr(obj, name)
++    except Exception:
++        return None
++    return value if callable(value) else None
++
++
++def normalize_format(value: Any) -> str:
++    fmt = str(value or "").strip().lower()
++    if fmt not in SUPPORTED_FORMATS:
++        raise ValueError(
++            "unsupported_export_format: " + (fmt or "<empty>")
++            + "; supported=" + ",".join(sorted(SUPPORTED_FORMATS))
++        )
++    return fmt
++
++
++def validate_relative_path(value: Any, fmt: str) -> str:
++    """Путь обязан быть именем файла внутри рабочего каталога моста."""
++    raw = str(value or "").strip()
++    if not raw:
++        raise ValueError("relative_path_required")
++    if len(raw) > MAX_NAME_LENGTH:
++        raise ValueError("relative_path_too_long")
++    candidate = Path(raw)
++    if candidate.is_absolute() or candidate.name != raw:
++        raise ValueError("relative_path_must_be_basename")
++    suffix = candidate.suffix.lower()
++    if suffix not in SUPPORTED_FORMATS[fmt]["suffixes"]:
++        raise ValueError(
++            f"filename_suffix_must_match_format_{fmt}: "
++            + ",".join(SUPPORTED_FORMATS[fmt]["suffixes"])
++        )
++    return raw
++
++
++def _resolve(bridge_root: Any, relative_path: str) -> Tuple[Path, Path]:
++    settings = settings_for(bridge_root)
++    work = settings.work_dir.resolve()
++    target = (work / relative_path).resolve()
++    if target.parent != work:
++        raise RuntimeError("path_outside_approved_roots:" + str(target))
++    if settings.is_protected(target):
++        raise RuntimeError("path_protected:" + str(target))
++    return work, target
++
++
++def _export_call(document: Any, app: Any, target: Path, fmt: str) -> Dict[str, Any]:
++    """Вызвать первый сработавший метод экспорта."""
++    errors: List[str] = []
++    for owner_name, owner in (("document", document), ("application", app)):
++        if owner is None:
++            continue
++        for method_name in EXPORT_METHODS.get(fmt, ()):
++            method = _method(owner, method_name)
++            if method is None:
++                continue
++            for args in ((str(target),), (str(target), fmt)):
++                try:
++                    result = method(*args)
++                    return {
++                        "method": f"{owner_name}.{method_name}",
++                        "argument_count": len(args),
++                        "return": None if result is None else str(result),
++                    }
++                except Exception as exc:
++                    errors.append(f"{owner_name}.{method_name}/{len(args)}: {exc}")
++    raise RuntimeError(
++        "export_interface_not_available: "
++        + ("; ".join(errors[:6]) or "ни один известный метод экспорта не найден")
++        + ". Запустите проверенный скрипт через kompas_run_job "
++        "и зафиксируйте имя метода в EXPORT_METHODS."
++    )
++
++
++def export_file(
++    session: Any,
++    relative_path: str,
++    fmt: str,
++    apply: bool = False,
++) -> Dict[str, Any]:
++    """Экспортировать активный документ и проверить получившийся файл."""
++    normalized = normalize_format(fmt)
++    name = validate_relative_path(relative_path, normalized)
++    root = session.root
++    work, target = _resolve(root, name)
++
++    plan: Dict[str, Any] = {
++        "requested": {"relative_path": name, "format": normalized, "apply": bool(apply)},
++        "target": str(target),
++        "format_label": SUPPORTED_FORMATS[normalized]["label"],
++        "methods_to_try": list(EXPORT_METHODS[normalized]),
++        "verification": "artifact_check по содержимому файла",
++        "save_as_excluded": True,
++    }
++
++    if target.exists():
++        raise RuntimeError("target_already_exists:" + str(target))
++
++    if not apply:
++        plan.update({
++            "dry_run": True,
++            "executed": False,
++            "ok": False,
++            "warnings": [
++                "Сухой прогон: ни одного обращения к КОМПАСу не выполнено.",
++                "Имя метода экспорта будет подобрано перебором; фактически "
++                "сработавший путь вернётся в поле interface.method.",
++            ],
++            "limits": [
++                "Файл проверяется по содержимому, а не по факту вызова: "
++                "пустой или обрезанный файл считается неудачей.",
++                "Совпадение геометрии с моделью экспортной проверкой "
++                "не подтверждается - нужен обратный импорт.",
++            ],
++        })
++        return plan
++
++    active_path = str(session.active_path() or "")
++    if not active_path:
++        raise RuntimeError("no_active_document_path")
++
++    document = session.active()
++    app = session.connect()
++
++    if SUPPORTED_FORMATS[normalized]["needs_3d"]:
++        try:
++            from model_tools import _doc3d
++            _doc3d(session)
++        except Exception as exc:
++            raise RuntimeError(
++                f"active_document_is_not_3d_for_step_export: {exc}"
++            ) from None
++
++    interface = _export_call(document, app, target, normalized)
++
++    if not target.is_file():
++        raise RuntimeError(
++            "export_produced_no_file: "
++            f"method={interface['method']}; target={target}"
++        )
++
++    verdict = artifact_check(root, name)
++    ok = bool(verdict.get("ok"))
++
++    result: Dict[str, Any] = {
++        **plan,
++        "dry_run": False,
++        "executed": True,
++        "active_document": active_path,
++        "interface": interface,
++        "artifact": verdict,
++        "ok": ok,
++        "saved": False,
++        "warnings": list(verdict.get("warnings") or []),
++        "limits": [
++            "Файл проверен по содержимому, но не на совпадение геометрии: "
++            "для STEP это делает только обратный импорт и сверка габаритов.",
++            "При ok=false файл намеренно не удаляется - его нужно посмотреть.",
++        ],
++    }
++    if not ok:
++        result["warnings"].append(
++            "Экспорт завершился без исключения, но файл не прошёл проверку. "
++            "Не считайте выгрузку выполненной: findings="
++            + json.dumps(verdict.get("findings") or [], ensure_ascii=False)
++        )
++    return result
++
++
++def manage_checkpoints(bridge_root: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
++    """Операции над контрольными точками: list, prune, restore."""
++    from checkpoint import create as ck_create
++    from checkpoint import list_checkpoints, prune, restore
++
++    operation = str(payload.get("operation") or "").strip().lower()
++    if operation == "list":
++        rows = list_checkpoints(bridge_root, payload.get("target"))
++        return {
++            "operation": "list",
++            "count": len(rows),
++            "checkpoints": rows[:100],
++            "read_only": True,
++        }
++    if operation == "prune":
++        keep = payload.get("keep")
++        outcome = prune(bridge_root, DEFAULT_KEEP if keep is None else int(keep))
++        return {"operation": "prune", **outcome, "read_only": False}
++    if operation == "restore":
++        identifier = str(payload.get("id") or "").strip()
++        if not identifier:
++            raise ValueError("checkpoint_id_required_for_restore")
++        expected = payload.get("target")
++        outcome = restore(bridge_root, identifier, expected)
++        return {
++            "operation": "restore",
++            **outcome,
++            "read_only": False,
++            "warnings": [
++                "Файл перезаписан снимком. Если КОМПАС держит его открытым, "
++                "закройте и переоткройте документ перед продолжением."
++            ],
++        }
++    if operation == "create":
++        target = str(payload.get("target") or "").strip()
++        if not target:
++            raise ValueError("target_required_for_create")
++        resolved = _resolve(bridge_root, target)[1]
++        row = ck_create(bridge_root, resolved, str(payload.get("action") or "manual"))
++        return {"operation": "create", **row, "read_only": False}
++    raise ValueError(
++        "unsupported_checkpoint_operation: " + (operation or "<empty>")
++        + "; supported=list,prune,restore,create"
++    )
+diff --git a/src/mate_tools.py b/src/mate_tools.py
+index a9cb6c0..110ca6a 100644
+--- a/src/mate_tools.py
++++ b/src/mate_tools.py
+@@ -175,6 +175,20 @@ def _attr(obj: Any, name: str, default: Any = None) -> Any:
+         return default
+ 
+ 
++def _method(obj: Any, name: str) -> Any:
++    """Получить вызываемый метод, не вызывая его.
++
++    ``_attr`` вызывает найденное значение: для свойств (Name, Distance) это
++    верно, а для методов вроде ``AddMateConstraint(...)`` даёт TypeError,
++    который молча гасится и выглядит как «метода нет».
++    """
++    try:
++        value = getattr(obj, name)
++    except Exception:
++        return None
++    return value if callable(value) else None
++
++
+ def _finite(value: Any) -> Optional[float]:
+     try:
+         number = float(value)
+@@ -224,8 +238,8 @@ def _find_collection(document: Any, top: Any) -> Tuple[Optional[List[Any]], Opti
+         if owner is None:
+             continue
+         for method in COLLECTION_METHODS:
+-            function = _attr(owner, method)
+-            if not callable(function):
++            function = _method(owner, method)
++            if function is None:
+                 continue
+             try:
+                 rows = _items(function())
+@@ -321,8 +335,8 @@ def _create_mate(
+         if owner is None:
+             continue
+         for method_name in CREATE_METHODS:
+-            method = _attr(owner, method_name)
+-            if not callable(method):
++            method = _method(owner, method_name)
++            if method is None:
+                 continue
+             attempts: Sequence[Tuple[Any, ...]] = (
+                 (kind, part_a, part_b, value, align, fixed),
+diff --git a/tests/RUN_STATIC_TESTS.ps1 b/tests/RUN_STATIC_TESTS.ps1
+index 9e6c7bd..5896f2c 100644
+--- a/tests/RUN_STATIC_TESTS.ps1
++++ b/tests/RUN_STATIC_TESTS.ps1
+@@ -6,35 +6,41 @@ if (-not (Test-Path $resolver)) { throw "Python resolver missing: $resolver" }
+ $Python311 = Resolve-Python311
+ Write-Host ("Python 3.11: {0} {1}" -f $Python311.Exe, ($Python311.Prefix -join ' '))
+ 
+-Write-Host "[1/7] Python compileall"
++Write-Host "[1/8] Python compileall"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','compileall','-q',(Join-Path $Root 'src'),(Join-Path $Root 'mcp'),(Join-Path $Root 'tests'),(Join-Path $Root 'jobs'))
+ if ($code -ne 0) { throw "compileall failed" }
+-Write-Host "[2/7] MCP stdio contract"
++Write-Host "[2/8] MCP stdio contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_stdio.py'))
+ if ($code -ne 0) { throw "MCP stdio test failed" }
+-Write-Host "[3/7] MCP file-routing + image attachment contract"
++Write-Host "[3/8] MCP file-routing + image attachment contract"
+ $code = Invoke-Python311 -Python $Python311 -Arguments @((Join-Path $Root 'tests\test_mcp_bridge_routing.py'))
+ if ($code -ne 0) { throw "MCP routing test failed" }
+-Write-Host "[4/7] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
++Write-Host "[4/8] Wave 1: catalog, config policy, error surface, compaction, job allow-list"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave1.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 1 tests failed" }
+-Write-Host "[5/7] Wave 2: assembly mates, artifact verification"
++Write-Host "[5/8] Wave 2: assembly mates, artifact verification"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave2.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 2 tests failed" }
+-Write-Host "[6/7] Wave 3: modal dialog watchdog, version support matrix"
++Write-Host "[6/8] Wave 3: modal dialog watchdog, version support matrix"
+ Push-Location $Root
+ try {
+   $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave3.py')
+ } finally { Pop-Location }
+ if ($code -ne 0) { throw "Wave 3 tests failed" }
+-Write-Host "[7/7] Required files"
+-$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
++Write-Host "[7/8] Wave 4: verified export, checkpoints"
++Push-Location $Root
++try {
++  $code = Invoke-Python311 -Python $Python311 -Arguments @('-m','unittest','discover','-s','tests','-p','test_wave4.py')
++} finally { Pop-Location }
++if ($code -ne 0) { throw "Wave 4 tests failed" }
++Write-Host "[8/8] Required files"
++$required = @("src\worker.py","src\settings.py","src\errors.py","src\compact.py","src\mate_tools.py","src\artifact_check.py","src\dialogs.py","src\version_matrix.py","src\checkpoint.py","src\export_tools.py","src\engineering_capabilities.py","src\model_tools.py","src\view_tools.py","src\screenshot.py","mcp\kompas_mcp_server.py","mcp\tools_catalog.py","jobs\allowlist.json","tests\test_wave2.py","tests\test_wave3.py","tests\test_wave4.py","tests\KOMPAS_AGENT_SELF_TEST.ps1","tests\image_sanity.py","skills\kompas-engineering\SKILL.md","common\PythonResolver.ps1","common\dependency_check.py")
+ foreach ($rel in $required) { if (-not (Test-Path (Join-Path $Root $rel))) { throw "Missing $rel" } }
+ Write-Host "PASS STATIC TESTS"
+ 
+diff --git a/tests/test_wave1.py b/tests/test_wave1.py
+index c8ae358..c4fb77f 100644
+--- a/tests/test_wave1.py
++++ b/tests/test_wave1.py
+@@ -71,7 +71,7 @@ class TempRootCase(unittest.TestCase):
+ class TestToolsCatalog(unittest.TestCase):
+     def test_surface_is_complete_and_unique(self):
+         names = tools_catalog.tool_names()
+-        self.assertEqual(len(names), 40, "поверхность изменилась - обновите ожидание осознанно")
++        self.assertEqual(len(names), 42, "поверхность изменилась - обновите ожидание осознанно")
+         self.assertEqual(len(set(names)), len(names), "имена инструментов должны быть уникальны")
+ 
+     def test_every_tool_is_described_for_the_model(self):
+diff --git a/tests/test_wave2.py b/tests/test_wave2.py
+index 31d73e8..004b14d 100644
+--- a/tests/test_wave2.py
++++ b/tests/test_wave2.py
+@@ -320,8 +320,8 @@ class TestArtifactCheck(TempRootCase):
+ class TestCatalogWave2(unittest.TestCase):
+     """Каталог остаётся единственным источником поверхности."""
+ 
+-    def test_tool_count_is_40(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 40)
++    def test_tool_count_is_42(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 42)
+ 
+     def test_new_tools_are_present(self):
+         for name in ("kompas_mate_read", "kompas_mate_create", "kompas_artifact_check"):
+diff --git a/tests/test_wave3.py b/tests/test_wave3.py
+index 93a8c70..a490b57 100644
+--- a/tests/test_wave3.py
++++ b/tests/test_wave3.py
+@@ -314,8 +314,8 @@ class TestVersionGuardSession(TempRootCase):
+ 
+ 
+ class TestCatalogWave3(unittest.TestCase):
+-    def test_tool_count_is_40(self):
+-        self.assertEqual(len(tools_catalog.TOOLS), 40)
++    def test_tool_count_is_42(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 42)
+ 
+     def test_new_tools_are_present_and_routed(self):
+         self.assertIn("kompas_dialogs", tools_catalog.TOOL_INDEX)
+diff --git b/tests/test_wave4.py b/tests/test_wave4.py
+new file mode 100644
+index 0000000..fe08191
+--- /dev/null
++++ b/tests/test_wave4.py
+@@ -0,0 +1,361 @@
++#!/usr/bin/env python3
++"""Тесты «Волны 4»: экспорт с проверкой результата и контрольные точки.
++
++Все тесты работают без КОМПАСа, без COM и без сети. Запуск::
++
++    python -m unittest discover -s tests -p "test_wave4.py" -v
++
++Что проверяется по существу:
++
++* сухой прогон экспорта не обращается к КОМПАСу вообще - это проверяется
++  счётчиком вызовов, а не обещанием в документации;
++* экспорт, который вернул управление, но произвёл пустой файл, считается
++  неудачей: именно это и есть главный обман COM-экспорта;
++* `SaveAs` не входит в список методов - экспорт не должен перезаписывать
++  сам документ;
++* снимок возвращается на место исходного файла, а восстановление вне
++  разрешённых корней невозможно.
++"""
++from __future__ import annotations
++
++import json
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++SRC = REPO_ROOT / "src"
++MCP = REPO_ROOT / "mcp"
++for path in (str(SRC), str(MCP)):
++    if path not in sys.path:
++        sys.path.insert(0, path)
++
++import checkpoint         # noqa: E402
++import export_tools       # noqa: E402
++import settings           # noqa: E402
++import tools_catalog      # noqa: E402
++
++DXF_MINIMAL = (
++    "0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1015\n"
++    "0\nENDSEC\n"
++    "0\nSECTION\n2\nENTITIES\n"
++    "0\nLINE\n0\nCIRCLE\n"
++    "0\nENDSEC\n0\nEOF\n"
++).encode("latin-1")
++
++STEP_MINIMAL = (
++    "ISO-10303-21;\nHEADER;\nENDSEC;\nDATA;\n"
++    "#1=MANIFEST_PLACEHOLDER('x');\nENDSEC;\nEND-ISO-10303-21;\n"
++).encode("latin-1")
++
++
++class FakeCom:
++    """Простая имитация COM-объекта: методы задаются как обычные атрибуты."""
++
++    def __init__(self, **methods):
++        for name, value in methods.items():
++            setattr(self, name, value)
++
++
++class FakeExportSession:
++    def __init__(self, root, document, app):
++        self.root = root
++        self._document = document
++        self._app = app
++        self.connect_calls = 0
++        self.active_calls = 0
++
++    def active(self):
++        self.active_calls += 1
++        return self._document
++
++    def connect(self):
++        self.connect_calls += 1
++        if self._app is None:
++            raise RuntimeError("компас недоступен")
++        return self._app
++
++    def active_path(self):
++        return str(Path(self.root) / "work" / "part_AGENT_COPY.m3d")
++
++
++def writer_for(data: bytes):
++    def write(path, *_args):
++        Path(path).write_bytes(data)
++        return True
++    return write
++
++
++class TempRootCase(unittest.TestCase):
++    def setUp(self):
++        self._tmp = tempfile.TemporaryDirectory(prefix="kompas_wave4_")
++        self.root = Path(self._tmp.name)
++        (self.root / "work").mkdir(parents=True, exist_ok=True)
++        settings.reset_cache()
++        self.addCleanup(settings.reset_cache)
++        self.addCleanup(self._tmp.cleanup)
++
++    def work_file(self, name: str, data: bytes = b"original\n") -> Path:
++        target = self.root / "work" / name
++        target.write_bytes(data)
++        return target
++
++
++class TestExportValidation(unittest.TestCase):
++    def test_supported_formats(self):
++        for fmt in ("step", "dxf", "pdf"):
++            self.assertEqual(export_tools.normalize_format(fmt.upper()), fmt)
++        with self.assertRaises(ValueError) as ctx:
++            export_tools.normalize_format("stl")
++        self.assertIn("unsupported_export_format", str(ctx.exception))
++
++    def test_filename_suffix_must_match_format(self):
++        self.assertEqual(export_tools.validate_relative_path("out.step", "step"), "out.step")
++        self.assertEqual(export_tools.validate_relative_path("out.stp", "step"), "out.stp")
++        with self.assertRaises(ValueError):
++            export_tools.validate_relative_path("out.dxf", "step")
++        with self.assertRaises(ValueError):
++            export_tools.validate_relative_path("out.step", "dxf")
++
++    def test_path_must_stay_inside_work(self):
++        for bad in ("", "   ", "C:/tmp/out.step", "nested/out.step"):
++            with self.assertRaises(ValueError):
++                export_tools.validate_relative_path(bad, "step")
++
++    def test_save_as_is_never_used_for_export(self):
++        for methods in export_tools.EXPORT_METHODS.values():
++            for name in methods:
++                self.assertNotIn("saveas", name.lower(), name)
++
++
++class TestExportDryRun(TempRootCase):
++    def test_dry_run_does_not_touch_com(self):
++        session = FakeExportSession(self.root, FakeCom(), None)
++        plan = export_tools.export_file(session, "out.step", "step", apply=False)
++        self.assertTrue(plan["dry_run"])
++        self.assertFalse(plan["executed"])
++        self.assertEqual(session.connect_calls, 0)
++        self.assertEqual(session.active_calls, 0)
++        self.assertFalse(any(Path(self.root, "work", "out.step").is_file() for _ in [0]))
++
++    def test_dry_run_lists_methods_and_limits(self):
++        plan = export_tools.export_file(
++            FakeExportSession(self.root, FakeCom(), None), "out.dxf", "dxf", apply=False
++        )
++        self.assertEqual(plan["methods_to_try"], list(export_tools.EXPORT_METHODS["dxf"]))
++        self.assertTrue(plan["limits"])
++        self.assertTrue(plan["save_as_excluded"])
++
++    def test_existing_target_is_refused_before_any_call(self):
++        self.work_file("out.step", b"old file")
++        session = FakeExportSession(self.root, FakeCom(), None)
++        with self.assertRaises(RuntimeError) as ctx:
++            export_tools.export_file(session, "out.step", "step", apply=False)
++        self.assertIn("target_already_exists", str(ctx.exception))
++        self.assertEqual(session.connect_calls, 0)
++
++
++class TestExportWithFakeCom(TempRootCase):
++    def test_successful_export_is_verified_by_content(self):
++        document = FakeCom(ExportToFile=writer_for(DXF_MINIMAL))
++        session = FakeExportSession(self.root, document, FakeCom())
++        result = export_tools.export_file(session, "out.dxf", "dxf", apply=True)
++
++        self.assertTrue(result["executed"])
++        self.assertTrue(result["ok"], result.get("artifact", {}).get("findings"))
++        self.assertEqual(result["interface"]["method"], "document.ExportToFile")
++        self.assertEqual(result["interface"]["argument_count"], 1)
++        self.assertEqual(result["artifact"]["kind"], "dxf")
++        self.assertEqual(result["artifact"]["counts"]["entities"], 2)
++
++    def test_empty_file_counts_as_failed_export(self):
++        document = FakeCom(ExportToFile=writer_for(b""))
++        session = FakeExportSession(self.root, document, FakeCom())
++        result = export_tools.export_file(session, "out.dxf", "dxf", apply=True)
++
++        self.assertTrue(result["executed"])
++        self.assertFalse(result["ok"])
++        self.assertTrue(
++            any("Экспорт завершился" in w for w in result["warnings"]),
++            result["warnings"],
++        )
++        # Файл не удаляется: его нужно посмотреть.
++        self.assertTrue((self.root / "work" / "out.dxf").is_file())
++
++    def test_method_that_writes_nothing_is_a_failure(self):
++        def silent(path, *_args):
++            return True
++
++        document = FakeCom(ExportToFile=silent)
++        session = FakeExportSession(self.root, document, FakeCom())
++        with self.assertRaises(RuntimeError) as ctx:
++            export_tools.export_file(session, "out.dxf", "dxf", apply=True)
++        self.assertIn("export_produced_no_file", str(ctx.exception))
++
++    def test_unknown_interface_fails_loudly(self):
++        session = FakeExportSession(self.root, FakeCom(), FakeCom())
++        with self.assertRaises(RuntimeError) as ctx:
++            export_tools.export_file(session, "out.dxf", "dxf", apply=True)
++        self.assertIn("export_interface_not_available", str(ctx.exception))
++
++
++class TestCheckpoints(TempRootCase):
++    def test_create_records_the_snapshot(self):
++        target = self.work_file("part.m3d", b"version one\n")
++        row = checkpoint.create(self.root, target, "part.create")
++        self.assertEqual(row["action"], "part.create")
++        self.assertEqual(row["target_name"], "part.m3d")
++        self.assertTrue(Path(row["snapshot"]).is_file())
++        self.assertEqual(row["sha256"], row["snapshot_sha256"])
++
++    def test_missing_file_cannot_be_snapshot(self):
++        with self.assertRaises(FileNotFoundError):
++            checkpoint.create(self.root, self.root / "work" / "absent.m3d", "x")
++
++    def test_restore_returns_original_content(self):
++        target = self.work_file("part.m3d", b"version one\n")
++        row = checkpoint.create(self.root, target, "edit")
++        target.write_bytes(b"broken version\n")
++
++        outcome = checkpoint.restore(self.root, row["id"])
++        self.assertTrue(outcome["matches_snapshot"])
++        self.assertEqual(target.read_bytes(), b"version one\n")
++
++    def test_restore_requires_the_exact_id(self):
++        target = self.work_file("part.m3d", b"data\n")
++        checkpoint.create(self.root, target, "edit")
++        with self.assertRaises(LookupError) as ctx:
++            checkpoint.restore(self.root, "нет такого")
++        self.assertIn("checkpoint_not_found", str(ctx.exception))
++
++    def test_restore_refuses_a_mismatched_target(self):
++        target = self.work_file("part.m3d", b"data\n")
++        row = checkpoint.create(self.root, target, "edit")
++        with self.assertRaises(ValueError) as ctx:
++            checkpoint.restore(self.root, row["id"], "other.m3d")
++        self.assertIn("checkpoint_target_mismatch", str(ctx.exception))
++
++    def test_restore_is_impossible_outside_approved_roots(self):
++        outside = self.root / "outside.m3d"
++        outside.write_bytes(b"outside bridge roots\n")
++        row = checkpoint.create(self.root, outside, "manual")
++        with self.assertRaises(RuntimeError) as ctx:
++            checkpoint.restore(self.root, row["id"])
++        self.assertIn("path_not_allowed", str(ctx.exception))
++
++    def test_list_filters_by_target(self):
++        first = self.work_file("a.m3d", b"aaa\n")
++        second = self.work_file("b.m3d", b"bbb\n")
++        checkpoint.create(self.root, first, "edit")
++        checkpoint.create(self.root, second, "edit")
++        checkpoint.create(self.root, first, "edit")
++
++        self.assertEqual(len(checkpoint.list_checkpoints(self.root)), 3)
++        self.assertEqual(len(checkpoint.list_checkpoints(self.root, first)), 2)
++        self.assertEqual(len(checkpoint.list_checkpoints(self.root, second)), 1)
++
++    def test_prune_keeps_the_newest(self):
++        target = self.work_file("part.m3d", b"data\n")
++        for index in range(5):
++            target.write_bytes(f"version {index}\n".encode())
++            checkpoint.create(self.root, target, "edit")
++
++        outcome = checkpoint.prune(self.root, keep=2)
++        self.assertEqual(outcome["removed_count"], 3)
++        self.assertEqual(outcome["remaining"], 2)
++        self.assertGreater(outcome["freed_bytes"], 0)
++        self.assertEqual(
++            len([p for p in (self.root / "_BACKUPS").glob("*__part.m3d")]), 2
++        )
++
++    def test_prune_with_zero_removes_everything(self):
++        target = self.work_file("part.m3d", b"data\n")
++        checkpoint.create(self.root, target, "edit")
++        outcome = checkpoint.prune(self.root, keep=0)
++        self.assertEqual(outcome["removed_count"], 1)
++        self.assertEqual(outcome["remaining"], 0)
++
++
++class TestCheckpointManagement(TempRootCase):
++    def test_list_operation_is_read_only(self):
++        target = self.work_file("part.m3d", b"data\n")
++        checkpoint.create(self.root, target, "edit")
++        result = export_tools.manage_checkpoints(self.root, {"operation": "list"})
++        self.assertTrue(result["read_only"])
++        self.assertEqual(result["count"], 1)
++
++    def test_prune_operation_reports_numbers(self):
++        target = self.work_file("part.m3d", b"data\n")
++        for index in range(3):
++            target.write_bytes(f"v{index}\n".encode())
++            checkpoint.create(self.root, target, "edit")
++        result = export_tools.manage_checkpoints(self.root, {"operation": "prune", "keep": 1})
++        self.assertEqual(result["removed_count"], 2)
++        self.assertEqual(result["remaining"], 1)
++
++    def test_restore_operation_requires_id_and_warns(self):
++        with self.assertRaises(ValueError) as ctx:
++            export_tools.manage_checkpoints(self.root, {"operation": "restore"})
++        self.assertIn("checkpoint_id_required_for_restore", str(ctx.exception))
++
++        target = self.work_file("part.m3d", b"original\n")
++        row = checkpoint.create(self.root, target, "edit")
++        target.write_bytes(b"broken\n")
++        outcome = export_tools.manage_checkpoints(
++            self.root, {"operation": "restore", "id": row["id"], "target": "part.m3d"}
++        )
++        self.assertFalse(outcome["read_only"])
++        self.assertEqual(target.read_bytes(), b"original\n")
++        self.assertTrue(outcome["warnings"])
++
++    def test_unknown_operation_is_rejected(self):
++        with self.assertRaises(ValueError) as ctx:
++            export_tools.manage_checkpoints(self.root, {"operation": "destroy"})
++        self.assertIn("unsupported_checkpoint_operation", str(ctx.exception))
++
++
++class TestCatalogWave4(unittest.TestCase):
++    def test_tool_count_is_42(self):
++        self.assertEqual(len(tools_catalog.TOOLS), 42)
++
++    def test_new_tools_are_routed(self):
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_export"][0], "export.file")
++        self.assertEqual(tools_catalog.ACTION_MAP["kompas_checkpoints"][0], "checkpoint.manage")
++
++    def test_export_schema_matches_code_whitelist(self):
++        schema = tools_catalog.TOOL_INDEX["kompas_export"]["inputSchema"]
++        self.assertEqual(sorted(schema["required"]), ["format", "relative_path"])
++        self.assertEqual(
++            sorted(schema["properties"]["format"]["enum"]),
++            sorted(export_tools.SUPPORTED_FORMATS),
++        )
++        self.assertFalse(schema["properties"]["apply"]["default"])
++
++    def test_checkpoints_schema_matches_code(self):
++        schema = tools_catalog.TOOL_INDEX["kompas_checkpoints"]["inputSchema"]
++        self.assertEqual(
++            sorted(schema["properties"]["operation"]["enum"]),
++            ["create", "list", "prune", "restore"],
++        )
++        annotations = tools_catalog.TOOL_INDEX["kompas_checkpoints"]["annotations"]
++        self.assertTrue(annotations["destructiveHint"])
++
++    def test_export_is_not_marked_destructive(self):
++        annotations = tools_catalog.TOOL_INDEX["kompas_export"]["annotations"]
++        self.assertFalse(annotations["readOnlyHint"])
++        self.assertFalse(annotations["destructiveHint"])
++
++    def test_version_json_matches_catalog(self):
++        declared = json.loads((REPO_ROOT / "VERSION.json").read_text(encoding="utf-8-sig"))
++        snapshot = tools_catalog.catalog_snapshot()
++        self.assertEqual(declared["mcp_tool_count"], snapshot["mcp_tool_count"])
++        self.assertEqual(declared["mcp_tools"], snapshot["mcp_tools"])
++
++    def test_new_modules_import_without_com(self):
++        self.assertFalse(hasattr(export_tools, "win32com"))
++        self.assertFalse(hasattr(checkpoint, "win32com"))
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

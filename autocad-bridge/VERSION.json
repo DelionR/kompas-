@@ -1,0 +1,25 @@
+{
+  "product": "AUTOCAD PANEL BRIDGE",
+  "adapter_version": "0.1.0",
+  "mcp_tool_count": 5,
+  "mcp_tools": [
+    "autocad_status",
+    "autocad_version_check",
+    "autocad_document_active",
+    "autocad_units_read",
+    "autocad_layout_place"
+  ],
+  "autocad": {
+    "target_label": "AutoCAD 2019 (R23)",
+    "target_release": "23",
+    "target_progid": "AutoCAD.Application.23",
+    "reported_build": "AutoCAD 2019.1.2 / P.162.0.0 (по данным оператора)",
+    "electrical": {
+      "label": "AutoCAD Electrical 2019.0.1 Update",
+      "progid": "AutoCAD.Application.23",
+      "note": "Отдельного ProgID у вертикали нет: Electrical — профиль поверх того же AutoCAD."
+    }
+  },
+  "python": "3.11",
+  "status": "не проверено на живом AutoCAD: на машине разработки AutoCAD отсутствует"
+}
